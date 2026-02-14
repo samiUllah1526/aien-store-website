@@ -9,14 +9,8 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
-const CURRENCY_OPTIONS = [
-  { value: 'PKR', label: 'PKR (Pakistani Rupee)' },
-  { value: 'USD', label: 'USD (US Dollar)' },
-  { value: 'EUR', label: 'EUR (Euro)' },
-  { value: 'GBP', label: 'GBP (British Pound)' },
-] as const;
-
-const defaultCurrency = 'PKR';
+/** Currency is fixed to PKR; selector is hidden. */
+const FIXED_CURRENCY = 'PKR';
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [name, setName] = useState(product?.name ?? '');
@@ -25,7 +19,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [priceCents, setPriceCents] = useState(
     product != null ? String(product.price) : ''
   );
-  const [currency, setCurrency] = useState(product?.currency ?? defaultCurrency);
   const [categoryIds, setCategoryIds] = useState<string[]>(
     () => product?.categories?.map((c) => c.id) ?? []
   );
@@ -107,7 +100,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         description: description || undefined,
         categoryIds: categoryIds.length ? categoryIds : undefined,
         priceCents: cents,
-        currency: currency || defaultCurrency,
+        currency: FIXED_CURRENCY,
         featured,
         mediaIds: mediaIds.length ? mediaIds : undefined,
       });
@@ -177,23 +170,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             onChange={(e) => setPriceCents(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
-        </div>
-        <div>
-          <label htmlFor="currency" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Currency
-          </label>
-          <select
-            id="currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-          >
-            {CURRENCY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
       <div>

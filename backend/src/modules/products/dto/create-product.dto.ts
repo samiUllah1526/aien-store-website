@@ -1,5 +1,7 @@
 import { IsString, IsOptional, IsInt, Min, IsArray, IsBoolean, IsIn } from 'class-validator';
-import { CURRENCIES } from '../../../common/constants/currency';
+
+/** Only PKR is allowed. */
+const ALLOWED_CURRENCY = ['PKR'] as const;
 
 export class CreateProductDto {
   @IsString()
@@ -24,7 +26,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(CURRENCIES, { message: `currency must be one of: ${CURRENCIES.join(', ')}` })
+  @IsIn(ALLOWED_CURRENCY, { message: 'currency must be PKR' })
   currency?: string;
 
   @IsOptional()

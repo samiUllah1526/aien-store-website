@@ -62,8 +62,12 @@ export class OrdersService {
         'All items must be in the same currency. Please create separate orders for different currencies.',
       );
     }
-    const currency =
+    const rawCurrency =
       currencies[0] && (CURRENCIES as readonly string[]).includes(currencies[0]) ? currencies[0] : 'PKR';
+    if (rawCurrency !== 'PKR') {
+      throw new BadRequestException('Only PKR currency is supported for orders.');
+    }
+    const currency = 'PKR';
 
     let subtotalCents = 0;
     const orderItemsData: Array<{ productId: string; quantity: number; unitCents: number }> = [];
