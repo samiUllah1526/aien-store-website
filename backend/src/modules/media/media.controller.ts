@@ -56,15 +56,20 @@ export class MediaController {
   }
 
   @Public()
-  @Get('file/:path')
+  @Get('file/:folder/:filename')
   async serveFile(
-    @Param('path') path: string,
+    @Param('folder') folder: string,
+    @Param('filename') filename: string,
     @Res() res: Response,
   ) {
-    const fullPath = this.mediaService.getFilePath(path);
+    const relativePath = `${folder}/${filename}`;
+    const fullPath = this.mediaService.getFilePath(relativePath);
     if (!existsSync(fullPath)) {
       return res.status(404).send('Not found');
     }
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
     const stream = createReadStream(fullPath);
     stream.pipe(res);
   }

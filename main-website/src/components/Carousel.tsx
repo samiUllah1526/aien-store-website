@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatMoney } from '../lib/formatMoney';
 
 export type CarouselSlideProduct = {
   type: 'product';
@@ -112,7 +113,7 @@ export default function Carousel({ slides, reducedMotion = false }: CarouselProp
                   {slide.name}
                 </p>
                 <p className="mt-1 text-charcoal/70 dark:text-cream/70 text-sm text-center">
-                  {slide.currency} {slide.price.toLocaleString()}
+                  {formatMoney(slide.price, slide.currency)}
                 </p>
               </a>
             </div>

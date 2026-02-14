@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsInt, Min, Max, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, Min, Max, IsString, IsDateString, IsUUID, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderStatus } from '@prisma/client';
 
@@ -33,6 +33,7 @@ export class OrderQueryDto {
   dateTo?: string;
 
   @IsOptional()
-  @IsString()
+  @ValidateIf((o) => o.assignedToUserId != null && o.assignedToUserId !== '')
+  @IsUUID('4', { message: 'Assigned staff ID must be a valid UUID' })
   assignedToUserId?: string;
 }

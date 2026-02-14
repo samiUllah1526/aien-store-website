@@ -8,6 +8,8 @@ export interface ProductListItem {
   image: string;
   sizes: string[];
   featured: boolean;
+  /** Category names (from backend categories array). */
+  categories?: string[];
 }
 
 /** Full product from GET /products/:id */
@@ -21,6 +23,7 @@ export interface Product {
   image: string;
   images: string[];
   sizes: string[];
+  categories: Array<{ id: string; name: string; slug: string }>;
   category: string | null;
   categoryId: string | null;
   featured: boolean;
@@ -30,12 +33,12 @@ export interface Product {
   updatedAt: string;
 }
 
-/** Payload for create/update. Backend expects price in cents, mediaIds for images. */
+/** Payload for create/update. Backend expects price in cents, mediaIds, categoryIds. */
 export interface ProductFormData {
   name: string;
   slug: string;
   description?: string;
-  categoryId?: string;
+  categoryIds?: string[];
   priceCents: number;
   currency?: string;
   sizes?: string[];
@@ -59,6 +62,7 @@ export interface OrderItem {
   id: string;
   productId: string;
   productName?: string;
+  productImage?: string | null;
   quantity: number;
   unitCents: number;
 }
@@ -72,7 +76,15 @@ export interface Order {
   id: string;
   status: string;
   totalCents: number;
+  currency: string;
   customerEmail: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  shippingCountry: string | null;
+  shippingAddressLine1: string | null;
+  shippingAddressLine2: string | null;
+  shippingCity: string | null;
+  shippingPostalCode: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   items: OrderItem[];

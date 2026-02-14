@@ -56,6 +56,7 @@ model User {
   roles             UserRole[]       @relation("UserRoles")
   directPermissions UserPermission[] @relation("UserDirectPermissions")
   ordersAssigned    Order[]          @relation("AssignedOrders")
+  ordersPlaced      Order[]          @relation("CustomerOrders")
 
   @@map("users")
 }
@@ -145,7 +146,7 @@ model Media {
 }
 
 // -----------------------------------------------------------------------------
-// Catalog: Category (tree), Product (optionally in category; can have media)
+// Catalog: Category (tree), Product (many-to-many categories via ProductCategory)
 // -----------------------------------------------------------------------------
 
 model Category {
@@ -157,9 +158,9 @@ model Category {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryHierarchy")
-  products Product[]
+  parent           Category?         @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children         Category[]       @relation("CategoryHierarchy")
+  productCategories ProductCategory[]
 
   @@map("categories")
 }
@@ -169,7 +170,6 @@ model Product {
   name                  String    @map("name")
   slug                  String    @unique @map("slug")
   description           String?   @map("description")
-  categoryId            String?   @map("category_id") @db.Uuid
   priceCents            Int       @map("price_cents")
   currency              String    @default("PKR") @map("currency")
   sizes                 Json?     @map("sizes")
@@ -179,11 +179,23 @@ model Product {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  productMedia  ProductMedia[]
-  orderItems    OrderItem[]
+  productCategories ProductCategory[]
+  productMedia       ProductMedia[]
+  orderItems         OrderItem[]
 
   @@map("products")
+}
+
+model ProductCategory {
+  productId  String   @map("product_id") @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
 }
 
 model ProductMedia {
@@ -204,17 +216,27 @@ model ProductMedia {
 // -----------------------------------------------------------------------------
 
 model Order {
-  id               String       @id @default(uuid()) @db.Uuid
-  status           OrderStatus  @default(PENDING) @map("status")
-  totalCents       Int          @map("total_cents")
-  customerEmail    String       @map("customer_email")
-  assignedToUserId String?      @map("assigned_to_user_id") @db.Uuid
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String       @id @default(uuid()) @db.Uuid
+  status                 OrderStatus  @default(PENDING) @map("status")
+  totalCents             Int          @map("total_cents")
+  currency               String       @default("PKR") @map("currency")
+  customerEmail          String       @map("customer_email")
+  customerName           String?      @map("customer_name")
+  customerPhone          String?      @map("customer_phone")
+  shippingCountry        String?      @map("shipping_country")
+  shippingAddressLine1   String?      @map("shipping_address_line1")
+  shippingAddressLine2   String?      @map("shipping_address_line2")
+  shippingCity            String?      @map("shipping_city")
+  shippingPostalCode     String?      @map("shipping_postal_code")
+  customerUserId         String?      @map("customer_user_id") @db.Uuid
+  assignedToUserId       String?      @map("assigned_to_user_id") @db.Uuid
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   items         OrderItem[]
   statusHistory OrderStatusHistory[]
   assignedTo    User?         @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  customer      User?         @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
 
   @@map("orders")
 }

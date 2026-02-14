@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, getApiBaseUrl } from '../lib/api';
+import { formatMoney } from '../lib/formatMoney';
 import type { ProductListItem, Product, ProductFormData } from '../lib/types';
 import { ProductForm } from './ProductForm';
 
@@ -63,7 +64,7 @@ export function ProductsManager() {
       name: data.name,
       slug: data.slug,
       description: data.description,
-      categoryId: data.categoryId,
+      categoryIds: data.categoryIds,
       priceCents: data.priceCents,
       currency: data.currency,
       featured: data.featured,
@@ -79,7 +80,7 @@ export function ProductsManager() {
       name: data.name,
       slug: data.slug,
       description: data.description,
-      categoryId: data.categoryId,
+      categoryIds: data.categoryIds,
       priceCents: data.priceCents,
       currency: data.currency,
       featured: data.featured,
@@ -162,6 +163,7 @@ export function ProductsManager() {
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Image</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -175,6 +177,9 @@ export function ProductsManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -202,13 +207,16 @@ export function ProductsManager() {
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Image</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const categoryNames = item.categories ?? [];
+                  return (
                   <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
                     <td className="px-4 py-3">
                       {item.image ? (
@@ -227,8 +235,24 @@ export function ProductsManager() {
                       <span className="font-medium text-slate-900 dark:text-slate-100">{item.name}</span>
                       <span className="ml-1 text-slate-500 dark:text-slate-400 text-xs">/{item.slug}</span>
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {categoryNames.length > 0 ? (
+                          categoryNames.map((name) => (
+                            <span
+                              key={name}
+                              className="inline-flex rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200"
+                            >
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">—</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
-                      {item.price} {item.currency}
+                      {formatMoney(item.price, item.currency)}
                     </td>
                     <td className="px-4 py-3">
                       {item.featured ? (
@@ -257,7 +281,8 @@ export function ProductsManager() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

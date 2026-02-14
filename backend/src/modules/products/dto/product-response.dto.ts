@@ -1,6 +1,6 @@
 /**
  * Product response DTO compatible with Astro store frontend (ProductCard, ShopGrid).
- * Mirrors main-website ProductCardProduct + product detail fields.
+ * categories: many-to-many; category/categoryId kept for backward compat (first category).
  */
 export class ProductResponseDto {
   id: string;
@@ -12,7 +12,11 @@ export class ProductResponseDto {
   image: string;
   images: string[];
   sizes: string[];
+  /** All categories this product belongs to. */
+  categories: Array<{ id: string; name: string; slug: string }>;
+  /** First category name (backward compat). */
   category: string | null;
+  /** First category id (backward compat). */
   categoryId: string | null;
   featured: boolean;
   urduVerse: string | null;
@@ -30,4 +34,6 @@ export class ProductListResponseDto {
   image: string;
   sizes: string[];
   featured: boolean;
+  /** Category names for display/tags. */
+  categories: string[];
 }

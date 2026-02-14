@@ -81,6 +81,13 @@ export const useCartStore = create<CartState>()(
   )
 );
 
+/** Single currency shared by all cart items, or null if mixed. */
+export function getCartCurrency(items: CartItem[]): string | null {
+  if (items.length === 0) return null;
+  const first = items[0].currency;
+  return items.every((i) => i.currency === first) ? first : null;
+}
+
 export function useCart() {
   const items = useCartStore((s) => s.items);
   const isOpen = useCartStore((s) => s.isOpen);
@@ -91,12 +98,16 @@ export function useCart() {
   const closeCart = useCartStore((s) => s.closeCart);
   const toggleCart = useCartStore((s) => s.toggleCart);
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalAmount = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const cartCurrency = getCartCurrency(items);
+  const hasMixedCurrencies = items.length > 1 && cartCurrency === null;
+  const totalAmount = hasMixedCurrencies ? 0 : items.reduce((s, i) => s + i.price * i.quantity, 0);
   return {
     items,
     isOpen,
     totalItems,
     totalAmount,
+    cartCurrency,
+    hasMixedCurrencies,
     addItem,
     removeItem,
     updateQuantity,

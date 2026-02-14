@@ -1,22 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
+import { formatDateTime } from '../lib/format';
 import type { User, Role } from '../lib/types';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['ACTIVE', 'DISABLED'] as const;
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    });
-  } catch {
-    return iso;
-  }
-}
 
 export function UsersManager() {
   const [users, setUsers] = useState<User[]>([]);
@@ -243,7 +232,7 @@ export function UsersManager() {
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDate(user.lastLoginAt)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDateTime(user.lastLoginAt)}</td>
                     {canWrite && (
                       <td className="px-4 py-3 text-right">
                         <button

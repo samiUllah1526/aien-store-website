@@ -3,11 +3,12 @@
  * Rendered as overlay; cart state from CartProvider.
  */
 
-import { useCart } from '../../store/cartStore';
 import { useEffect } from 'react';
+import { useCart } from '../../store/cartStore';
+import { formatMoney } from '../../lib/formatMoney';
 
 export default function CartSidebar() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity, totalItems, totalAmount } =
+  const { items, isOpen, closeCart, removeItem, updateQuantity, totalItems, totalAmount, cartCurrency, hasMixedCurrencies } =
     useCart();
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export default function CartSidebar() {
                       {item.size} × {item.quantity}
                     </p>
                     <p className="text-sm text-emerald font-medium mt-1">
-                      {item.currency} {(item.price * item.quantity).toLocaleString()}
+                      {formatMoney(item.price * item.quantity, item.currency)}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <button
@@ -109,19 +110,25 @@ export default function CartSidebar() {
         </div>
         {items.length > 0 && (
           <div className="p-4 border-t border-sand dark:border-charcoal-light space-y-3">
-            <p className="flex justify-between text-ink dark:text-cream font-display">
-              <span>Subtotal</span>
-              <span>PKR {totalAmount.toLocaleString()}</span>
-            </p>
+            {hasMixedCurrencies ? (
+              <p className="text-amber-700 dark:text-amber-400 text-sm">
+                Cart has multiple currencies. Please use one currency per order.
+              </p>
+            ) : (
+              <p className="flex justify-between text-ink dark:text-cream font-display">
+                <span>Subtotal</span>
+                <span>{formatMoney(totalAmount, cartCurrency ?? 'PKR')}</span>
+              </p>
+            )}
             <p className="text-xs text-charcoal/70 dark:text-cream/70">
               Tax included. Shipping calculated at checkout.
             </p>
             <a
-              href="/checkout"
+              href={hasMixedCurrencies ? '/cart' : '/checkout'}
               onClick={closeCart}
-              className="block w-full py-3 text-center bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity uppercase tracking-wide text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink"
+              className="block w-full py-3 text-center bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity uppercase tracking-wide text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink disabled:opacity-60"
             >
-              Checkout
+              {hasMixedCurrencies ? 'View cart' : 'Checkout'}
             </a>
             <a
               href="/cart"

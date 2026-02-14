@@ -15,7 +15,15 @@ const mockOrder = {
   id: orderId,
   status: OrderStatus.PENDING,
   totalCents: 5000,
+  currency: 'PKR',
   customerEmail: 'customer@example.com',
+  customerName: null as string | null,
+  customerPhone: null as string | null,
+  shippingCountry: null as string | null,
+  shippingAddressLine1: null as string | null,
+  shippingAddressLine2: null as string | null,
+  shippingCity: null as string | null,
+  shippingPostalCode: null as string | null,
   assignedToUserId: null,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
@@ -75,7 +83,7 @@ describe('OrdersService', () => {
         items: [{ productId, quantity: 2 }],
       };
       prisma.product.findMany.mockResolvedValue([
-        { id: productId, priceCents: 2500, name: 'Test Product' },
+        { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
       ]);
       prisma.order.create.mockResolvedValue(mockOrder);
 
@@ -85,6 +93,7 @@ describe('OrdersService', () => {
         id: orderId,
         status: 'PENDING',
         totalCents: 5000,
+        currency: 'PKR',
         customerEmail: 'customer@example.com',
         items: expect.arrayContaining([
           expect.objectContaining({ productId, quantity: 2, unitCents: 2500 }),
@@ -98,12 +107,31 @@ describe('OrdersService', () => {
           data: expect.objectContaining({
             status: OrderStatus.PENDING,
             totalCents: 5000,
+            currency: 'PKR',
             customerEmail: dto.customerEmail,
             items: { create: expect.any(Array) },
             statusHistory: { create: { status: OrderStatus.PENDING } },
           }),
         }),
       );
+    });
+
+    it('should throw BadRequestException when items have mixed currencies', async () => {
+      const otherProductId = '33333333-3333-3333-3333-333333333333';
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 2500, currency: 'PKR', name: 'Product A' },
+        { id: otherProductId, priceCents: 500, currency: 'USD', name: 'Product B' },
+      ]);
+      await expect(
+        service.create({
+          customerEmail: 'a@b.com',
+          items: [
+            { productId, quantity: 1 },
+            { productId: otherProductId, quantity: 1 },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.order.create).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException when items empty', async () => {
@@ -125,6 +153,35 @@ describe('OrdersService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('quote', () => {
+    it('should return server-computed totals from DB (no order created)', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
+      ]);
+      const result = await service.quote([{ productId, quantity: 2 }]);
+      expect(result).toMatchObject({
+        subtotalCents: 5000,
+        shippingCents: 299,
+        totalCents: 5299,
+        currency: 'PKR',
+        items: [
+          {
+            productId,
+            productName: 'Test Product',
+            quantity: 2,
+            unitCents: 2500,
+            lineTotalCents: 5000,
+          },
+        ],
+      });
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw when items empty', async () => {
+      await expect(service.quote([])).rejects.toThrow(BadRequestException);
     });
   });
 

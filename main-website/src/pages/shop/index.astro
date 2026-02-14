@@ -1,11 +1,98 @@
 ---
 /**
- * Shop: product grid with filters (category, price).
- * Products and filters are passed to React for client-side filtering.
+ * Shop: product grid with URL-driven filters (category, price, sort) and Load more.
+ * ?category=slug&price=...&sort=... for shareable/bookmarkable state.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShopGrid from '../../components/shop/ShopGrid';
-import products from '../../data/products.json';
+
+const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const PAGE_SIZE = 20;
+
+const url = Astro.url;
+const initialCategory = url.searchParams.get('category')?.trim() || 'all';
+const initialPrice = url.searchParams.get('price')?.trim() || 'any';
+const initialSort = url.searchParams.get('sort')?.trim() || 'newest';
+
+function priceRangeToCents(value: string): [number | null, number | null] {
+  switch (value) {
+    case 'under-5k': return [null, 5000];
+    case '5k-6k': return [5000, 6500];
+    case 'over-6k': return [6500, null];
+    default: return [null, null];
+  }
+}
+
+function sortToBackend(value: string): [string, string] {
+  switch (value) {
+    case 'oldest': return ['createdAt', 'asc'];
+    case 'price-low': return ['price', 'asc'];
+    case 'price-high': return ['price', 'desc'];
+    case 'name-az': return ['name', 'asc'];
+    case 'name-za': return ['name', 'desc'];
+    default: return ['createdAt', 'desc'];
+  }
+}
+
+function buildProductsQuery(page: number): string {
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('limit', String(PAGE_SIZE));
+  if (initialCategory && initialCategory !== 'all') params.set('category', initialCategory);
+  if (initialPrice && initialPrice !== 'any') {
+    const [min, max] = priceRangeToCents(initialPrice);
+    if (min != null) params.set('minPriceCents', String(min));
+    if (max != null) params.set('maxPriceCents', String(max));
+  }
+  const [sortBy, sortOrder] = sortToBackend(initialSort);
+  params.set('sortBy', sortBy);
+  params.set('sortOrder', sortOrder);
+  return params.toString();
+}
+
+let products: Array<{ id: string; slug: string; name: string; category: string; price: number; currency: string; image: string; sizes?: string[] }> = [];
+let total = 0;
+let categories: Array<{ value: string; label: string }> = [];
+let error: string | null = null;
+
+try {
+  const productsQuery = buildProductsQuery(1);
+  const [productsRes, categoriesRes] = await Promise.all([
+    fetch(`${baseUrl}/products?${productsQuery}`),
+    fetch(`${baseUrl}/categories`),
+  ]);
+  const productsJson = await productsRes.json();
+  if (productsRes.ok && productsJson.success && Array.isArray(productsJson.data)) {
+    products = productsJson.data.map((p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; sizes?: string[] }) => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      category: ((p.categories?.[0] ?? p.category) || '').toLowerCase(),
+      price: p.price,
+      currency: p.currency,
+      image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
+      sizes: p.sizes,
+    }));
+    total = productsJson.meta?.total ?? products.length;
+  } else {
+    error = productsJson.message || 'Failed to load products';
+  }
+  const categoriesJson = await categoriesRes.json();
+  if (categoriesRes.ok && categoriesJson.success && Array.isArray(categoriesJson.data)) {
+    categories = [
+      { value: 'all', label: 'All' },
+      ...categoriesJson.data.map((c: { slug: string; name: string }) => ({
+        value: (c.slug || '').toLowerCase(),
+        label: c.name || c.slug,
+      })),
+    ];
+  }
+} catch (e) {
+  if (!error) error = e instanceof Error ? e.message : 'Failed to load products';
+}
+if (categories.length === 0) {
+  categories = [{ value: 'all', label: 'All' }];
+}
 ---
 
 <BaseLayout title="Shop — Adab" description="Browse Urdu poetry streetwear — shirts, hoodies, and more.">
@@ -16,6 +103,19 @@ import products from '../../data/products.json';
         Wear the words. Shirts and hoodies with Urdu verse and calligraphy.
       </p>
     </header>
-    <ShopGrid products={products} client:load />
+    {error ? (
+      <p class="text-red-600 dark:text-red-400 py-8">{error}</p>
+    ) : (
+      <ShopGrid
+        initialProducts={products}
+        total={total}
+        pageSize={PAGE_SIZE}
+        categories={categories}
+        initialCategory={initialCategory}
+        initialPrice={initialPrice}
+        initialSort={initialSort}
+        client:load
+      />
+    )}
   </div>
 </BaseLayout>

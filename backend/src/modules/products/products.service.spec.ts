@@ -7,7 +7,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 
 const mockProductInclude = {
-  category: true,
+  productCategories: { include: { category: true } },
   productMedia: { include: { media: true }, orderBy: { sortOrder: 'asc' as const } },
 };
 
@@ -16,7 +16,6 @@ const mockProduct = {
   name: 'Test Product',
   slug: 'test-product',
   description: 'Desc',
-  categoryId: null,
   priceCents: 4200,
   currency: 'PKR',
   sizes: ['S', 'M', 'L'],
@@ -25,7 +24,7 @@ const mockProduct = {
   urduVerseTransliteration: null,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
-  category: null,
+  productCategories: [],
   productMedia: [{ media: { path: 'products/abc.jpg' } }],
 };
 
@@ -58,6 +57,8 @@ describe('ProductsService', () => {
       },
       media: { findMany: jest.fn() },
       productMedia: { createMany: jest.fn(), deleteMany: jest.fn() },
+      productCategory: { deleteMany: jest.fn(), createMany: jest.fn() },
+      category: { findUnique: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -139,7 +140,7 @@ describe('ProductsService', () => {
         id: mockProduct.id,
         name: mockProduct.name,
         price: 4200,
-        image: '/api/media/file/products/abc.jpg',
+        image: '/media/file/products/abc.jpg',
       });
     });
 
@@ -160,7 +161,7 @@ describe('ProductsService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             OR: expect.any(Array),
-            categoryId: 'cat-id',
+            productCategories: { some: { categoryId: 'cat-id' } },
             priceCents: { gte: 1000, lte: 5000 },
             featured: true,
           }),

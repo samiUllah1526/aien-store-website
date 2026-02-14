@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import CartIcon from './cart/CartIcon';
 import CartSidebar from './cart/CartSidebar';
 import ThemeToggle from './ThemeToggle';
+import Toast from './Toast';
 
 function ShellContent({ children }: { children: ReactNode }) {
   return (
@@ -111,6 +112,7 @@ function ShellContent({ children }: { children: ReactNode }) {
         </div>
       </footer>
       <CartSidebar />
+      <Toast />
     </>
   );
 }

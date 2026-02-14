@@ -50,9 +50,10 @@ async function request<T>(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(url.toString(), { ...init, headers });
-  const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string; meta?: unknown };
+  const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string | string[]; meta?: unknown };
   if (!res.ok) {
-    const msg = json.message || res.statusText || `Request failed (${res.status})`;
+    const raw = json.message || res.statusText || `Request failed (${res.status})`;
+    const msg = Array.isArray(raw) ? raw.join(' ') : raw;
     throw new Error(msg);
   }
   return json as T;

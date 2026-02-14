@@ -9,9 +9,11 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { QuoteOrderDto } from './dto/quote-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
@@ -19,10 +21,42 @@ import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  /** Public: get server-computed quote (no order created). Source of truth for totals. */
+  @Public()
+  @Post('quote')
+  async quote(@Body() dto: QuoteOrderDto) {
+    const data = await this.ordersService.quote(dto.items);
+    return ApiResponseDto.ok(data);
+  }
+
+  /** Public checkout: guest or optional JWT to link order to customer. */
+  @Public()
+  @Post('checkout')
+  async checkout(@Body() dto: CreateOrderDto, @Req() req: { headers: { authorization?: string } }) {
+    let customerUserId: string | null = null;
+    const authHeader = req.headers?.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    if (token) {
+      try {
+        const payload = this.jwtService.verify<{ sub: string }>(token);
+        if (payload?.sub) customerUserId = payload.sub;
+      } catch {
+        // Invalid or expired token: proceed as guest
+      }
+    }
+    const data = await this.ordersService.create(dto, customerUserId);
+    return ApiResponseDto.ok(data, 'Order placed');
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)

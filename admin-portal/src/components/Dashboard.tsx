@@ -12,25 +12,9 @@ import {
   Legend,
 } from 'recharts';
 import { api } from '../lib/api';
+import { formatDateTime } from '../lib/format';
+import { formatMoney } from '../lib/formatMoney';
 import type { DashboardStats } from '../lib/dashboard-types';
-
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'PKR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
-function formatDateLabel(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
-}
 
 function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(() =>
@@ -105,7 +89,7 @@ export function Dashboard() {
   const s = stats!;
   const ordersOverTimeData = s.ordersOverTime.map((x) => ({
     ...x,
-    dateLabel: formatDateLabel(x.date),
+    dateLabel: formatDateTime(x.date),
   }));
   const salesByCategoryData = s.salesByCategory.map((x) => ({
     ...x,
@@ -194,7 +178,7 @@ export function Dashboard() {
                     }}
                     labelFormatter={(_, payload) =>
                       payload?.[0]?.payload?.date
-                        ? formatDateLabel(payload[0].payload.date)
+                        ? formatDateTime(payload[0].payload.date)
                         : ''
                     }
                     formatter={(value: number) => [value, 'Orders']}
@@ -244,7 +228,7 @@ export function Dashboard() {
                       backgroundColor: isDark ? '#1e293b' : '#fff',
                       color: isDark ? '#e2e8f0' : '#0f172a',
                     }}
-                    formatter={(value: number) => [formatCents((value as number) * 100), 'Sales']}
+                    formatter={(value: number) => [formatMoney((value as number) * 100, 'PKR'), 'Sales']}
                     labelFormatter={(label) => label}
                   />
                   <Bar

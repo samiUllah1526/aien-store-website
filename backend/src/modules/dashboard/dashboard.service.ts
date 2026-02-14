@@ -62,8 +62,10 @@ export class DashboardService {
             unitCents: true,
             product: {
               select: {
-                categoryId: true,
-                category: { select: { id: true, name: true } },
+                productCategories: {
+                  take: 1,
+                  select: { category: { select: { id: true, name: true } } },
+                },
               },
             },
           },
@@ -104,13 +106,14 @@ export class DashboardService {
     >();
     const uncategorizedKey = '__uncategorized__';
     for (const item of orderItemsForCategory) {
-      const name = item.product.category?.name ?? 'Uncategorized';
-      const id = item.product.categoryId ?? uncategorizedKey;
+      const firstPc = item.product.productCategories?.[0]?.category;
+      const name = firstPc?.name ?? 'Uncategorized';
+      const id = firstPc?.id ?? uncategorizedKey;
       const key = id === null ? uncategorizedKey : id;
       const revenue = item.quantity * item.unitCents;
       if (!categoryMap.has(key)) {
         categoryMap.set(key, {
-          categoryId: item.product.categoryId,
+          categoryId: firstPc?.id ?? null,
           categoryName: name,
           totalCents: 0,
           orderIds: new Set(),

@@ -23,6 +23,11 @@ export class ProductQueryDto {
   @IsString()
   categoryId?: string;
 
+  /** Category slug (e.g. "shirts"); resolved to categoryId when provided. */
+  @IsOptional()
+  @IsString()
+  category?: string;
+
   @IsOptional()
   @IsString()
   @IsIn(['name', 'price', 'createdAt', 'slug'])

@@ -1,49 +1,43 @@
 ---
 /**
- * Home: Video hero, carousel (products + poetry), featured grid, CTA.
- * Apple-inspired polish — breathing space, vertical rhythm, subtle shadows.
+ * Home: Video hero, carousel (featured products from backend), featured grid, CTA.
+ * All product data from backend API.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import FeaturedCollections from '../components/home/FeaturedCollections';
 import Carousel from '../components/Carousel';
 import VideoHero from '../components/VideoHero';
-import products from '../data/products.json';
 
-const featured = products.filter((p) => p.featured);
+const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+let featured: Array<{ id: string; slug: string; name: string; price: number; currency: string; image: string; featured?: boolean; sizes?: string[] }> = [];
+try {
+  const res = await fetch(`${baseUrl}/products?featured=true&limit=20`);
+  const json = await res.json();
+  if (res.ok && json.success && Array.isArray(json.data)) {
+    featured = json.data.map((p: { id: string; slug: string; name: string; price: number; currency: string; image: string; sizes?: string[] }) => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      price: p.price,
+      currency: p.currency,
+      image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
+      sizes: p.sizes,
+    }));
+  }
+} catch {
+  featured = [];
+}
 
-// Carousel: mix poetry slides + featured products (minimal indicators)
-const carouselSlides = [
-  {
-    type: 'poetry',
-    id: 'p1',
-    urdu: 'آداب پہنیے — الفاظ کو پہن کر چلو',
-    transliteration: 'Adab pehniye — wear the words.',
-  },
-  ...featured.slice(0, 2).map((p) => ({
-    type: 'product' as const,
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    price: p.price,
-    currency: p.currency,
-    image: p.image,
-  })),
-  {
-    type: 'poetry',
-    id: 'p2',
-    urdu: 'الفاظ سے پہلے آداب سیکھو',
-    transliteration: 'Before words, learn adab.',
-  },
-  ...featured.slice(2, 4).map((p) => ({
-    type: 'product' as const,
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    price: p.price,
-    currency: p.currency,
-    image: p.image,
-  })),
-];
+// Carousel: featured products only (from backend)
+const carouselSlides = featured.map((p) => ({
+  type: 'product' as const,
+  id: p.id,
+  name: p.name,
+  slug: p.slug,
+  price: p.price,
+  currency: p.currency,
+  image: p.image,
+}));
 ---
 
 <BaseLayout title="Adab — Wear the Words" description="Urdu & Adabi inspired streetwear. Poetry on fabric.">
@@ -65,13 +59,15 @@ const carouselSlides = [
     </a>
   </div>
 
-  <!-- Carousel: featured products + poetry statements -->
-  <section class="py-18 md:py-24 px-4 sm:px-6 border-t border-sand/60 dark:border-charcoal-light/50">
-    <div class="max-w-5xl mx-auto">
-      <h2 class="sr-only">Featured & poetry</h2>
-      <Carousel client:load slides={carouselSlides} />
-    </div>
-  </section>
+  <!-- Carousel: featured products from backend -->
+  {carouselSlides.length > 0 && (
+    <section class="py-18 md:py-24 px-4 sm:px-6 border-t border-sand/60 dark:border-charcoal-light/50">
+      <div class="max-w-5xl mx-auto">
+        <h2 class="sr-only">Featured products</h2>
+        <Carousel client:load slides={carouselSlides} />
+      </div>
+    </section>
+  )}
 
   <!-- Featured grid – strong vertical rhythm -->
   <section class="py-22 md:py-30 px-4 sm:px-6 bg-cream dark:bg-ink border-t border-sand/60 dark:border-charcoal-light/50">

@@ -13,6 +13,7 @@ import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
+import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
@@ -21,9 +22,9 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
+  /** Public list for shop dropdown; no auth required. */
   @Get()
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('categories:read')
+  @Public()
   async findAll() {
     const data = await this.categoriesService.findAll();
     return ApiResponseDto.ok(data);

@@ -17,7 +17,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Resolve categoryId: accept UUID or category slug (look up by slug). */
+  /** Resolve category slug to id. */
   private async resolveCategoryId(value: string | undefined | null): Promise<string | null> {
     if (!value || value.trim() === '') return null;
     const trimmed = value.trim();
@@ -31,6 +31,17 @@ export class ProductsService {
     return category.id;
   }
 
+  /** Validate and resolve category IDs; throws if any invalid. */
+  private async resolveCategoryIds(ids: string[] | undefined): Promise<string[]> {
+    if (!ids?.length) return [];
+    const validIds: string[] = [];
+    for (const id of ids) {
+      const resolved = await this.resolveCategoryId(id);
+      if (resolved) validIds.push(resolved);
+    }
+    return validIds;
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     const existing = await this.prisma.product.findUnique({
       where: { slug: dto.slug },
@@ -41,19 +52,21 @@ export class ProductsService {
     if (dto.mediaIds?.length) {
       await this.validateMediaIds(dto.mediaIds);
     }
-    const categoryId = await this.resolveCategoryId(dto.categoryId ?? null);
+    const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
     const product = await this.prisma.product.create({
       data: {
         name: dto.name,
         slug: dto.slug,
         description: dto.description ?? null,
-        categoryId,
         priceCents: dto.priceCents,
         currency: dto.currency ?? 'PKR',
         sizes: (dto.sizes ?? []) as object,
         featured: dto.featured ?? false,
         urduVerse: dto.urduVerse ?? null,
         urduVerseTransliteration: dto.urduVerseTransliteration ?? null,
+        productCategories: categoryIds.length
+          ? { create: categoryIds.map((categoryId) => ({ categoryId })) }
+          : undefined,
       },
       include: this.productInclude(),
     });
@@ -73,7 +86,11 @@ export class ProductsService {
   ): Promise<{ data: ProductListResponseDto[]; total: number }> {
     const { page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc' } = query;
     const skip = (page - 1) * limit;
-    const where = this.buildWhere(query);
+    let resolvedCategoryId: string | undefined = query.categoryId;
+    if (query.category?.trim()) {
+      resolvedCategoryId = await this.resolveCategoryId(query.category.trim()) ?? undefined;
+    }
+    const where = this.buildWhere(query, resolvedCategoryId);
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -128,15 +145,21 @@ export class ProductsService {
     if (dto.mediaIds !== undefined) {
       await this.validateMediaIds(dto.mediaIds);
     }
-    const categoryId =
-      dto.categoryId !== undefined ? await this.resolveCategoryId(dto.categoryId || null) : undefined;
+    if (dto.categoryIds !== undefined) {
+      const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
+      await this.prisma.productCategory.deleteMany({ where: { productId: id } });
+      if (categoryIds.length) {
+        await this.prisma.productCategory.createMany({
+          data: categoryIds.map((categoryId) => ({ productId: id, categoryId })),
+        });
+      }
+    }
     const updated = await this.prisma.product.update({
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.slug !== undefined && { slug: dto.slug }),
         ...(dto.description !== undefined && { description: dto.description }),
-        ...(categoryId !== undefined && { categoryId }),
         ...(dto.priceCents !== undefined && { priceCents: dto.priceCents }),
         ...(dto.currency !== undefined && { currency: dto.currency }),
         ...(dto.sizes !== undefined && { sizes: dto.sizes as object }),
@@ -172,12 +195,12 @@ export class ProductsService {
 
   private productInclude() {
     return {
-      category: true,
+      productCategories: { include: { category: true } },
       productMedia: { include: { media: true }, orderBy: { sortOrder: Prisma.SortOrder.asc } },
     };
   }
 
-  private buildWhere(query: ProductQueryDto): Record<string, unknown> {
+  private buildWhere(query: ProductQueryDto, resolvedCategoryId?: string): Record<string, unknown> {
     const where: Record<string, unknown> = {};
     if (query.search) {
       where.OR = [
@@ -186,7 +209,10 @@ export class ProductsService {
         { description: { contains: query.search, mode: 'insensitive' } },
       ];
     }
-    if (query.categoryId) where.categoryId = query.categoryId;
+    const categoryId = resolvedCategoryId ?? query.categoryId;
+    if (categoryId) {
+      where.productCategories = { some: { categoryId } };
+    }
     if (query.minPriceCents != null || query.maxPriceCents != null) {
       const priceFilter: { gte?: number; lte?: number } = {};
       if (query.minPriceCents != null) priceFilter.gte = query.minPriceCents;
@@ -224,7 +250,7 @@ export class ProductsService {
   private imageUrl(mediaPath: string | null): string {
     if (!mediaPath) return '';
     if (mediaPath.startsWith('http')) return mediaPath;
-    return `/api/media/file/${mediaPath}`;
+    return `/media/file/${mediaPath}`;
   }
 
   private toResponseDto(p: {
@@ -240,12 +266,14 @@ export class ProductsService {
     urduVerseTransliteration: string | null;
     createdAt: Date;
     updatedAt: Date;
-    category: { id: string; name: string; slug: string } | null;
+    productCategories: Array<{ category: { id: string; name: string; slug: string } }>;
     productMedia: Array<{ media: { path: string } }>;
   }): ProductResponseDto {
     const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
     const images = p.productMedia.map((pm) => this.imageUrl(pm.media.path));
     const image = images[0] ?? '';
+    const categories = p.productCategories.map((pc) => pc.category);
+    const first = categories[0];
     return {
       id: p.id,
       slug: p.slug,
@@ -256,8 +284,9 @@ export class ProductsService {
       image,
       images,
       sizes,
-      category: p.category?.name ?? null,
-      categoryId: p.category?.id ?? null,
+      categories,
+      category: first?.name ?? null,
+      categoryId: first?.id ?? null,
       featured: p.featured,
       urduVerse: p.urduVerse,
       urduVerseTransliteration: p.urduVerseTransliteration,
@@ -274,12 +303,14 @@ export class ProductsService {
     currency: string;
     sizes: unknown;
     featured: boolean;
+    productCategories: Array<{ category: { name: string } }>;
     productMedia: Array<{ media: { path: string } }>;
   }): ProductListResponseDto {
     const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
     const image = p.productMedia[0]?.media?.path
       ? this.imageUrl(p.productMedia[0].media.path)
       : '';
+    const categories = p.productCategories.map((pc) => pc.category.name);
     return {
       id: p.id,
       slug: p.slug,
@@ -289,6 +320,7 @@ export class ProductsService {
       image,
       sizes,
       featured: p.featured,
+      categories,
     };
   }
 }

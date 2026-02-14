@@ -1,0 +1,63 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Order status
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Order status
+
+Quick reference for how order statuses work and which changes you can make in the Orders screen. If you try an invalid change, you’ll see an error like *"Invalid status transition from X to Y"*.
+
+---
+
+## What each status means
+
+- **PENDING** 📋 — Order just placed; not confirmed yet.
+- **CONFIRMED** ✓ — Order has been confirmed.
+- **PROCESSING** 📦 — Order is being prepared or packed.
+- **SHIPPED** 🚚 — Order has been shipped.
+- **DELIVERED** ✅ — Order has been delivered. *(Final state.)*
+- **CANCELLED** ❌ — Order was cancelled. *(Final state.)*
+
+You can cancel an order from **PENDING**, **CONFIRMED**, **PROCESSING**, or **SHIPPED**. Once an order is **DELIVERED** or **CANCELLED**, you can’t change it to anything else.
+
+---
+
+## Normal flow 📈
+
+Typical path an order follows:
+
+**PENDING** → **CONFIRMED** → **PROCESSING** → **SHIPPED** → **DELIVERED**
+
+You can also move forward in bigger steps (e.g. PENDING → SHIPPED) when it makes sense. Staying on the same status (e.g. PENDING → PENDING) is always allowed.
+
+---
+
+## Allowed changes (valid transitions) ✓
+
+From any status you can keep it the same. From the statuses below you can also move to the ones listed.
+
+- **PENDING** → CONFIRMED, PROCESSING, SHIPPED, or CANCELLED
+- **CONFIRMED** → PROCESSING, SHIPPED, or CANCELLED
+- **PROCESSING** → SHIPPED or CANCELLED
+- **SHIPPED** → DELIVERED or CANCELLED
+- **DELIVERED** → no further changes 🏁
+- **CANCELLED** → no further changes 🏁
+
+---
+
+## Disallowed changes (invalid transitions) ⚠️
+
+These changes will show an error if you try them:
+
+- **PENDING** — Cannot jump straight to DELIVERED.
+- **CONFIRMED** — Cannot go back to PENDING or jump to DELIVERED.
+- **PROCESSING** — Cannot go back to PENDING or CONFIRMED, or jump to DELIVERED.
+- **SHIPPED** — Cannot go back to PENDING, CONFIRMED, or PROCESSING.
+- **DELIVERED** — Cannot change to any other status (terminal).
+- **CANCELLED** — Cannot change to any other status (terminal).
+
+Once an order is **DELIVERED** or **CANCELLED**, the only “transition” allowed is leaving it as-is.

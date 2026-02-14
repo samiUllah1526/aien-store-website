@@ -47,7 +47,7 @@ export class CategoriesService {
     const categories = await this.prisma.category.findMany({
       orderBy: { name: 'asc' },
       include: {
-        _count: { select: { products: true } },
+        _count: { select: { productCategories: true } },
       },
     });
     return categories.map((c) => ({
@@ -58,7 +58,7 @@ export class CategoriesService {
       parentId: c.parentId,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
-      productCount: c._count.products,
+      productCount: c._count.productCategories,
     }));
   }
 
@@ -66,7 +66,7 @@ export class CategoriesService {
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: {
-        _count: { select: { products: true } },
+        _count: { select: { productCategories: true } },
         parent: { select: { id: true, name: true, slug: true } },
       },
     });
@@ -76,7 +76,7 @@ export class CategoriesService {
     const { parent, _count, ...rest } = category;
     return {
       ...rest,
-      productCount: _count.products,
+      productCount: _count.productCategories,
       parent: parent
         ? { id: parent.id, name: parent.name, slug: parent.slug }
         : null,

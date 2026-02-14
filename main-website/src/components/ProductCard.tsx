@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useCart } from '../store/cartStore';
+import { formatMoney } from '../lib/formatMoney';
 
 export interface ProductCardProduct {
   id: string;
@@ -122,7 +123,7 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
             {product.name}
           </p>
           <p className="text-charcoal/70 dark:text-cream/70 text-sm mt-1">
-            {product.currency} {product.price.toLocaleString()}
+            {formatMoney(product.price, product.currency)}
           </p>
         </a>
       </div>
@@ -156,7 +157,7 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
               <img src={product.image} alt="" className="w-full h-full object-cover" />
             </a>
             <h3 className="font-display text-xl text-ink dark:text-cream">{product.name}</h3>
-            <p className="text-emerald font-medium mt-1">{product.currency} {product.price.toLocaleString()}</p>
+            <p className="text-emerald font-medium mt-1">{formatMoney(product.price, product.currency)}</p>
             <p className="text-sm text-charcoal/70 dark:text-cream/70 mt-2">Size: {defaultSize} (change on product page)</p>
             <div className="mt-4 flex gap-2">
               <a

@@ -19,7 +19,14 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin
       ? corsOrigin.split(',').map((o) => o.trim())
-      : ['http://localhost:4321', 'http://localhost:3000', 'http://127.0.0.1:4321', 'http://127.0.0.1:3000'],
+      : [
+          'http://localhost:3000',
+          'http://localhost:4321',
+          'http://localhost:4322',
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:4321',
+          'http://127.0.0.1:4322',
+        ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

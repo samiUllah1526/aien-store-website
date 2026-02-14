@@ -13,9 +13,15 @@ import {
   OrderItemResponseDto,
   OrderStatusHistoryEntryDto,
 } from './dto/order-response.dto';
+import {
+  QuoteResponseDto,
+  QuoteLineItemDto,
+} from './dto/quote-response.dto';
 import { canTransitionOrderStatus } from './order-status.enum';
 import { OrderStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { CURRENCIES } from '../../common/constants/currency';
+import { SHIPPING_COST_CENTS } from './constants';
 
 @Injectable()
 export class OrdersService {
@@ -24,14 +30,25 @@ export class OrdersService {
     private readonly mail: MailService,
   ) {}
 
-  async create(dto: CreateOrderDto): Promise<OrderResponseDto> {
-    if (!dto.items?.length) {
+  /**
+   * Single source of truth for order totals. Computes from DB only; no client-supplied amounts.
+   * Used by both quote() and create() so there is no room for calculation drift or integrity issues.
+   */
+  async computeOrderFromItems(
+    items: Array<{ productId: string; quantity: number }>,
+  ): Promise<{
+    orderItemsData: Array<{ productId: string; quantity: number; unitCents: number }>;
+    quoteItems: QuoteLineItemDto[];
+    subtotalCents: number;
+    currency: string;
+  }> {
+    if (!items?.length) {
       throw new BadRequestException('Order must have at least one item');
     }
-    const productIds = dto.items.map((i) => i.productId);
+    const productIds = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, priceCents: true, name: true },
+      select: { id: true, priceCents: true, currency: true, name: true },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
     const missing = productIds.filter((id) => !productMap.has(id));
@@ -39,23 +56,71 @@ export class OrdersService {
       throw new BadRequestException(`Products not found: ${missing.join(', ')}`);
     }
 
-    let totalCents = 0;
-    const orderItemsData = dto.items.map((item) => {
+    const currencies = [...new Set(items.map((item) => productMap.get(item.productId)!.currency))];
+    if (currencies.length > 1) {
+      throw new BadRequestException(
+        'All items must be in the same currency. Please create separate orders for different currencies.',
+      );
+    }
+    const currency =
+      currencies[0] && (CURRENCIES as readonly string[]).includes(currencies[0]) ? currencies[0] : 'PKR';
+
+    let subtotalCents = 0;
+    const orderItemsData: Array<{ productId: string; quantity: number; unitCents: number }> = [];
+    const quoteItems: QuoteLineItemDto[] = [];
+
+    for (const item of items) {
       const product = productMap.get(item.productId)!;
       const unitCents = product.priceCents;
-      totalCents += unitCents * item.quantity;
-      return {
+      const lineTotalCents = unitCents * item.quantity;
+      subtotalCents += lineTotalCents;
+      orderItemsData.push({
         productId: item.productId,
         quantity: item.quantity,
         unitCents,
-      };
-    });
+      });
+      quoteItems.push({
+        productId: item.productId,
+        productName: product.name,
+        quantity: item.quantity,
+        unitCents,
+        lineTotalCents,
+      });
+    }
+
+    return { orderItemsData, quoteItems, subtotalCents, currency };
+  }
+
+  /** Returns server-computed quote (no order created). All amounts from DB. */
+  async quote(items: Array<{ productId: string; quantity: number }>): Promise<QuoteResponseDto> {
+    const { quoteItems, subtotalCents, currency } = await this.computeOrderFromItems(items);
+    const totalCents = subtotalCents + SHIPPING_COST_CENTS;
+    return {
+      items: quoteItems,
+      subtotalCents,
+      shippingCents: SHIPPING_COST_CENTS,
+      totalCents,
+      currency,
+    };
+  }
+
+  async create(dto: CreateOrderDto, customerUserId?: string | null): Promise<OrderResponseDto> {
+    const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
 
     const order = await this.prisma.order.create({
       data: {
         status: OrderStatus.PENDING,
-        totalCents,
+        totalCents: subtotalCents,
+        currency,
         customerEmail: dto.customerEmail,
+        customerName: dto.customerName?.trim() || undefined,
+        customerPhone: dto.customerPhone?.trim() || undefined,
+        shippingCountry: dto.shippingCountry?.trim() || undefined,
+        shippingAddressLine1: dto.shippingAddressLine1?.trim() || undefined,
+        shippingAddressLine2: dto.shippingAddressLine2?.trim() || undefined,
+        shippingCity: dto.shippingCity?.trim() || undefined,
+        shippingPostalCode: dto.shippingPostalCode?.trim() || undefined,
+        customerUserId: customerUserId ?? undefined,
         items: {
           create: orderItemsData,
         },
@@ -85,6 +150,13 @@ export class OrdersService {
       if (dateTo) where.createdAt.lte = new Date(dateTo);
     }
     if (assignedToUserId !== undefined && assignedToUserId !== '') {
+      const userExists = await this.prisma.user.findUnique({
+        where: { id: assignedToUserId },
+        select: { id: true },
+      });
+      if (!userExists) {
+        throw new BadRequestException('No user found with the given assigned staff ID.');
+      }
       where.assignedToUserId = assignedToUserId;
     }
 
@@ -194,17 +266,44 @@ export class OrdersService {
 
   private orderInclude() {
     return {
-      items: { include: { product: { select: { id: true, name: true } } } },
+      items: {
+        include: {
+          product: {
+            include: {
+              productMedia: {
+                take: 1,
+                orderBy: { sortOrder: 'asc' as const },
+                include: { media: { select: { path: true } } },
+              },
+            },
+          },
+        },
+      },
       statusHistory: { orderBy: { createdAt: 'asc' as const } },
       assignedTo: { select: { id: true, name: true } },
     };
+  }
+
+  private productImagePath(
+    product: { productMedia?: Array<{ media: { path: string } }> },
+  ): string | null {
+    const first = product.productMedia?.[0]?.media?.path;
+    return first ? `/media/file/${first}` : null;
   }
 
   private toResponseDto(order: {
     id: string;
     status: OrderStatus;
     totalCents: number;
+    currency: string;
     customerEmail: string;
+    customerName: string | null;
+    customerPhone: string | null;
+    shippingCountry: string | null;
+    shippingAddressLine1: string | null;
+    shippingAddressLine2: string | null;
+    shippingCity: string | null;
+    shippingPostalCode: string | null;
     assignedToUserId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -213,7 +312,11 @@ export class OrdersService {
       productId: string;
       quantity: number;
       unitCents: number;
-      product: { id: string; name: string };
+      product: {
+        id: string;
+        name: string;
+        productMedia?: Array<{ media: { path: string } }>;
+      };
     }>;
     statusHistory: Array<{ status: OrderStatus; createdAt: Date }>;
     assignedTo: { id: string; name: string } | null;
@@ -222,6 +325,7 @@ export class OrdersService {
       id: i.id,
       productId: i.productId,
       productName: i.product.name,
+      productImage: this.productImagePath(i.product),
       quantity: i.quantity,
       unitCents: i.unitCents,
     }));
@@ -234,7 +338,15 @@ export class OrdersService {
       id: order.id,
       status: order.status,
       totalCents: order.totalCents,
+      currency: order.currency,
       customerEmail: order.customerEmail,
+      customerName: order.customerName ?? null,
+      customerPhone: order.customerPhone ?? null,
+      shippingCountry: order.shippingCountry ?? null,
+      shippingAddressLine1: order.shippingAddressLine1 ?? null,
+      shippingAddressLine2: order.shippingAddressLine2 ?? null,
+      shippingCity: order.shippingCity ?? null,
+      shippingPostalCode: order.shippingPostalCode ?? null,
       assignedToUserId: order.assignedToUserId,
       assignedToUserName: order.assignedTo?.name ?? null,
       items,

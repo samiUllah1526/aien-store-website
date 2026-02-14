@@ -7,6 +7,25 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Post('register')
+  async register(
+    @Body('name') name: string,
+    @Body('email') email: string,
+    @Body('password') password: string,
+  ) {
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new BadRequestException('Name is required');
+    }
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+      throw new BadRequestException('Email and password are required');
+    }
+    if (password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    return this.authService.register(name.trim(), email, password);
+  }
+
+  @Public()
   @Post('login')
   async login(
     @Body('email') email: string,

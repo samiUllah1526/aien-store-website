@@ -5,9 +5,10 @@
 
 import { useState, useEffect } from 'react';
 import { useCart, useCartStore } from '../../store/cartStore';
+import { formatMoney } from '../../lib/formatMoney';
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, totalItems, totalAmount } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, totalAmount, cartCurrency, hasMixedCurrencies } = useCart();
   const [hasHydrated, setHasHydrated] = useState(false);
   useEffect(() => {
     const unsub = useCartStore.persist.onFinishHydration(() => setHasHydrated(true));
@@ -43,7 +44,7 @@ export default function CartPage() {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-ink dark:text-cream">{item.name}</p>
               <p className="text-sm text-charcoal/70 dark:text-cream/70">
-                {item.size} × {item.quantity} — {item.currency} {(item.price * item.quantity).toLocaleString()}
+                {item.size} × {item.quantity} — {formatMoney(item.price * item.quantity, item.currency)}
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <button
@@ -74,10 +75,16 @@ export default function CartPage() {
         ))}
       </ul>
       <div className="border-t border-sand dark:border-charcoal-light pt-6 space-y-2">
-        <p className="flex justify-between text-charcoal dark:text-cream">
-          <span>Subtotal</span>
-          <span>PKR {totalAmount.toLocaleString()}</span>
-        </p>
+        {hasMixedCurrencies ? (
+          <p className="text-amber-700 dark:text-amber-400 text-sm">
+            Cart has multiple currencies. Please use one currency per order.
+          </p>
+        ) : (
+          <p className="flex justify-between text-charcoal dark:text-cream">
+            <span>Subtotal</span>
+            <span>{formatMoney(totalAmount, cartCurrency ?? 'PKR')}</span>
+          </p>
+        )}
         <p className="text-sm text-charcoal/70 dark:text-cream/70">
           Tax included. Shipping calculated at checkout.
         </p>
@@ -85,6 +92,8 @@ export default function CartPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <a
           href="/checkout"
+          className={hasMixedCurrencies ? 'pointer-events-none opacity-60' : ''}
+          aria-disabled={hasMixedCurrencies}
           className="flex-1 py-3 text-center bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity uppercase tracking-wide text-sm"
         >
           Checkout

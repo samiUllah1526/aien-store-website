@@ -1,25 +1,87 @@
 ---
 /**
- * Product detail: large image, Urdu verse, size selector, Add to cart.
- * Uses getStaticPaths for static generation from products.json.
+ * Product detail: SSG with getStaticPaths. All product slugs fetched from API at build time.
+ * Ensure the backend (PUBLIC_API_URL) is running when you run `astro dev` or `astro build`.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AddToCart from '../../components/product/AddToCart';
-import products from '../../data/products.json';
+import { formatMoney } from '../../lib/formatMoney';
 
-export function getStaticPaths() {
-  return products.map((p) => ({ params: { slug: p.slug } }));
+const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+export async function getStaticPaths() {
+  const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const limit = 100; // backend max per page
+  const slugs: string[] = [];
+  try {
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const url = `${baseUrl}/products?page=${page}&limit=${limit}&sortBy=slug&sortOrder=asc`;
+      console.log('[getStaticPaths] fetch:', url);
+      const res = await fetch(url);
+      const json = await res.json();
+      console.log('[getStaticPaths] res.ok:', res.ok, 'status:', res.status, 'json.success:', json?.success, 'data length:', json?.data?.length, 'meta:', json?.meta);
+      if (!res.ok || !json.success || !Array.isArray(json.data)) {
+        console.log('[getStaticPaths] breaking: raw json', JSON.stringify(json).slice(0, 500));
+        break;
+      }
+      const pageSlugs = json.data.map((p: { slug: string }) => p.slug).filter(Boolean);
+      console.log('[getStaticPaths] page', page, 'slugs:', pageSlugs);
+      slugs.push(...pageSlugs);
+      const total = json.meta?.total ?? 0;
+      hasMore = slugs.length < total && pageSlugs.length === limit;
+      page += 1;
+    }
+    console.log('[getStaticPaths] total slugs:', slugs, 'paths count:', slugs.length);
+    return slugs.map((slug: string) => ({ params: { slug } }));
+  } catch (err) {
+    console.error('[getStaticPaths] error:', err);
+    return [];
+  }
 }
 
-const { slug } = Astro.params;
-const product = products.find((p) => p.slug === slug);
+const slug = Astro.params.slug;
+if (!slug) {
+  return Astro.redirect('/shop');
+}
+
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; sizes?: string[]; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+try {
+  const productUrl = `${baseUrl}/products/slug/${encodeURIComponent(slug)}`;
+  console.log('[product page] fetch:', productUrl);
+  const res = await fetch(productUrl);
+  const json = await res.json();
+  console.log('[product page] res.ok:', res.ok, 'status:', res.status, 'json.success:', json?.success, 'data:', json?.data ? { id: json.data.id, slug: json.data.slug, name: json.data.name } : null);
+  if (res.ok) {
+    if (json.success && json.data) {
+      const p = json.data;
+      product = {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        description: p.description ?? null,
+        price: p.price,
+        currency: p.currency,
+        image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
+        sizes: p.sizes,
+        urduVerse: p.urduVerse ?? null,
+        urduVerseTransliteration: p.urduVerseTransliteration ?? null,
+        categories: p.categories ?? [],
+      };
+    }
+  }
+} catch (err) {
+  console.error('[product page] fetch error:', err);
+}
 
 if (!product) {
+  console.log('[product page] no product, redirecting to /shop');
   return Astro.redirect('/shop');
 }
 ---
 
-<BaseLayout title={`${product.name} — Adab`} description={product.description}>
+<BaseLayout title={`${product.name} — Adab`} description={product.description ?? undefined}>
   <article class="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
       <div class="aspect-[3/4] overflow-hidden rounded-lg bg-sand dark:bg-charcoal-light shadow-soft">
@@ -31,23 +93,38 @@ if (!product) {
       </div>
       <div class="flex flex-col">
         <h1 class="font-display text-3xl md:text-4xl text-ink dark:text-cream">{product.name}</h1>
+        {product.categories?.length ? (
+          <p class="mt-2 text-sm text-charcoal/70 dark:text-cream/70">
+            Categories: {product.categories.map((c, i) => (
+              <span>
+                {i > 0 ? ', ' : ''}
+                <a href={`/shop?category=${encodeURIComponent(c.slug)}`} class="underline hover:text-emerald">{c.name}</a>
+              </span>
+            ))}
+          </p>
+        ) : null}
         <p class="mt-4 text-emerald font-medium">
-          {product.currency} {product.price.toLocaleString()}
+          {formatMoney(product.price, product.currency)}
         </p>
 
-        <!-- Urdu verse as design element — RTL, prominent -->
-        <div class="mt-8 p-6 rounded-lg bg-sand/50 dark:bg-charcoal-light/50 border border-sand dark:border-charcoal-light">
-          <p class="urdu-text text-xl md:text-2xl text-charcoal dark:text-cream leading-loose font-urdu">
-            {product.urduVerse}
-          </p>
-          <p class="mt-3 text-charcoal/70 dark:text-cream/70 text-sm italic">
-            {product.urduVerseTransliteration}
-          </p>
-        </div>
+        {product.urduVerse && (
+          <div class="mt-8 p-6 rounded-lg bg-sand/50 dark:bg-charcoal-light/50 border border-sand dark:border-charcoal-light">
+            <p class="urdu-text text-xl md:text-2xl text-charcoal dark:text-cream leading-loose font-urdu">
+              {product.urduVerse}
+            </p>
+            {product.urduVerseTransliteration && (
+              <p class="mt-3 text-charcoal/70 dark:text-cream/70 text-sm italic">
+                {product.urduVerseTransliteration}
+              </p>
+            )}
+          </div>
+        )}
 
-        <p class="mt-6 text-charcoal/90 dark:text-cream/90 leading-relaxed">
-          {product.description}
-        </p>
+        {product.description && (
+          <p class="mt-6 text-charcoal/90 dark:text-cream/90 leading-relaxed">
+            {product.description}
+          </p>
+        )}
 
         <AddToCart
           client:load
@@ -57,7 +134,7 @@ if (!product) {
           price={product.price}
           currency={product.currency}
           image={product.image}
-          sizes={product.sizes}
+          sizes={product.sizes ?? []}
         />
       </div>
     </div>

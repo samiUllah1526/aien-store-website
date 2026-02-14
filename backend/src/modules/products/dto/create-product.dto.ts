@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsInt, Min, IsArray, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, IsArray, IsBoolean, IsIn } from 'class-validator';
+import { CURRENCIES } from '../../../common/constants/currency';
 
 export class CreateProductDto {
   @IsString()
@@ -11,9 +12,11 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
+  /** Category IDs (many-to-many). Replaces categoryId. */
   @IsOptional()
-  @IsString()
-  categoryId?: string;
+  @IsArray()
+  @IsString({ each: true })
+  categoryIds?: string[];
 
   @IsInt()
   @Min(0)
@@ -21,6 +24,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(CURRENCIES, { message: `currency must be one of: ${CURRENCIES.join(', ')}` })
   currency?: string;
 
   @IsOptional()

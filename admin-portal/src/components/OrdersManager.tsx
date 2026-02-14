@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api, getApiBaseUrl } from '../lib/api';
+import { formatDateTime } from '../lib/format';
+import { formatMoney } from '../lib/formatMoney';
+import { OrderDetailModal } from './OrderDetailModal';
 import type { Order, OrderStatus } from '../lib/types';
+import { getAllowedNextStatuses, isTerminalStatus } from '../lib/orderStatus';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS: OrderStatus[] = [
@@ -11,21 +15,6 @@ const STATUS_OPTIONS: OrderStatus[] = [
   'DELIVERED',
   'CANCELLED',
 ];
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function formatMoney(cents: number): string {
-  return `${(cents / 100).toFixed(2)}`;
-}
 
 export function OrdersManager() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -39,6 +28,8 @@ export function OrdersManager() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const orderRowRef = useRef<HTMLTableRowElement | null>(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -90,8 +81,23 @@ export function OrdersManager() {
     fetchOrders();
   };
 
+  const handleClearFilters = () => {
+    setStatusFilter('');
+    setDateFrom('');
+    setDateTo('');
+    setAssignedToUserId('');
+    setPage(1);
+    setError(null);
+  };
+
   return (
     <div className="space-y-6">
+      <OrderDetailModal
+        orderId={selectedOrderId}
+        onClose={() => setSelectedOrderId(null)}
+        onOrderUpdated={fetchOrders}
+        returnFocusRef={orderRowRef}
+      />
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 dark:text-slate-100">Orders</h1>
 
       {/* Filters */}
@@ -152,12 +158,19 @@ export function OrdersManager() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="w-full rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-50 dark:bg-slate-700/500"
+              className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 dark:bg-slate-700/500"
             >
               Apply filters
+            </button>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Clear all
             </button>
           </div>
         </div>
@@ -180,13 +193,14 @@ export function OrdersManager() {
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Order</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Customer</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Products</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Total</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Assigned</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Created</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Order</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Customer</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Total</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Assigned</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Updated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
@@ -213,6 +227,9 @@ export function OrdersManager() {
                   <td className="px-4 py-3">
                     <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -228,45 +245,76 @@ export function OrdersManager() {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Order</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Customer</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Products</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Total</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Assigned</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Created</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Order</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Customer</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Total</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Assigned</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Updated</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50 dark:bg-slate-700/50/50">
+                  <tr
+                    key={order.id}
+                    tabIndex={0}
+                    role="button"
+                    onClick={(e) => {
+                      orderRowRef.current = e.currentTarget as HTMLTableRowElement;
+                      setSelectedOrderId(order.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        orderRowRef.current = e.currentTarget as HTMLTableRowElement;
+                        setSelectedOrderId(order.id);
+                      }
+                    }}
+                    className="cursor-pointer hover:bg-slate-50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-slate-500"
+                  >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-slate-600 dark:text-slate-400" title={order.id}>
+                      <span className="font-mono text-xs text-slate-600 dark:text-slate-400 break-all" title={order.id}>
                         {order.id.slice(0, 8)}…
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{order.customerEmail}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
-                      <ul className="list-inside list-disc space-y-0.5">
-                        {order.items.map((item) => (
-                          <li key={item.id}>
-                            {item.productName ?? item.productId.slice(0, 8)} × {item.quantity}
-                          </li>
-                        ))}
+                      <ul className="space-y-2">
+                        {order.items.map((item) => {
+                          const imgSrc = item.productImage
+                            ? `${getApiBaseUrl().replace(/\/$/, '')}${item.productImage.startsWith('/') ? '' : '/'}${item.productImage}`
+                            : null;
+                          return (
+                            <li key={item.id} className="flex items-center gap-2">
+                              {imgSrc && (
+                                <img
+                                  src={imgSrc}
+                                  alt=""
+                                  className="h-10 w-10 shrink-0 rounded object-cover bg-slate-100 dark:bg-slate-700"
+                                />
+                              )}
+                              <span>
+                                {item.productName ?? item.productId} × {item.quantity}
+                              </span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {formatMoney(order.totalCents)}
+                      {formatMoney(order.totalCents, order.currency ?? 'PKR')}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={order.status}
                         onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                        disabled={updatingId === order.id}
+                        disabled={updatingId === order.id || isTerminalStatus(order.status)}
                         className="rounded border border-slate-300 bg-white dark:bg-slate-800 px-2 py-1 text-sm font-medium text-slate-800 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 disabled:opacity-50"
                         aria-label={`Update status for order ${order.id.slice(0, 8)}`}
                       >
-                        {STATUS_OPTIONS.map((s) => (
+                        {getAllowedNextStatuses(order.status).map((s) => (
                           <option key={s} value={s}>
                             {s}
                           </option>
@@ -277,14 +325,15 @@ export function OrdersManager() {
                       )}
                       {order.statusHistory?.length > 0 && (
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400" title="Last status change">
-                          {formatDate(order.statusHistory[order.statusHistory.length - 1].createdAt)}
+                          {formatDateTime(order.statusHistory[order.statusHistory.length - 1].createdAt)}
                         </p>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                       {order.assignedToUserName ?? order.assignedToUserId ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDate(order.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDateTime(order.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDateTime(order.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>

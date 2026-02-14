@@ -9,6 +9,13 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
+const CURRENCY_OPTIONS = [
+  { value: 'PKR', label: 'PKR (Pakistani Rupee)' },
+  { value: 'USD', label: 'USD (US Dollar)' },
+  { value: 'EUR', label: 'EUR (Euro)' },
+  { value: 'GBP', label: 'GBP (British Pound)' },
+] as const;
+
 const defaultCurrency = 'PKR';
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
@@ -19,7 +26,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     product != null ? String(product.price) : ''
   );
   const [currency, setCurrency] = useState(product?.currency ?? defaultCurrency);
-  const [categoryId, setCategoryId] = useState(product?.categoryId ?? '');
+  const [categoryIds, setCategoryIds] = useState<string[]>(
+    () => product?.categories?.map((c) => c.id) ?? []
+  );
   const [featured, setFeatured] = useState(product?.featured ?? false);
   const [mediaIds, setMediaIds] = useState<string[]>(() => {
     if (product?.images?.length) return []; // existing product has images by URL; we don't have IDs for existing
@@ -96,7 +105,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         name,
         slug: slug || slugFromName(name),
         description: description || undefined,
-        categoryId: categoryId || undefined,
+        categoryIds: categoryIds.length ? categoryIds : undefined,
         priceCents: cents,
         currency: currency || defaultCurrency,
         featured,
@@ -173,33 +182,50 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           <label htmlFor="currency" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Currency
           </label>
-          <input
+          <select
             id="currency"
-            type="text"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-          />
+          >
+            {CURRENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       <div>
-        <label htmlFor="categoryId" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Category (optional)
-        </label>
-        <select
-          id="categoryId"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          disabled={categoriesLoading}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-60"
-        >
-          <option value="">None</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.slug})
-            </option>
-          ))}
-        </select>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          Categories (optional)
+        </span>
+        <div className="flex flex-wrap gap-3 rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800">
+          {categoriesLoading ? (
+            <span className="text-slate-500 dark:text-slate-400 text-sm">Loading…</span>
+          ) : (
+            categories.map((c) => (
+              <label
+                key={c.id}
+                className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+              >
+                <input
+                  type="checkbox"
+                  checked={categoryIds.includes(c.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCategoryIds((prev) => [...prev, c.id]);
+                    } else {
+                      setCategoryIds((prev) => prev.filter((id) => id !== c.id));
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-slate-500"
+                />
+                {c.name} ({c.slug})
+              </label>
+            ))
+          )}
+        </div>
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
