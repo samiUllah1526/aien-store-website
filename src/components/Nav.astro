@@ -1,0 +1,22 @@
+---
+/**
+ * Main navigation: minimal, with cart icon and links.
+ * Cart state is in React; we use a client-island for cart icon + count.
+ */
+import CartIcon from './cart/CartIcon';
+---
+<header class="sticky top-0 z-50 bg-cream/95 backdrop-blur border-b border-sand/60">
+  <nav class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 md:h-18" aria-label="Main">
+    <a href="/" class="font-display text-xl md:text-2xl text-ink hover:text-emerald transition-colors duration-300 focus-ring rounded">
+      Adab
+    </a>
+    <ul class="flex items-center gap-6 md:gap-8">
+      <li><a href="/" class="text-charcoal hover:text-emerald transition-colors duration-300 focus-ring rounded py-2">Home</a></li>
+      <li><a href="/shop" class="text-charcoal hover:text-emerald transition-colors duration-300 focus-ring rounded py-2">Shop</a></li>
+      <li><a href="/about" class="text-charcoal hover:text-emerald transition-colors duration-300 focus-ring rounded py-2">About</a></li>
+      <li class="flex items-center">
+        <CartIcon client:load />
+      </li>
+    </ul>
+  </nav>
+</header>

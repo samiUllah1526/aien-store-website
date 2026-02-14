@@ -1,0 +1,21 @@
+---
+/**
+ * Shop: product grid with filters (category, price).
+ * Products and filters are passed to React for client-side filtering.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShopGrid from '../../components/shop/ShopGrid';
+import products from '../../data/products.json';
+---
+
+<BaseLayout title="Shop — Adab" description="Browse Urdu poetry streetwear — shirts, hoodies, and more.">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+    <header class="mb-10">
+      <h1 class="font-display text-3xl md:text-4xl text-ink dark:text-cream">Shop</h1>
+      <p class="mt-2 text-charcoal/80 dark:text-cream/80 max-w-xl">
+        Wear the words. Shirts and hoodies with Urdu verse and calligraphy.
+      </p>
+    </header>
+    <ShopGrid products={products} client:load />
+  </div>
+</BaseLayout>
