@@ -8,6 +8,7 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -24,6 +25,7 @@ export function ProfilePage() {
           setUser(res.data);
           setFirstName(res.data.firstName ?? res.data.name?.split(' ')[0] ?? '');
           setLastName(res.data.lastName ?? (res.data.name?.split(' ').slice(1).join(' ') || '') ?? '');
+          setEmail(res.data.email ?? '');
         }
       })
       .catch((err) => {
@@ -55,11 +57,17 @@ export function ProfilePage() {
       setError('Enter a new password above if you want to change it.');
       return;
     }
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setError('Email is required.');
+      return;
+    }
     setSaving(true);
     try {
-      const body: { firstName?: string; lastName?: string; password?: string } = {
+      const body: { firstName?: string; lastName?: string; email?: string; password?: string } = {
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
+        email: trimmedEmail !== (user?.email ?? '').toLowerCase() ? trimmedEmail : undefined,
       };
       if (password.length >= 8) body.password = password;
       await api.patch<User>('/users/me', body);
@@ -70,6 +78,7 @@ export function ProfilePage() {
         prev
           ? {
               ...prev,
+              email: trimmedEmail,
               firstName: firstName.trim() || null,
               lastName: lastName.trim() || null,
               name: [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || prev.name,
@@ -150,11 +159,12 @@ export function ProfilePage() {
           <input
             id="profile-email"
             type="email"
-            value={user?.email ?? ''}
-            disabled
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-400"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Email cannot be changed here.</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">You can change your email; it must not be used by another account.</p>
         </div>
 
         <div>

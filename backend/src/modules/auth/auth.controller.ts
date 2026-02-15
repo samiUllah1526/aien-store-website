@@ -40,11 +40,15 @@ export class AuthController {
 
   @Public()
   @Post('forgot-password')
-  async forgotPassword(@Body('email') email: string) {
+  async forgotPassword(
+    @Body('email') email: string,
+    @Body('context') context?: string,
+  ) {
     if (!email || typeof email !== 'string' || email.trim() === '') {
       throw new BadRequestException('Email is required');
     }
-    return this.authService.forgotPassword(email);
+    const ctx = context === 'admin' ? 'admin' : 'store';
+    return this.authService.forgotPassword(email, ctx);
   }
 
   @Public()

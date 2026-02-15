@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, IsEnum, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsEnum, MinLength, IsEmail } from 'class-validator';
 
 export enum UpdateUserStatus {
   ACTIVE = 'ACTIVE',
@@ -18,6 +18,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()

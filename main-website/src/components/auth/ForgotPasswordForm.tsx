@@ -25,6 +25,7 @@ export default function ForgotPasswordForm() {
     try {
       await api.post<{ message?: string }>('/auth/forgot-password', {
         email: data.email.trim(),
+        context: 'store',
       });
       setSuccess(true);
     } catch (err) {

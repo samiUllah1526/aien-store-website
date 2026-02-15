@@ -73,11 +73,12 @@ export class MailService implements IMailService {
       this.configService.get<string>('MAIL_FROM_NAME') ?? 'E-Commerce';
     this.companyName =
       this.configService.get<string>('MAIL_COMPANY_NAME') ?? this.fromName;
-    this.appUrl =
-      this.configService.get<string>('APP_URL') ?? 'https://example.com';
+    const appBase = (this.configService.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
+    const adminBase = this.configService.get<string>('ADMIN_URL')?.replace(/\/$/, '');
+    this.appUrl = appBase;
     this.adminLoginUrl =
       this.configService.get<string>('ADMIN_LOGIN_URL') ??
-      `${this.appUrl.replace(/\/$/, '')}/admin/login`;
+      (adminBase ? `${adminBase}/admin/login` : `${appBase}/admin/login`);
   }
 
   async sendOrderConfirmation(

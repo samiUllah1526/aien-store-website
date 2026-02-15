@@ -118,10 +118,21 @@ export class UsersService {
     if (dto.roleIds !== undefined) {
       await this.validateRoleIds(dto.roleIds);
     }
+    if (dto.email !== undefined) {
+      const normalized = dto.email.trim().toLowerCase();
+      const existing = await this.prisma.user.findFirst({
+        where: { email: { equals: normalized, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictException(`An account with this email already exists`);
+      }
+    }
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.firstName !== undefined) data.firstName = dto.firstName.trim() || null;
     if (dto.lastName !== undefined) data.lastName = dto.lastName.trim() || null;
+    if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase();
     if (dto.firstName !== undefined || dto.lastName !== undefined) {
       const first = (dto.firstName ?? user.firstName)?.trim() || '';
       const last = (dto.lastName ?? user.lastName)?.trim() || '';
@@ -152,6 +163,7 @@ export class UsersService {
     return this.update(userId, {
       firstName: dto.firstName,
       lastName: dto.lastName,
+      email: dto.email,
       password: dto.password,
     });
   }

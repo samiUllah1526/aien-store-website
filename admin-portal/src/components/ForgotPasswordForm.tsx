@@ -16,7 +16,7 @@ export function ForgotPasswordForm() {
       const res = await fetch(`${base}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), context: 'admin' }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {
@@ -35,7 +35,6 @@ export function ForgotPasswordForm() {
       <div className="space-y-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center text-slate-800 dark:text-slate-200">
         <p className="text-sm">
           If an account exists with that email, we have sent a password reset link. Check your inbox and spam folder.
-          The link will take you to the store to set a new password; then sign in here again.
         </p>
         <a href="/admin/login" className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:underline">
           Back to sign in

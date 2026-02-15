@@ -115,8 +115,9 @@ export class AuthService {
   /**
    * Forgot password: if a user exists with this email, set a reset token and send email.
    * Does not reveal whether the email exists (same response either way).
+   * @param context 'admin' = link goes to admin portal reset page; 'store' or omitted = link goes to main website reset page.
    */
-  async forgotPassword(email: string): Promise<{ message: string }> {
+  async forgotPassword(email: string, context?: 'store' | 'admin'): Promise<{ message: string }> {
     const normalized = email.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
       where: { email: { equals: normalized, mode: 'insensitive' } },
@@ -128,13 +129,26 @@ export class AuthService {
         where: { id: user.id },
         data: { passwordResetToken: token, passwordResetExpiresAt: expiresAt },
       });
-      const baseUrl = (this.config.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
-      const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      const resetLink = this.buildResetLink(token, context);
       this.mail.sendPasswordReset({ to: user.email, name: user.name, resetLink }).catch((err) => {
         console.warn('[AuthService] Password reset email failed:', err);
       });
     }
     return { message: 'If an account exists with this email, you will receive a password reset link shortly.' };
+  }
+
+  /** Build reset URL: admin portal or main website depending on context. Uses APP_URL and ADMIN_URL from env. */
+  private buildResetLink(token: string, context?: 'store' | 'admin'): string {
+    const mainWebsiteUrl = (this.config.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
+    const adminPortalUrl = this.config.get<string>('ADMIN_URL')?.replace(/\/$/, '');
+    if (context === 'admin') {
+      const base = adminPortalUrl ?? mainWebsiteUrl;
+      if (!adminPortalUrl && mainWebsiteUrl === 'https://example.com') {
+        console.warn('[Auth] Set ADMIN_URL in .env so admin reset links use your admin portal URL.');
+      }
+      return `${base}/admin/reset-password?token=${encodeURIComponent(token)}`;
+    }
+    return `${mainWebsiteUrl}/reset-password?token=${encodeURIComponent(token)}`;
   }
 
   /**
