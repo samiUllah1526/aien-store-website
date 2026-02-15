@@ -283,15 +283,19 @@ model OrderStatusHistory {
 // Email delivery log: success/failure audit for transactional emails
 // -----------------------------------------------------------------------------
 model EmailLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  type      String   @map("type")
-  to        String   @map("to")
-  subject   String   @map("subject")
-  status    String   @map("status")
-  error     Json?    @map("error")
-  content   Json?    @map("content")
-  metadata  Json?    @map("metadata")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String    @map("type")
+  to          String    @map("to")
+  subject     String    @map("subject")
+  status      String    @map("status")
+  error       Json?     @map("error")
+  content     Json?     @map("content")
+  metadata    Json?     @map("metadata")
+  resentLogId String?   @map("resent_log_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  resentLog   EmailLog?  @relation("ResentFrom", fields: [resentLogId], references: [id])
+  resentedBy  EmailLog[] @relation("ResentFrom")
 
   @@index([type])
   @@index([status])

@@ -20,6 +20,7 @@ export class EmailLogsService {
     error: unknown;
     content: unknown;
     metadata: unknown;
+    resentLogId: string | null;
     createdAt: string;
   }> {
     const log = await this.prisma.emailLog.findUnique({ where: { id } });
@@ -35,6 +36,7 @@ export class EmailLogsService {
       error: log.error,
       content: log.content,
       metadata: log.metadata,
+      resentLogId: log.resentLogId,
       createdAt: log.createdAt.toISOString(),
     };
   }
@@ -66,6 +68,7 @@ export class EmailLogsService {
       error: log.error,
       content: log.content,
       metadata: log.metadata,
+      resentLogId: log.resentLogId,
       createdAt: log.createdAt.toISOString(),
     }));
 
@@ -80,11 +83,15 @@ export class EmailLogsService {
     if (log.status !== 'failed') {
       throw new BadRequestException('Only failed emails can be resent');
     }
+    if (log.resentLogId) {
+      throw new BadRequestException('This email has already been resent');
+    }
 
     const metadata = log.metadata as Record<string, string> | null;
     const to = log.to;
 
     try {
+      let newLogId: string | null = null;
       switch (log.type) {
         case 'order-confirmation': {
           const orderId = metadata?.orderId;
@@ -96,7 +103,7 @@ export class EmailLogsService {
             },
           });
           if (!order) throw new NotFoundException(`Order ${orderId} not found`);
-          await this.mail.sendOrderConfirmation({
+          newLogId = await this.mail.sendOrderConfirmation({
             to: order.customerEmail,
             orderId: order.id,
             customerName: order.customerName ?? undefined,
@@ -122,7 +129,7 @@ export class EmailLogsService {
           if (!order) throw new NotFoundException(`Order ${orderId} not found`);
           const latest = order.statusHistory[0];
           const statusUpdatedAt = latest?.createdAt.toISOString() ?? new Date().toISOString();
-          await this.mail.sendOrderStatusChange({
+          newLogId = await this.mail.sendOrderStatusChange({
             to: order.customerEmail,
             orderId: order.id,
             status: status as string,
@@ -134,17 +141,23 @@ export class EmailLogsService {
         case 'welcome': {
           const user = await this.prisma.user.findFirst({ where: { email: to } });
           if (!user) throw new NotFoundException(`User with email ${to} not found`);
-          await this.mail.sendWelcome({ to: user.email, name: user.name });
+          newLogId = await this.mail.sendWelcome({ to: user.email, name: user.name });
           break;
         }
         case 'user-created': {
           const user = await this.prisma.user.findFirst({ where: { email: to } });
           if (!user) throw new NotFoundException(`User with email ${to} not found`);
-          await this.mail.sendUserCreated({ to: user.email, name: user.name });
+          newLogId = await this.mail.sendUserCreated({ to: user.email, name: user.name });
           break;
         }
         default:
           throw new BadRequestException(`Resend not supported for type "${log.type}"`);
+      }
+      if (newLogId) {
+        await this.prisma.emailLog.update({
+          where: { id },
+          data: { resentLogId: newLogId },
+        });
       }
       return { success: true, message: 'Email resent successfully' };
     } catch (err) {

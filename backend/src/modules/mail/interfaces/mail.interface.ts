@@ -41,10 +41,10 @@ export interface UserCreatedEmailPayload {
 }
 
 export interface IMailService {
-  sendOrderConfirmation(payload: OrderConfirmationEmailPayload): Promise<void>;
-  sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<void>;
-  sendWelcome(payload: WelcomeEmailPayload): Promise<void>;
-  sendUserCreated(payload: UserCreatedEmailPayload): Promise<void>;
+  sendOrderConfirmation(payload: OrderConfirmationEmailPayload): Promise<string>;
+  sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<string>;
+  sendWelcome(payload: WelcomeEmailPayload): Promise<string>;
+  sendUserCreated(payload: UserCreatedEmailPayload): Promise<string>;
 }
 
 /**
