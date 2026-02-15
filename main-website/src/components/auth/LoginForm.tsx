@@ -88,7 +88,12 @@ export default function LoginForm() {
         {isSubmitting ? 'Signing in…' : 'Sign in'}
       </button>
       <p className="text-center text-sm text-charcoal/70 dark:text-cream/70">
-        Don't have an account?{' '}
+        <a href="/forgot-password" className="text-emerald hover:text-emerald-light font-medium">
+          Forgot password?
+        </a>
+      </p>
+      <p className="text-center text-sm text-charcoal/70 dark:text-cream/70">
+        Don&apos;t have an account?{' '}
         <a href="/register" className="text-emerald hover:text-emerald-light font-medium">
           Sign up
         </a>

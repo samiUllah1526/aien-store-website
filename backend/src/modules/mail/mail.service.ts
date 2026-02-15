@@ -9,6 +9,7 @@ import {
   OrderStatusEmailPayload,
   WelcomeEmailPayload,
   UserCreatedEmailPayload,
+  PasswordResetEmailPayload,
 } from './interfaces/mail.interface';
 import { MAIL_TRANSPORT } from './constants';
 import { renderMjmlTemplate } from './templates/render';
@@ -205,6 +206,35 @@ export class MailService implements IMailService {
       const msg = err instanceof Error ? err.message : String(err);
       await this.logEmail({ type: 'user-created', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
       this.logger.warn(`Email failed: user-created to ${payload.to}: ${msg}`);
+      throw err;
+    }
+  }
+
+  async sendPasswordReset(payload: PasswordResetEmailPayload): Promise<string> {
+    const subject = `Reset your password – ${this.companyName}`;
+    let content: { subject: string; text?: string; html?: string } | null = null;
+    try {
+      const { html, text } = renderMjmlTemplate('password-reset', {
+        name: payload.name,
+        resetLink: payload.resetLink,
+        companyName: this.companyName,
+      });
+      content = { subject, text, html };
+      await this.transport.send({
+        to: payload.to,
+        from: this.fromEmail,
+        fromName: this.fromName,
+        subject,
+        text,
+        html,
+      });
+      const logId = await this.logEmail({ type: 'password-reset', to: payload.to, subject, status: 'sent', content });
+      this.logger.log(`Email sent: password-reset to ${payload.to}`);
+      return logId ?? '';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.logEmail({ type: 'password-reset', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      this.logger.warn(`Email failed: password-reset to ${payload.to}: ${msg}`);
       throw err;
     }
   }

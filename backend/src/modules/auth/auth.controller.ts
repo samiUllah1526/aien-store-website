@@ -37,4 +37,28 @@ export class AuthController {
     }
     return this.authService.login(email.trim(), password);
   }
+
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      throw new BadRequestException('Email is required');
+    }
+    return this.authService.forgotPassword(email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  async resetPassword(
+    @Body('token') token: string,
+    @Body('password') password: string,
+  ) {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Reset token is required');
+    }
+    if (!password || typeof password !== 'string') {
+      throw new BadRequestException('Password is required');
+    }
+    return this.authService.resetPassword(token, password);
+  }
 }

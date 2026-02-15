@@ -1,13 +1,16 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 const SALT_ROUNDS = 10;
 /** Default 24h so admin sessions survive a work day; override with JWT_ACCESS_EXPIRES_SEC. */
 const ACCESS_EXPIRES_DEFAULT = 86400;
+/** Password reset token validity in seconds (1 hour). */
+const PASSWORD_RESET_EXPIRES_SEC = 3600;
 
 @Injectable()
 export class AuthService {
@@ -107,6 +110,62 @@ export class AuthService {
       expiresIn: this.accessExpiresSec,
       user: { id: user.id, email: user.email, name: user.name, permissions, roleNames },
     };
+  }
+
+  /**
+   * Forgot password: if a user exists with this email, set a reset token and send email.
+   * Does not reveal whether the email exists (same response either way).
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const normalized = email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: { equals: normalized, mode: 'insensitive' } },
+    });
+    if (user && user.status === 'ACTIVE') {
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_SEC * 1000);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetToken: token, passwordResetExpiresAt: expiresAt },
+      });
+      const baseUrl = (this.config.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
+      const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      this.mail.sendPasswordReset({ to: user.email, name: user.name, resetLink }).catch((err) => {
+        console.warn('[AuthService] Password reset email failed:', err);
+      });
+    }
+    return { message: 'If an account exists with this email, you will receive a password reset link shortly.' };
+  }
+
+  /**
+   * Reset password using token from email. Invalidates the token on success.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    if (!token || typeof token !== 'string' || token.trim() === '') {
+      throw new BadRequestException('Reset token is required');
+    }
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: token.trim(),
+        passwordResetExpiresAt: { gt: new Date() },
+      },
+    });
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset link. Please request a new one.');
+    }
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetExpiresAt: null,
+      },
+    });
+    return { message: 'Your password has been reset. You can now sign in.' };
   }
 
   private resolvePermissions(user: {

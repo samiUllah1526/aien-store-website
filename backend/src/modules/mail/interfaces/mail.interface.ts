@@ -40,11 +40,22 @@ export interface UserCreatedEmailPayload {
   loginUrl?: string;
 }
 
+/**
+ * Payload for password reset email (forgot password flow).
+ */
+export interface PasswordResetEmailPayload {
+  to: string;
+  name: string;
+  /** Full URL to the reset-password page including token (e.g. APP_URL/reset-password?token=xxx). */
+  resetLink: string;
+}
+
 export interface IMailService {
   sendOrderConfirmation(payload: OrderConfirmationEmailPayload): Promise<string>;
   sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<string>;
   sendWelcome(payload: WelcomeEmailPayload): Promise<string>;
   sendUserCreated(payload: UserCreatedEmailPayload): Promise<string>;
+  sendPasswordReset(payload: PasswordResetEmailPayload): Promise<string>;
 }
 
 /**

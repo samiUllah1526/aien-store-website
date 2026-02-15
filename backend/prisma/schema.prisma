@@ -58,6 +58,8 @@ model User {
   passwordHash String     @map("password_hash")
   status       UserStatus @default(ACTIVE) @map("status")
   lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  passwordResetToken    String?   @map("password_reset_token")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz(6)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 

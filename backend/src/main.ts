@@ -18,20 +18,23 @@ async function bootstrap() {
   const port = configService.get<number>('PORT', 3000);
 
   const corsOrigin = configService.get<string>('CORS_ORIGIN');
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://localhost:4321',
+    'http://localhost:4322',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4321',
+    'http://127.0.0.1:4322',
+    'http://127.0.0.1:5173',
+  ];
   app.enableCors({
     origin: corsOrigin
       ? corsOrigin.split(',').map((o) => o.trim())
-      : [
-          'http://localhost:3000',
-          'http://localhost:4321',
-          'http://localhost:4322',
-          'http://127.0.0.1:3000',
-          'http://127.0.0.1:4321',
-          'http://127.0.0.1:4322',
-        ],
+      : defaultOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   });
 
   await app.listen(port);
