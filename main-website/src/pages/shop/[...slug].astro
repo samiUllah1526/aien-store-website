@@ -5,6 +5,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AddToCart from '../../components/product/AddToCart';
+import ProductImageCarousel from '../../components/product/ProductImageCarousel';
 import { formatMoney } from '../../lib/formatMoney';
 
 const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -46,7 +47,12 @@ if (!slug) {
   return Astro.redirect('/shop');
 }
 
-let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; sizes?: string[]; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+function toFullImageUrl(url: string): string {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
 try {
   const productUrl = `${baseUrl}/products/slug/${encodeURIComponent(slug)}`;
   console.log('[product page] fetch:', productUrl);
@@ -56,6 +62,8 @@ try {
   if (res.ok) {
     if (json.success && json.data) {
       const p = json.data;
+      const image = toFullImageUrl(p.image ?? '');
+      const images = Array.isArray(p.images) ? p.images.map((img: string) => toFullImageUrl(img)).filter(Boolean) : (image ? [image] : []);
       product = {
         id: p.id,
         name: p.name,
@@ -63,7 +71,8 @@ try {
         description: p.description ?? null,
         price: p.price,
         currency: p.currency,
-        image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
+        image,
+        images: images.length > 0 ? images : (image ? [image] : []),
         sizes: p.sizes,
         urduVerse: p.urduVerse ?? null,
         urduVerseTransliteration: p.urduVerseTransliteration ?? null,
@@ -84,12 +93,8 @@ if (!product) {
 <BaseLayout title={`${product.name} — Adab`} description={product.description ?? undefined}>
   <article class="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-      <div class="aspect-[3/4] overflow-hidden rounded-lg bg-sand dark:bg-charcoal-light shadow-soft">
-        <img
-          src={product.image}
-          alt={product.name}
-          class="w-full h-full object-cover"
-        />
+      <div class="w-full">
+        <ProductImageCarousel client:load images={product.images} alt={product.name} />
       </div>
       <div class="flex flex-col">
         <h1 class="font-display text-3xl md:text-4xl text-ink dark:text-cream">{product.name}</h1>
