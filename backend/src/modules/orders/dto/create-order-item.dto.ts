@@ -1,7 +1,7 @@
-import { IsString, IsInt, Min } from 'class-validator';
+import { IsUUID, IsInt, Min } from 'class-validator';
 
 export class CreateOrderItemDto {
-  @IsString()
+  @IsUUID(4, { message: 'productId must be a valid UUID' })
   productId: string;
 
   @IsInt()

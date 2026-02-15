@@ -22,6 +22,10 @@ const PERMISSION_NAMES = [
   'products:write',
   'categories:read',
   'categories:write',
+  'settings:read',
+  'settings:write',
+  'emaillogs:read',
+  'emaillogs:resend',
 ] as const;
 
 async function main() {
@@ -94,6 +98,39 @@ async function main() {
     });
   }
   console.log('Seed: Ensured 3 example categories (shirts, accessories, footwear).');
+
+  const currentYear = new Date().getFullYear();
+  const defaultSettings = [
+    { key: 'general', value: { logoMediaId: null } },
+    {
+      key: 'about',
+      value: {
+        title: 'Wear the words',
+        subtitle: 'Where adab meets the street.',
+        content:
+          '<p>Adab is more than etiquette — it\'s the art of how we speak, how we listen, and how we carry ourselves. In Urdu literature, adab runs through every line of verse, every gathering at a mushaira, every moment when a poet picks up the pen. We wanted to bring that soul into what you wear.</p><p>Our pieces are inspired by classical Urdu poetry: the ghazal, the nazm, the couplets that have moved generations. Each design carries a verse — sometimes loud on the chest, sometimes tucked in like a secret. The words are in Nastaliq, in script that feels like breath on paper.</p><p>We\'re not a fashion label that uses Urdu as a trend. We\'re a label that starts from the verse. From the culture of mehfils and mushairas, from the weight of a single word. Streetwear that doesn\'t shout — it speaks.</p><p class="urdu-blockquote">الفاظ سے پہلے آداب سیکھو</p><p><em>Alfaaz se pehle adaab seekho — Before words, learn adab.</em></p><p>Thank you for wearing the words with us. For carrying a little bit of adab into your day.</p>',
+      },
+    },
+    {
+      key: 'footer',
+      value: {
+        tagline: 'Wear the words. Urdu poetry & adab on streetwear.',
+        copyright: `© ${currentYear} Adab. All rights reserved.`,
+      },
+    },
+    {
+      key: 'social',
+      value: { facebook: '', instagram: '', twitter: '', youtube: '' },
+    },
+  ] as const;
+  for (const { key, value } of defaultSettings) {
+    await prisma.siteSetting.upsert({
+      where: { key },
+      create: { key, value: JSON.parse(JSON.stringify(value)) },
+      update: {},
+    });
+  }
+  console.log('Seed: Ensured default site settings (general, about, footer, social).');
 }
 
 main()

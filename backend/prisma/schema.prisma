@@ -125,6 +125,17 @@ model UserPermission {
 }
 
 // -----------------------------------------------------------------------------
+// Site settings: key-value store for logo, about, footer, social (admin-editable)
+// -----------------------------------------------------------------------------
+model SiteSetting {
+  key       String   @id @map("key")
+  value     Json     @map("value")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_settings")
+}
+
+// -----------------------------------------------------------------------------
 // Media: uploads stored by backend; frontend references by UUID on products
 // -----------------------------------------------------------------------------
 // Backend stores files and returns a UUID. Frontend sends that UUID when
@@ -266,4 +277,24 @@ model OrderStatusHistory {
 
   @@index([orderId])
   @@map("order_status_history")
+}
+
+// -----------------------------------------------------------------------------
+// Email delivery log: success/failure audit for transactional emails
+// -----------------------------------------------------------------------------
+model EmailLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      String   @map("type")
+  to        String   @map("to")
+  subject   String   @map("subject")
+  status    String   @map("status")
+  error     Json?    @map("error")
+  content   Json?    @map("content")
+  metadata  Json?    @map("metadata")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
 }

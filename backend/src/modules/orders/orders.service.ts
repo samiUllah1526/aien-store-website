@@ -135,7 +135,42 @@ export class OrdersService {
       include: this.orderInclude(),
     });
 
+    await this.sendOrderConfirmationEmail(order);
     return this.toResponseDto(order);
+  }
+
+  private async sendOrderConfirmationEmail(
+    order: {
+      id: string;
+      customerEmail: string;
+      customerName: string | null;
+      totalCents: number;
+      currency: string;
+      createdAt: Date;
+      items: Array<{
+        quantity: number;
+        unitCents: number;
+        product: { name: string };
+      }>;
+    },
+  ): Promise<void> {
+    try {
+      await this.mail.sendOrderConfirmation({
+        to: order.customerEmail,
+        orderId: order.id,
+        customerName: order.customerName ?? undefined,
+        totalCents: order.totalCents,
+        currency: order.currency,
+        orderDate: order.createdAt.toISOString(),
+        items: order.items.map((i) => ({
+          productName: i.product.name,
+          quantity: i.quantity,
+          unitCents: i.unitCents,
+        })),
+      });
+    } catch (err) {
+      console.warn('[OrdersService] Order confirmation email failed:', err);
+    }
   }
 
   async findAll(
@@ -235,7 +270,9 @@ export class OrdersService {
     });
 
     if (dto.status !== undefined && dto.status !== order.status) {
-      await this.sendStatusChangeEmail(updated, dto.status);
+      this.sendStatusChangeEmail(updated, dto.status).catch((err) => {
+        console.warn(`[OrdersService] Order ${updated.id} status-change email failed:`, err);
+      });
     }
 
     return this.toResponseDto(updated);

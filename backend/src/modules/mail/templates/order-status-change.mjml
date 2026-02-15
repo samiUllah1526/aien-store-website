@@ -1,0 +1,25 @@
+<mjml>
+  <mj-head>
+    <mj-title>Order Status Update</mj-title>
+    <mj-preview>Your order {{orderId}} status: {{status}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text color="#333333" font-size="16px" line-height="24px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4" width="600px">
+    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+          Order status update
+        </mj-text>
+        <mj-text>Hello {{customerName}},</mj-text>
+        <mj-text>Your order <strong>{{orderId}}</strong> status has been updated.</mj-text>
+        <mj-text font-size="18px" font-weight="bold" padding="16px 0 8px">New status: {{status}}</mj-text>
+        <mj-text font-size="14px" color="#666666">Updated at: {{statusUpdatedAt}}</mj-text>
+        <mj-text padding-top="24px">Thank you for your order.</mj-text>
+        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,83 +1,252 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as sgMail from '@sendgrid/mail';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { IMailTransport } from './interfaces/mail.interface';
 import {
   IMailService,
+  OrderConfirmationEmailPayload,
   OrderStatusEmailPayload,
+  WelcomeEmailPayload,
+  UserCreatedEmailPayload,
 } from './interfaces/mail.interface';
+import { MAIL_TRANSPORT } from './constants';
+import { renderMjmlTemplate } from './templates/render';
+
+/** Serialize any error to a JSON-safe object for storage. */
+function serializeError(err: unknown): Record<string, unknown> {
+  const safe = (v: unknown): unknown => {
+    if (v === null || v === undefined) return v;
+    try {
+      JSON.stringify(v);
+      return v;
+    } catch {
+      return String(v);
+    }
+  };
+  if (err instanceof Error) {
+    const obj: Record<string, unknown> = {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    };
+    const anyErr = err as unknown as Record<string, unknown>;
+    if (anyErr.code != null) obj.code = anyErr.code;
+    if (anyErr.response != null) {
+      const res = anyErr.response as Record<string, unknown>;
+      obj.response = {
+        status: res.status,
+        statusText: res.statusText,
+        data: safe(res.data),
+      };
+    }
+    return obj;
+  }
+  if (typeof err === 'object' && err !== null) {
+    try {
+      return JSON.parse(JSON.stringify(err));
+    } catch {
+      return { raw: String(err) };
+    }
+  }
+  return { value: String(err) };
+}
 
 @Injectable()
 export class MailService implements IMailService {
+  private readonly logger = new Logger(MailService.name);
   private readonly fromEmail: string;
-  private readonly useSendGrid: boolean;
+  private readonly fromName: string;
+  private readonly companyName: string;
+  private readonly appUrl: string;
+  private readonly adminLoginUrl: string;
 
-  constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('SENDGRID_API_KEY');
-    this.useSendGrid = Boolean(apiKey);
-    if (this.useSendGrid && apiKey) {
-      sgMail.setApiKey(apiKey);
-    }
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+    @Inject(MAIL_TRANSPORT) private readonly transport: IMailTransport,
+  ) {
     this.fromEmail =
-      this.configService.get<string>('MAIL_FROM_EMAIL') ||
-      'orders@example.com';
+      this.configService.get<string>('MAIL_FROM_EMAIL') ?? 'orders@example.com';
+    this.fromName =
+      this.configService.get<string>('MAIL_FROM_NAME') ?? 'E-Commerce';
+    this.companyName =
+      this.configService.get<string>('MAIL_COMPANY_NAME') ?? this.fromName;
+    this.appUrl =
+      this.configService.get<string>('APP_URL') ?? 'https://example.com';
+    this.adminLoginUrl =
+      this.configService.get<string>('ADMIN_LOGIN_URL') ??
+      `${this.appUrl.replace(/\/$/, '')}/admin/login`;
   }
 
-  async sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<void> {
-    const subject = `Order ${payload.orderId} – Status: ${payload.status}`;
-    const text = this.buildPlainText(payload);
-    const html = this.buildHtml(payload);
-
-    if (this.useSendGrid) {
-      await sgMail.send({
+  async sendOrderConfirmation(
+    payload: OrderConfirmationEmailPayload,
+  ): Promise<void> {
+    const subject = `Order confirmed – ${payload.orderId}`;
+    const metadata = { orderId: payload.orderId };
+    let content: { subject: string; text?: string; html?: string } | null = null;
+    try {
+      const totalFormatted = this.formatCurrency(
+        payload.totalCents,
+        payload.currency,
+      );
+      const itemsTableHtml = this.buildOrderItemsTableHtml(payload.items);
+      const { html, text } = renderMjmlTemplate('order-confirmation', {
+        customerName: payload.customerName ?? 'Customer',
+        orderId: payload.orderId,
+        orderDate: payload.orderDate,
+        totalFormatted,
+        companyName: this.companyName,
+        itemsTable_html: itemsTableHtml,
+      });
+      content = { subject, text, html };
+      await this.transport.send({
         to: payload.to,
         from: this.fromEmail,
+        fromName: this.fromName,
         subject,
         text,
         html,
       });
-    } else {
-      // Mock: log to console (e.g. development or no API key)
-      console.log('[MailService] Order status email (mock)', {
-        to: payload.to,
-        orderId: payload.orderId,
-        status: payload.status,
-        subject,
-        text: text.slice(0, 80) + '...',
-      });
+      await this.logEmail({ type: 'order-confirmation', to: payload.to, subject, status: 'sent', metadata, content });
+      this.logger.log(`Email sent: order-confirmation to ${payload.to} (order ${payload.orderId})`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.logEmail({ type: 'order-confirmation', to: payload.to, subject, status: 'failed', error: serializeError(err), metadata, content: content ?? undefined });
+      this.logger.warn(`Email failed: order-confirmation to ${payload.to}: ${msg}`);
     }
   }
 
-  private buildPlainText(payload: OrderStatusEmailPayload): string {
-    const name = payload.customerName || 'Customer';
-    return [
-      `Hello ${name},`,
-      '',
-      `Your order ${payload.orderId} status has been updated.`,
-      `New status: ${payload.status}`,
-      `Updated at: ${payload.statusUpdatedAt}`,
-      '',
-      'Thank you for your order.',
-    ].join('\n');
+  async sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<void> {
+    const subject = `Order ${payload.orderId} – Status: ${payload.status}`;
+    const metadata = { orderId: payload.orderId, status: payload.status };
+    let content: { subject: string; text?: string; html?: string } | null = null;
+    try {
+      const { html, text } = renderMjmlTemplate('order-status-change', {
+        customerName: payload.customerName ?? 'Customer',
+        orderId: payload.orderId,
+        status: payload.status,
+        statusUpdatedAt: payload.statusUpdatedAt,
+        companyName: this.companyName,
+      });
+      content = { subject, text, html };
+      await this.transport.send({
+        to: payload.to,
+        from: this.fromEmail,
+        fromName: this.fromName,
+        subject,
+        text,
+        html,
+      });
+      await this.logEmail({ type: 'order-status-change', to: payload.to, subject, status: 'sent', metadata, content });
+      this.logger.log(`Email sent: order-status-change to ${payload.to} (order ${payload.orderId}, status ${payload.status})`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.logEmail({ type: 'order-status-change', to: payload.to, subject, status: 'failed', error: serializeError(err), metadata, content: content ?? undefined });
+      this.logger.warn(`Email failed: order-status-change to ${payload.to}: ${msg}`);
+    }
   }
 
-  private buildHtml(payload: OrderStatusEmailPayload): string {
-    const name = payload.customerName || 'Customer';
-    return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Order Status Update</title></head>
-<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-  <p>Hello ${this.escapeHtml(name)},</p>
-  <p>Your order <strong>${this.escapeHtml(payload.orderId)}</strong> status has been updated.</p>
-  <p><strong>New status:</strong> ${this.escapeHtml(payload.status)}</p>
-  <p><strong>Updated at:</strong> ${this.escapeHtml(payload.statusUpdatedAt)}</p>
-  <p>Thank you for your order.</p>
-</body>
-</html>`.trim();
+  async sendWelcome(payload: WelcomeEmailPayload): Promise<void> {
+    const subject = `Welcome to ${this.companyName}`;
+    let content: { subject: string; text?: string; html?: string } | null = null;
+    try {
+      const { html, text } = renderMjmlTemplate('welcome', {
+        name: payload.name,
+        companyName: this.companyName,
+      });
+      content = { subject, text, html };
+      await this.transport.send({
+        to: payload.to,
+        from: this.fromEmail,
+        fromName: this.fromName,
+        subject,
+        text,
+        html,
+      });
+      await this.logEmail({ type: 'welcome', to: payload.to, subject, status: 'sent', content });
+      this.logger.log(`Email sent: welcome to ${payload.to}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.logEmail({ type: 'welcome', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      this.logger.warn(`Email failed: welcome to ${payload.to}: ${msg}`);
+    }
+  }
+
+  async sendUserCreated(payload: UserCreatedEmailPayload): Promise<void> {
+    const subject = `Your account has been created – ${this.companyName}`;
+    let content: { subject: string; text?: string; html?: string } | null = null;
+    try {
+      const loginUrl = payload.loginUrl ?? this.adminLoginUrl;
+      const { html, text } = renderMjmlTemplate('user-created', {
+        name: payload.name,
+        loginUrl,
+        companyName: this.companyName,
+      });
+      content = { subject, text, html };
+      await this.transport.send({
+        to: payload.to,
+        from: this.fromEmail,
+        fromName: this.fromName,
+        subject,
+        text,
+        html,
+      });
+      await this.logEmail({ type: 'user-created', to: payload.to, subject, status: 'sent', content });
+      this.logger.log(`Email sent: user-created to ${payload.to}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.logEmail({ type: 'user-created', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      this.logger.warn(`Email failed: user-created to ${payload.to}: ${msg}`);
+    }
+  }
+
+  private async logEmail(params: {
+    type: string;
+    to: string;
+    subject: string;
+    status: 'sent' | 'failed';
+    error?: Record<string, unknown>;
+    content?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.prisma.emailLog.create({
+        data: {
+          type: params.type,
+          to: params.to,
+          subject: params.subject,
+          status: params.status,
+          ...(params.error != null && { error: params.error as Prisma.InputJsonValue }),
+          ...(params.content != null && { content: params.content as Prisma.InputJsonValue }),
+          ...(params.metadata != null && { metadata: params.metadata as Prisma.InputJsonValue }),
+        },
+      });
+    } catch (e) {
+      this.logger.warn('Failed to write EmailLog', e);
+    }
+  }
+
+  private formatCurrency(cents: number, currency: string): string {
+    const value = (cents / 100).toFixed(2);
+    const withCommas = value.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return currency ? `${currency} ${withCommas}` : withCommas;
+  }
+
+  private buildOrderItemsTableHtml(
+    items: Array<{ productName: string; quantity: number; unitCents: number }>,
+  ): string {
+    const rows = items
+      .map(
+        (i) =>
+          `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">${this.escapeHtml(i.productName)}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${this.formatCurrency(i.unitCents, '')}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${this.formatCurrency(i.quantity * i.unitCents, '')}</td></tr>`,
+      )
+      .join('');
+    return `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:8px"><thead><tr><th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd">Product</th><th style="padding:8px 12px;text-align:center;border-bottom:2px solid #ddd">Qty</th><th style="padding:8px 12px;text-align:right;border-bottom:2px solid #ddd">Unit</th><th style="padding:8px 12px;text-align:right;border-bottom:2px solid #ddd">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   private escapeHtml(s: string): string {
-    return s
+    return String(s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')

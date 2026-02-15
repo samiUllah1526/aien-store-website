@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mail: MailService,
   ) {}
 
   async register(name: string, email: string, password: string) {
@@ -26,9 +28,12 @@ export class AuthService {
         status: 'ACTIVE',
       },
     });
-    const payload = { sub: user.id, email: user.email, permissions: [] };
+    const payload = { sub: user.id, email: user.email, name: user.name, permissions: [], roleNames: [] };
     const accessToken = this.jwtService.sign(payload);
-    return { accessToken, user: { id: user.id, email: user.email, permissions: [] }, expiresIn: '7d' };
+    this.mail.sendWelcome({ to: user.email, name: user.name }).catch((err) => {
+      console.warn('[AuthService] Welcome email failed:', err);
+    });
+    return { accessToken, user: { id: user.id, email: user.email, name: user.name, permissions: [], roleNames: [] }, expiresIn: '7d' };
   }
 
   async login(email: string, password: string) {
@@ -47,13 +52,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const permissions = this.resolvePermissions(user);
+    const roleNames = user.roles.map((ur) => ur.role.name);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    const payload = { sub: user.id, email: user.email, permissions };
+    const payload = { sub: user.id, email: user.email, name: user.name, permissions, roleNames };
     const accessToken = this.jwtService.sign(payload);
-    return { accessToken, user: { id: user.id, email: user.email, permissions }, expiresIn: '7d' };
+    return { accessToken, user: { id: user.id, email: user.email, name: user.name, permissions, roleNames }, expiresIn: '7d' };
   }
 
   private resolvePermissions(user: {

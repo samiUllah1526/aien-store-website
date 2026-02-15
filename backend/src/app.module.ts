@@ -10,6 +10,8 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { CategoriesModule } from './modules/categories/categories.module';
     UsersModule,
     DashboardModule,
     CategoriesModule,
+    SettingsModule,
+    EmailLogsModule,
   ],
 })
 export class AppModule {}

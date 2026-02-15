@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -21,7 +22,10 @@ const SALT_ROUNDS = 10;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async findAll(
     query: UserQueryDto,
@@ -87,6 +91,9 @@ export class UsersService {
           : undefined,
       },
       include: { roles: { include: { role: true } } },
+    });
+    this.mail.sendUserCreated({ to: user.email, name: user.name }).catch((err) => {
+      console.warn('[UsersService] User-created email failed:', err);
     });
     return this.toResponseDto(user);
   }

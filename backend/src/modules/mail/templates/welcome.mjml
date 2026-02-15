@@ -1,0 +1,23 @@
+<mjml>
+  <mj-head>
+    <mj-title>Welcome</mj-title>
+    <mj-preview>Welcome to {{companyName}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text color="#333333" font-size="16px" line-height="24px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4" width="600px">
+    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+          Welcome, {{name}}
+        </mj-text>
+        <mj-text>Your account has been created successfully.</mj-text>
+        <mj-text>You can now sign in with your email and password.</mj-text>
+        <mj-text padding-top="24px">If you did not create this account, please ignore this email.</mj-text>
+        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -49,7 +49,7 @@ describe('OrdersService', () => {
     product: { findMany: jest.Mock };
     user: { findUnique: jest.Mock };
   };
-  let mail: { sendOrderStatusChange: jest.Mock };
+  let mail: { sendOrderStatusChange: jest.Mock; sendOrderConfirmation: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -63,7 +63,10 @@ describe('OrdersService', () => {
       product: { findMany: jest.fn() },
       user: { findUnique: jest.fn() },
     };
-    mail = { sendOrderStatusChange: jest.fn().mockResolvedValue(undefined) };
+    mail = {
+      sendOrderStatusChange: jest.fn().mockResolvedValue(undefined),
+      sendOrderConfirmation: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
