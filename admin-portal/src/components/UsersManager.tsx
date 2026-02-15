@@ -76,7 +76,7 @@ export function UsersManager() {
 
   if (!canRead) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800 p-12 text-center text-slate-600 dark:text-slate-400">
+      <div className="rounded-xl border border-slate-200 bg-white p-12 dark:border-slate-700 dark:bg-slate-800 text-center text-slate-600 dark:text-slate-400">
         You don’t have permission to view users.
       </div>
     );
@@ -85,7 +85,7 @@ export function UsersManager() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 dark:text-slate-100">Users</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Users</h1>
         {canWrite && (
           <button
             type="button"
@@ -93,7 +93,7 @@ export function UsersManager() {
               setEditingUser(null);
               setFormOpen('add');
             }}
-            className="inline-flex items-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-50 dark:bg-slate-700/500"
+            className="inline-flex items-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
           >
             Add user
           </button>
@@ -111,7 +111,7 @@ export function UsersManager() {
             placeholder="Name or email"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           />
         </div>
         <div className="w-40">
@@ -122,7 +122,7 @@ export function UsersManager() {
             id="statusFilter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           >
             <option value="">All</option>
             {STATUS_OPTIONS.map((s) => (
@@ -134,7 +134,7 @@ export function UsersManager() {
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-50 dark:bg-slate-700/500"
+          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
         >
           Apply
         </button>
@@ -147,17 +147,17 @@ export function UsersManager() {
       )}
 
       {loading ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Email</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Roles</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Last login</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                 {canWrite && (
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Actions</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
                 )}
               </tr>
             </thead>
@@ -190,28 +190,28 @@ export function UsersManager() {
           </table>
         </div>
       ) : users.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800 p-12 text-center text-slate-600 dark:text-slate-400">
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
           No users match your filters.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800 shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Roles</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Last login</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                   {canWrite && (
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100 dark:text-slate-100">Actions</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
                   )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 dark:bg-slate-700/50/50">
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{user.name}</td>
                     <td className="px-4 py-3 text-slate-700">{user.email}</td>
                     <td className="px-4 py-3">
@@ -241,7 +241,7 @@ export function UsersManager() {
                             setEditingUser(user);
                             setFormOpen('edit');
                           }}
-                          className="mr-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 text-sm font-medium"
+                          className="mr-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                         >
                           Edit
                         </button>
@@ -285,7 +285,7 @@ export function UsersManager() {
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="rounded-lg border border-slate-300 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-700/50 disabled:opacity-50"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Previous
             </button>
@@ -293,8 +293,7 @@ export function UsersManager() {
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="rounded-lg border border-slate-300 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-700/50 disabled:opacity-50"
-            >
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"            >
               Next
             </button>
           </div>
@@ -420,7 +419,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             />
           </div>
           <div>
@@ -449,7 +448,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
               onChange={(e) => setPassword(e.target.value)}
               required={!user}
               minLength={8}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             />
           </div>
           <div>
@@ -457,7 +456,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>

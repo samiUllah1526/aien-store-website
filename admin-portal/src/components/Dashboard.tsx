@@ -11,7 +11,7 @@ import {
   Line,
   Legend,
 } from 'recharts';
-import { api } from '../lib/api';
+import { api, getAuthToken } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { formatMoney } from '../lib/formatMoney';
 import type { DashboardStats } from '../lib/dashboard-types';
@@ -36,6 +36,11 @@ export function Dashboard() {
   const isDark = useIsDark();
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!getAuthToken()) {
+      window.location.href = '/admin/login';
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);

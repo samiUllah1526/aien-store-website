@@ -11,10 +11,16 @@ import { AuthService } from './auth.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('JWT_SECRET', 'change-me-in-production'),
-        signOptions: { expiresIn: config.get<number>('JWT_EXPIRES_SEC', 604800) },
-      }),
+      useFactory: (config: ConfigService): JwtModuleOptions => {
+        const secret = (config.get<string>('JWT_SECRET') ?? 'change-me-in-production').trim();
+        return {
+          secret,
+          signOptions: {
+            expiresIn: config.get<number>('JWT_ACCESS_EXPIRES_SEC', 900),
+            algorithm: 'HS256',
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

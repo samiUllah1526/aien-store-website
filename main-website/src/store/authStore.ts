@@ -1,12 +1,12 @@
 /**
- * Storefront auth: token for logged-in customers (checkout, my orders).
- * Persisted in localStorage as store_token.
+ * Storefront auth: access token for logged-in customers (checkout, my orders).
+ * Persisted in localStorage.
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const STORAGE_KEY = 'store_token';
+const TOKEN_KEY = 'store_token';
 
 type AuthState = {
   token: string | null;
@@ -22,11 +22,15 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       email: null,
       setAuth: (token, email) => {
-        if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, token);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(TOKEN_KEY, token);
+        }
         set({ token, email });
       },
       clearAuth: () => {
-        if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(TOKEN_KEY);
+        }
         set({ token: null, email: null });
       },
       isLoggedIn: () => !!get().token,
@@ -37,5 +41,5 @@ export const useAuthStore = create<AuthState>()(
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(STORAGE_KEY);
+  return localStorage.getItem(TOKEN_KEY);
 }

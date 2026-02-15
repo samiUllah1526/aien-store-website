@@ -37,6 +37,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         `${req.method} ${req.url} ${status}`,
         exception instanceof Error ? exception.stack : undefined,
       );
+    } else if (status === 401) {
+      const hasAuth = !!req.headers?.authorization?.startsWith('Bearer ');
+      this.logger.warn(
+        `401 ${req.method} ${req.url} - ${normalizedMessage} (Authorization: ${hasAuth ? 'present' : 'missing'})`,
+      );
     }
 
     res.status(status).json(ApiResponseDto.fail(normalizedMessage));

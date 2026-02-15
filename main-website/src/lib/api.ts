@@ -1,8 +1,10 @@
 /**
  * API client for the storefront (main website).
  * Base URL: PUBLIC_API_URL (e.g. http://localhost:3000) or fallback.
- * Auth: optional token from authStore for checkout / account.
+ * Auth: access token from localStorage.
  */
+
+import { useAuthStore } from '../store/authStore';
 
 const defaultBaseUrl =
   typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env?.PUBLIC_API_URL
@@ -51,6 +53,13 @@ async function request<T>(
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(url.toString(), { ...init, headers });
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string };
+
+  if (res.status === 401) {
+    useAuthStore.getState().clearAuth();
+    const msg = json.message || res.statusText || 'Unauthorized';
+    throw new Error(msg);
+  }
+
   if (!res.ok) {
     const msg = json.message || res.statusText || `Request failed (${res.status})`;
     throw new Error(msg);

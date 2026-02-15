@@ -2,14 +2,32 @@
 /**
  * Base layout: poetic, minimal, premium.
  * Single React shell (LayoutShell) wraps nav, main slot, footer, and cart for shared state.
+ * Fetches site settings (logo, footer, social) for the shell.
  */
 import '../styles/global.css';
 import LayoutShell from '../components/LayoutShell';
+
 interface Props {
   title?: string;
   description?: string;
 }
+
 const { title = 'Adab — Wear the Words', description = 'Urdu & Adabi inspired streetwear. Poetry on fabric.' } = Astro.props;
+
+const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').toString().replace(/\/$/, '');
+let siteSettings: {
+  logoPath: string | null;
+  about: { title?: string; subtitle?: string; content?: string };
+  footer: { tagline?: string; copyright?: string };
+  social: { facebook?: string; instagram?: string; twitter?: string; youtube?: string };
+} | null = null;
+try {
+  const res = await fetch(`${baseUrl}/settings/public`);
+  const json = await res.json();
+  if (json?.success && json?.data) siteSettings = json.data;
+} catch {
+  // use defaults (null) so shell falls back to hardcoded
+}
 ---
 <!doctype html>
 <html lang="en">
@@ -31,7 +49,7 @@ const { title = 'Adab — Wear the Words', description = 'Urdu & Adabi inspired 
     <title>{title}</title>
   </head>
   <body class="min-h-screen flex flex-col bg-cream dark:bg-ink text-charcoal dark:text-cream antialiased transition-colors duration-300">
-    <LayoutShell client:load>
+    <LayoutShell client:load siteSettings={siteSettings}>
       <slot />
     </LayoutShell>
   </body>

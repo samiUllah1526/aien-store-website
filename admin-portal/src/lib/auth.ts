@@ -1,15 +1,24 @@
 /**
- * Decode JWT payload without verification (client-side only).
- * Use for reading permissions for role-based UI. Token verification is done by the API.
+ * Auth helpers for admin portal.
+ * Access token stored in localStorage, sent with API requests.
  */
 
-const TOKEN_KEY = 'admin_token';
+const ACCESS_TOKEN_KEY = 'admin_token';
 
 export interface JwtPayload {
   sub?: string;
   email?: string;
+  name?: string;
   permissions?: string[];
+  roleNames?: string[];
   exp?: number;
+}
+
+export interface StoredUser {
+  name: string;
+  email: string;
+  roleDisplay: string;
+  initial: string;
 }
 
 function base64UrlDecode(str: string): string {
@@ -30,7 +39,7 @@ function base64UrlDecode(str: string): string {
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function decodeToken(token: string): JwtPayload | null {
@@ -52,16 +61,34 @@ export function getStoredPermissions(): string[] {
   return payload?.permissions ?? [];
 }
 
+/** Current user display info from JWT (name, email, role, initial). */
+export function getStoredUser(): StoredUser | null {
+  const token = getStoredToken();
+  if (!token) return null;
+  const payload = decodeToken(token);
+  if (!payload) return null;
+  const name = payload.name?.trim() || payload.email || 'User';
+  const email = payload.email || '';
+  const roleDisplay = payload.roleNames?.length ? payload.roleNames.join(', ') : 'User';
+  const initial = (name.charAt(0) || '?').toUpperCase();
+  return { name, email, roleDisplay, initial };
+}
+
 export function hasPermission(permission: string): boolean {
   return getStoredPermissions().includes(permission);
 }
 
-export function setStoredToken(token: string): void {
+export function setStoredToken(accessToken: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 }
 
-export function clearStoredToken(): void {
+export function clearStoredTokens(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
+/** @deprecated Use clearStoredTokens for full cleanup */
+export function clearStoredToken(): void {
+  clearStoredTokens();
 }

@@ -1,18 +1,37 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
+const ACCESS_EXPIRES_DEFAULT = 900; // 15 min
 
 @Injectable()
 export class AuthService {
+  private readonly accessExpiresSec: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mail: MailService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.accessExpiresSec = this.config.get<number>('JWT_ACCESS_EXPIRES_SEC', ACCESS_EXPIRES_DEFAULT);
+  }
+
+  private buildTokens(user: {
+    id: string;
+    email: string;
+    name: string;
+    permissions: string[];
+    roleNames: string[];
+  }) {
+    const payload = { sub: user.id, email: user.email, name: user.name, permissions: user.permissions, roleNames: user.roleNames };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessExpiresSec });
+    return { accessToken, payload };
+  }
 
   async register(name: string, email: string, password: string) {
     const existing = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
@@ -28,17 +47,27 @@ export class AuthService {
         status: 'ACTIVE',
       },
     });
-    const payload = { sub: user.id, email: user.email, name: user.name, permissions: [], roleNames: [] };
-    const accessToken = this.jwtService.sign(payload);
+    const { accessToken, payload } = this.buildTokens({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      permissions: [],
+      roleNames: [],
+    });
     this.mail.sendWelcome({ to: user.email, name: user.name }).catch((err) => {
       console.warn('[AuthService] Welcome email failed:', err);
     });
-    return { accessToken, user: { id: user.id, email: user.email, name: user.name, permissions: [], roleNames: [] }, expiresIn: '7d' };
+    return {
+      accessToken,
+      expiresIn: this.accessExpiresSec,
+      user: { id: user.id, email: user.email, name: user.name, permissions: payload.permissions ?? [], roleNames: payload.roleNames ?? [] },
+    };
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       include: {
         roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
         directPermissions: { include: { permission: true } },
@@ -57,9 +86,18 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    const payload = { sub: user.id, email: user.email, name: user.name, permissions, roleNames };
-    const accessToken = this.jwtService.sign(payload);
-    return { accessToken, user: { id: user.id, email: user.email, name: user.name, permissions, roleNames }, expiresIn: '7d' };
+    const { accessToken, payload } = this.buildTokens({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      permissions,
+      roleNames,
+    });
+    return {
+      accessToken,
+      expiresIn: this.accessExpiresSec,
+      user: { id: user.id, email: user.email, name: user.name, permissions, roleNames },
+    };
   }
 
   private resolvePermissions(user: {

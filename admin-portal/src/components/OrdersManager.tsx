@@ -98,20 +98,20 @@ export function OrdersManager() {
         onOrderUpdated={fetchOrders}
         returnFocusRef={orderRowRef}
       />
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 dark:text-slate-100">Orders</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Orders</h1>
 
       {/* Filters */}
       <form onSubmit={handleApplyFilters} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <label htmlFor="status" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
+            <label htmlFor="status" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Status
             </label>
             <select
               id="status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">All</option>
               {STATUS_OPTIONS.map((s) => (
@@ -122,7 +122,7 @@ export function OrdersManager() {
             </select>
           </div>
           <div>
-            <label htmlFor="dateFrom" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
+            <label htmlFor="dateFrom" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               From date
             </label>
             <input
@@ -130,11 +130,11 @@ export function OrdersManager() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label htmlFor="dateTo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
+            <label htmlFor="dateTo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               To date
             </label>
             <input
@@ -142,11 +142,11 @@ export function OrdersManager() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label htmlFor="assignedTo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
+            <label htmlFor="assignedTo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Assigned staff (user ID)
             </label>
             <input
@@ -155,13 +155,13 @@ export function OrdersManager() {
               value={assignedToUserId}
               onChange={(e) => setAssignedToUserId(e.target.value)}
               placeholder="UUID"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 dark:bg-slate-700/500"
+              className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
             >
               Apply filters
             </button>
@@ -189,7 +189,7 @@ export function OrdersManager() {
       )}
 
       {loading ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
@@ -240,7 +240,7 @@ export function OrdersManager() {
           No orders match your filters.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 dark:bg-slate-800 shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">

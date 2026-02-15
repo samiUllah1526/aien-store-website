@@ -1,8 +1,12 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { SettingsManager } from '../../components/SettingsManager';
 ---
 
 <AdminLayout title="Settings">
-  <h1 class="text-2xl font-bold text-slate-900">Settings</h1>
-  <p class="mt-2 text-slate-600">Settings and preferences. (Coming soon)</p>
+  <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Settings</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">Site logo, about page, footer, and social links.</p>
+  <div class="mt-6">
+    <SettingsManager client:load />
+  </div>
 </AdminLayout>
