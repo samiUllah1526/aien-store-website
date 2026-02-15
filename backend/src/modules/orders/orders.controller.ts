@@ -24,6 +24,10 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtService } from '@nestjs/jwt';
 
+interface RequestWithUser {
+  user?: { userId: string };
+}
+
 @Controller('orders')
 export class OrdersController {
   constructor(
@@ -56,6 +60,35 @@ export class OrdersController {
     }
     const data = await this.ordersService.create(dto, customerUserId);
     return ApiResponseDto.ok(data, 'Order placed');
+  }
+
+  /** Customer-facing: list my orders (JWT required, ownership enforced). */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async findMyOrders(
+    @Req() req: RequestWithUser,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new Error('User not authenticated');
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+    const { data, total } = await this.ordersService.findMyOrders(userId, {
+      page: pageNum,
+      limit: limitNum,
+    });
+    return ApiResponseDto.list(data, { total, page: pageNum, limit: limitNum });
+  }
+
+  /** Customer-facing: get one of my orders by id (ownership enforced). */
+  @Get('me/:id')
+  @UseGuards(JwtAuthGuard)
+  async findMyOrder(@Req() req: RequestWithUser, @Param('id', ParseUUIDPipe) id: string) {
+    const userId = req.user?.userId;
+    if (!userId) throw new Error('User not authenticated');
+    const data = await this.ordersService.findOneByCustomer(userId, id);
+    return ApiResponseDto.ok(data);
   }
 
   @Post()

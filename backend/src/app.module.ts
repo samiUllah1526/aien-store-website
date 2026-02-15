@@ -12,6 +12,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EmailLogsModule } from './modules/email-logs/email-logs.module';
     CategoriesModule,
     SettingsModule,
     EmailLogsModule,
+    FavoritesModule,
   ],
 })
 export class AppModule {}

@@ -3,8 +3,10 @@
  * Subtle fade-in animation for the action icons (inspired by premium fashion grids).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '../store/cartStore';
+import { useAuthStore } from '../store/authStore';
+import { favoritesApi } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
 
 export interface ProductCardProduct {
@@ -21,8 +23,22 @@ const defaultSizes = ['S', 'M', 'L', 'XL'];
 
 export default function ProductCard({ product }: { product: ProductCardProduct }) {
   const { addItem, openCart } = useCart();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn || !product.id) return;
+    let cancelled = false;
+    favoritesApi
+      .getIds()
+      .then((ids) => {
+        if (!cancelled && Array.isArray(ids)) setWishlisted(ids.includes(product.id));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isLoggedIn, product.id]);
 
   const sizes = product.sizes?.length ? product.sizes : defaultSizes;
   const defaultSize = sizes[0] ?? 'M';
@@ -61,13 +77,32 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
             >
               <button
                 type="button"
-                onClick={(e) => {
+                disabled={favoriteLoading}
+                onClick={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setWishlisted((w) => !w);
+                  if (!isLoggedIn) {
+                    const returnTo = typeof window !== 'undefined' ? encodeURIComponent(window.location.pathname + window.location.search) : '';
+                    window.location.href = `/login?returnTo=${returnTo}`;
+                    return;
+                  }
+                  setFavoriteLoading(true);
+                  try {
+                    if (wishlisted) {
+                      await favoritesApi.remove(product.id);
+                      setWishlisted(false);
+                    } else {
+                      await favoritesApi.add(product.id);
+                      setWishlisted(true);
+                    }
+                  } catch {
+                    // keep current state on error
+                  } finally {
+                    setFavoriteLoading(false);
+                  }
                 }}
-                className="w-10 h-10 rounded-full bg-cream/95 dark:bg-ink/95 shadow-soft flex items-center justify-center text-charcoal dark:text-cream hover:text-emerald transition-colors focus:outline-none focus:ring-2 focus:ring-emerald/50"
-                aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                className="w-10 h-10 rounded-full bg-cream/95 dark:bg-ink/95 shadow-soft flex items-center justify-center text-charcoal dark:text-cream hover:text-emerald transition-colors focus:outline-none focus:ring-2 focus:ring-emerald/50 disabled:opacity-50"
+                aria-label={wishlisted ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <svg
                   className="w-5 h-5"

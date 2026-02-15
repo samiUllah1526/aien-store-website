@@ -77,4 +77,48 @@ export const api = {
   post<T>(path: string, body: unknown) {
     return request<ApiSingleResponse<T>>(path, { method: 'POST', body: JSON.stringify(body) });
   },
+  delete<T>(path: string) {
+    return request<ApiSingleResponse<T>>(path, { method: 'DELETE' });
+  },
 };
+
+/** Customer favorites (requires auth). */
+export const favoritesApi = {
+  list: () => api.get<unknown[]>('/favorites').then((r) => r.data ?? []),
+  getIds: () => api.get<string[]>('/favorites/ids').then((r) => r.data ?? []),
+  add: (productId: string) => api.post<{ added: boolean }>('/favorites/' + productId, {}),
+  remove: (productId: string) => api.delete<{ removed: boolean }>('/favorites/' + productId),
+};
+
+/** Customer order history (requires auth). */
+export const ordersApi = {
+  myOrders: (params?: { page?: number; limit?: number }) =>
+    api.getList<OrderDto>('/orders/me', params as Record<string, string | number | undefined>),
+  myOrder: (id: string) => api.get<OrderDto>('/orders/me/' + id),
+};
+
+export interface OrderDto {
+  id: string;
+  status: string;
+  totalCents: number;
+  currency: string;
+  customerEmail: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  shippingCountry: string | null;
+  shippingAddressLine1: string | null;
+  shippingAddressLine2: string | null;
+  shippingCity: string | null;
+  shippingPostalCode: string | null;
+  items: Array<{
+    id: string;
+    productId: string;
+    productName?: string;
+    productImage?: string | null;
+    quantity: number;
+    unitCents: number;
+  }>;
+  statusHistory: Array<{ status: string; createdAt: string }>;
+  createdAt: string;
+  updatedAt: string;
+}

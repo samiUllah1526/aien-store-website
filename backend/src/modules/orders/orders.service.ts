@@ -224,6 +224,40 @@ export class OrdersService {
     return this.toResponseDto(order);
   }
 
+  /** Customer-facing: list orders for the given customer (ownership enforced). */
+  async findMyOrders(
+    customerUserId: string,
+    query: { page?: number; limit?: number },
+  ): Promise<{ data: OrderResponseDto[]; total: number }> {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 20, 100);
+    const skip = (page - 1) * limit;
+    const where: Prisma.OrderWhereInput = { customerUserId };
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        include: this.orderInclude(),
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+    return { data: orders.map((o) => this.toResponseDto(o)), total };
+  }
+
+  /** Customer-facing: get one order by id only if it belongs to the customer (403-style not found). */
+  async findOneByCustomer(customerUserId: string, orderId: string): Promise<OrderResponseDto> {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, customerUserId },
+      include: this.orderInclude(),
+    });
+    if (!order) {
+      throw new NotFoundException(`Order not found`);
+    }
+    return this.toResponseDto(order);
+  }
+
   async update(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findUnique({
       where: { id },

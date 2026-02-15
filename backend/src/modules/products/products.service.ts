@@ -129,6 +129,18 @@ export class ProductsService {
     return this.toResponseDto(product);
   }
 
+  /** Find products by IDs; returns in the same order as the input array (missing IDs skipped). */
+  async findByIds(ids: string[]): Promise<ProductResponseDto[]> {
+    if (!ids?.length) return [];
+    const uniqueIds = [...new Set(ids)];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: uniqueIds } },
+      include: this.productInclude(),
+    });
+    const map = new Map(products.map((p) => [p.id, this.toResponseDto(p)]));
+    return ids.filter((id) => map.has(id)).map((id) => map.get(id)!);
+  }
+
   async update(id: string, dto: UpdateProductDto): Promise<ProductResponseDto> {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {

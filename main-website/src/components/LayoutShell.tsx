@@ -7,6 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { getApiBaseUrl } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 import CartIcon from './cart/CartIcon';
 import CartSidebar from './cart/CartSidebar';
 import ThemeToggle from './ThemeToggle';
@@ -44,6 +45,8 @@ function ShellContent({
   children: ReactNode;
   siteSettings: SiteSettings | null | undefined;
 }) {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const brand = DEFAULT_BRAND;
   const tagline = siteSettings?.footer?.tagline ?? DEFAULT_TAGLINE;
   const copyrightText =
@@ -93,6 +96,58 @@ function ShellContent({
                 About
               </a>
             </li>
+            {isLoggedIn ? (
+              <>
+                <li>
+                  <a
+                    href="/account/favorites"
+                    className="text-charcoal dark:text-cream/90 hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink rounded py-2"
+                    aria-label="Favorites"
+                  >
+                    Favorites
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/account/orders"
+                    className="text-charcoal dark:text-cream/90 hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink rounded py-2"
+                  >
+                    My Orders
+                  </a>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearAuth();
+                      window.location.href = '/';
+                    }}
+                    className="text-charcoal dark:text-cream/90 hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink rounded py-2"
+                  >
+                    Log out
+                  </button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <a
+                    href="/login"
+                    className="text-charcoal dark:text-cream/90 hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink rounded py-2"
+                  >
+                    Log in
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/register"
+                    className="text-charcoal dark:text-cream/90 hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink rounded py-2"
+                  >
+                    Register
+                  </a>
+                </li>
+              </>
+            )}
             <li className="flex items-center gap-1">
               <ThemeToggle />
               <CartIcon />
