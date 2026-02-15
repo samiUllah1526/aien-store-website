@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, CreateOrderPaymentMethod } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import {
@@ -18,7 +18,7 @@ import {
   QuoteLineItemDto,
 } from './dto/quote-response.dto';
 import { canTransitionOrderStatus } from './order-status.enum';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CURRENCIES } from '../../common/constants/currency';
 import { SHIPPING_COST_CENTS } from './constants';
@@ -111,6 +111,16 @@ export class OrdersService {
   async create(dto: CreateOrderDto, customerUserId?: string | null): Promise<OrderResponseDto> {
     const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
 
+    const paymentMethod =
+      dto.paymentMethod === CreateOrderPaymentMethod.BANK_DEPOSIT
+        ? PaymentMethod.BANK_DEPOSIT
+        : PaymentMethod.COD;
+    if (paymentMethod === PaymentMethod.BANK_DEPOSIT && !dto.paymentProofMediaId?.trim()) {
+      throw new BadRequestException(
+        'Payment proof (screenshot) is required when payment method is Bank Deposit.',
+      );
+    }
+
     const order = await this.prisma.order.create({
       data: {
         status: OrderStatus.PENDING,
@@ -122,8 +132,8 @@ export class OrdersService {
         shippingCountry: dto.shippingCountry?.trim() || undefined,
         shippingAddressLine1: dto.shippingAddressLine1?.trim() || undefined,
         shippingAddressLine2: dto.shippingAddressLine2?.trim() || undefined,
-        shippingCity: dto.shippingCity?.trim() || undefined,
-        shippingPostalCode: dto.shippingPostalCode?.trim() || undefined,
+        paymentMethod,
+        paymentProofMediaId: dto.paymentProofMediaId?.trim() || undefined,
         customerUserId: customerUserId ?? undefined,
         items: {
           create: orderItemsData,
@@ -356,6 +366,7 @@ export class OrdersService {
       },
       statusHistory: { orderBy: { createdAt: 'asc' as const } },
       assignedTo: { select: { id: true, name: true } },
+      paymentProof: { select: { path: true } },
     };
   }
 
@@ -379,6 +390,8 @@ export class OrdersService {
     shippingAddressLine2: string | null;
     shippingCity: string | null;
     shippingPostalCode: string | null;
+    paymentMethod: PaymentMethod;
+    paymentProof: { path: string } | null;
     assignedToUserId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -422,6 +435,8 @@ export class OrdersService {
       shippingAddressLine2: order.shippingAddressLine2 ?? null,
       shippingCity: order.shippingCity ?? null,
       shippingPostalCode: order.shippingPostalCode ?? null,
+      paymentMethod: order.paymentMethod,
+      paymentProofPath: order.paymentProof?.path ?? null,
       assignedToUserId: order.assignedToUserId,
       assignedToUserName: order.assignedTo?.name ?? null,
       items,

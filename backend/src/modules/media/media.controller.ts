@@ -55,6 +55,36 @@ export class MediaController {
     return ApiResponseDto.ok({ id }, 'File uploaded');
   }
 
+  /** Public: upload payment proof screenshot for checkout (Bank Deposit). Returns media id to send in checkout. */
+  @Public()
+  @Post('upload-payment-proof')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_SIZE },
+      fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIMES.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'), false);
+        }
+      },
+    }),
+  )
+  async uploadPaymentProof(
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+  ) {
+    if (!file) {
+      return ApiResponseDto.fail('No file provided');
+    }
+    const { id } = await this.mediaService.createFromFileForPaymentProof({
+      buffer: file.buffer,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+    return ApiResponseDto.ok({ id }, 'Payment proof uploaded');
+  }
+
   @Public()
   @Get('file/:folder/:filename')
   async serveFile(

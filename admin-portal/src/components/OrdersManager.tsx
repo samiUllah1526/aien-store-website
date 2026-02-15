@@ -29,7 +29,14 @@ export function OrdersManager() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   const orderRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  function getPaymentProofUrl(path: string | null | undefined): string | null {
+    if (!path) return null;
+    const base = getApiBaseUrl().replace(/\/$/, '');
+    return path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}media/file/${path}`;
+  }
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -97,7 +104,36 @@ export function OrdersManager() {
         onClose={() => setSelectedOrderId(null)}
         onOrderUpdated={fetchOrders}
         returnFocusRef={orderRowRef}
+        getPaymentProofUrl={getPaymentProofUrl}
+        onViewPaymentProof={(url) => setProofImageUrl(url)}
       />
+      {proofImageUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4"
+          onClick={() => setProofImageUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment proof screenshot"
+        >
+          <div className="relative max-h-[90vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={proofImageUrl}
+              alt="Payment proof"
+              className="max-h-[90vh] max-w-full rounded-lg border border-slate-200 bg-white object-contain shadow-xl dark:border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={() => setProofImageUrl(null)}
+              className="absolute -right-2 -top-2 rounded-full bg-slate-800 p-2 text-white shadow hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:bg-slate-700 dark:hover:bg-slate-600"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Orders</h1>
 
       {/* Filters */}
@@ -197,6 +233,7 @@ export function OrdersManager() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Customer</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Total</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Payment</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Assigned</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
@@ -225,6 +262,9 @@ export function OrdersManager() {
                     <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
+                    <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
@@ -245,18 +285,19 @@ export function OrdersManager() {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Order</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Customer</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Total</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Assigned</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
-                {orders.map((order) => (
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Order</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Customer</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Total</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Payment</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Assigned</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Updated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              {orders.map((order) => (
                   <tr
                     key={order.id}
                     tabIndex={0}
@@ -305,6 +346,24 @@ export function OrdersManager() {
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
                       {formatMoney(order.totalCents, order.currency ?? 'PKR')}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300" onClick={(e) => e.stopPropagation()}>
+                      {order.paymentMethod === 'BANK_DEPOSIT' ? (
+                        <span className="flex items-center gap-2">
+                          Bank deposit
+                          {order.paymentProofPath && (
+                            <button
+                              type="button"
+                              onClick={() => setProofImageUrl(getPaymentProofUrl(order.paymentProofPath) ?? null)}
+                              className="rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-100 dark:hover:bg-slate-500"
+                            >
+                              View proof
+                            </button>
+                          )}
+                        </span>
+                      ) : (
+                        'COD'
+                      )}
                     </td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <select

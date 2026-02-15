@@ -26,6 +26,9 @@ export interface OrderResponseDto {
   shippingAddressLine2: string | null;
   shippingCity: string | null;
   shippingPostalCode: string | null;
+  paymentMethod: string;
+  /** Path for payment proof image (e.g. "payment-proofs/uuid.jpg"). Build URL as baseUrl + "/media/file/" + path. */
+  paymentProofPath: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   items: OrderItemResponseDto[];

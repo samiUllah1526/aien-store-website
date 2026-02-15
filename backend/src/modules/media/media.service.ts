@@ -32,6 +32,27 @@ export class MediaService {
     return { id: media.id };
   }
 
+  /** Store payment proof image for checkout (public upload). Path: payment-proofs/uuid.ext */
+  async createFromFileForPaymentProof(
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+  ): Promise<{ id: string }> {
+    const ext = file.originalname.split('.').pop() ?? 'bin';
+    const filename = `${randomUUID()}.${ext}`;
+    const relativePath = `payment-proofs/${filename}`;
+    const fullPath = join(this.uploadDir, relativePath);
+    await mkdir(join(this.uploadDir, 'payment-proofs'), { recursive: true });
+    await writeFile(fullPath, file.buffer);
+    const media = await this.prisma.media.create({
+      data: {
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        path: relativePath,
+      },
+    });
+    return { id: media.id };
+  }
+
   async getById(id: string) {
     const media = await this.prisma.media.findUnique({ where: { id } });
     if (!media) {

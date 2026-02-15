@@ -25,6 +25,10 @@ interface OrderDetailModalProps {
   onOrderUpdated?: () => void;
   /** Ref to the element that opened the modal (for focus return). */
   returnFocusRef?: React.RefObject<HTMLElement | null>;
+  /** Build URL for payment proof image from path. */
+  getPaymentProofUrl?: (path: string | null | undefined) => string | null;
+  /** Called when user clicks "View proof" to show screenshot in parent modal. */
+  onViewPaymentProof?: (url: string) => void;
 }
 
 function getProductImageUrl(path: string | null | undefined): string | null {
@@ -38,6 +42,8 @@ export function OrderDetailModal({
   onClose,
   onOrderUpdated,
   returnFocusRef,
+  getPaymentProofUrl,
+  onViewPaymentProof,
 }: OrderDetailModalProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -221,6 +227,30 @@ export function OrderDetailModal({
                     <dt className="text-slate-500 dark:text-slate-400">Total</dt>
                     <dd className="font-medium text-slate-900 dark:text-slate-100">
                       {formatMoney(order.totalCents, order.currency ?? 'PKR')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Payment</dt>
+                    <dd className="text-slate-900 dark:text-slate-100">
+                      {order.paymentMethod === 'BANK_DEPOSIT' ? (
+                        <span className="flex items-center gap-2">
+                          Bank deposit
+                          {order.paymentProofPath && getPaymentProofUrl && onViewPaymentProof && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = getPaymentProofUrl(order.paymentProofPath);
+                                if (url) onViewPaymentProof(url);
+                              }}
+                              className="rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-100 dark:hover:bg-slate-500"
+                            >
+                              View proof
+                            </button>
+                          )}
+                        </span>
+                      ) : (
+                        'COD'
+                      )}
                     </dd>
                   </div>
                   <div>

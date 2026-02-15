@@ -13,6 +13,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
     SettingsModule,
     EmailLogsModule,
     FavoritesModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

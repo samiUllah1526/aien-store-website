@@ -34,6 +34,12 @@ enum OrderStatus {
   @@map("order_status")
 }
 
+enum PaymentMethod {
+  COD
+  BANK_DEPOSIT
+  @@map("payment_method")
+}
+
 // -----------------------------------------------------------------------------
 // RBAC: User ↔ Role (M:N), User ↔ Permission (M:N overrides), Role ↔ Permission (M:N)
 // -----------------------------------------------------------------------------
@@ -55,11 +61,31 @@ model User {
 
   roles             UserRole[]       @relation("UserRoles")
   directPermissions UserPermission[] @relation("UserDirectPermissions")
-  ordersAssigned    Order[]          @relation("AssignedOrders")
-  ordersPlaced      Order[]          @relation("CustomerOrders")
-  favorites         UserFavorite[]   @relation("UserFavorites")
+  ordersAssigned    Order[]            @relation("AssignedOrders")
+  ordersPlaced      Order[]            @relation("CustomerOrders")
+  favorites         UserFavorite[]     @relation("UserFavorites")
+  savedShipping     UserSavedShipping? @relation("UserSavedShipping")
 
   @@map("users")
+}
+
+// -----------------------------------------------------------------------------
+// Customer saved shipping: one row per user for "Save for next time" at checkout
+// -----------------------------------------------------------------------------
+model UserSavedShipping {
+  userId                 String   @id @map("user_id") @db.Uuid
+  customerName           String?  @map("customer_name")
+  customerPhone          String?  @map("customer_phone")
+  shippingCountry        String?  @map("shipping_country")
+  shippingAddressLine1   String?  @map("shipping_address_line1")
+  shippingAddressLine2   String?  @map("shipping_address_line2")
+  shippingCity           String?  @map("shipping_city")
+  shippingPostalCode     String?  @map("shipping_postal_code")
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation("UserSavedShipping", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_saved_shipping")
 }
 
 model Role {
@@ -152,7 +178,8 @@ model Media {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  productMedia ProductMedia[]
+  productMedia     ProductMedia[]
+  orderPaymentProof Order[]      @relation("OrderPaymentProof")
 
   @@map("media")
 }
@@ -242,27 +269,30 @@ model ProductMedia {
 // -----------------------------------------------------------------------------
 
 model Order {
-  id                     String       @id @default(uuid()) @db.Uuid
-  status                 OrderStatus  @default(PENDING) @map("status")
-  totalCents             Int          @map("total_cents")
-  currency               String       @default("PKR") @map("currency")
-  customerEmail          String       @map("customer_email")
-  customerName           String?      @map("customer_name")
-  customerPhone          String?      @map("customer_phone")
-  shippingCountry        String?      @map("shipping_country")
-  shippingAddressLine1   String?      @map("shipping_address_line1")
-  shippingAddressLine2   String?      @map("shipping_address_line2")
-  shippingCity            String?      @map("shipping_city")
-  shippingPostalCode     String?      @map("shipping_postal_code")
-  customerUserId         String?      @map("customer_user_id") @db.Uuid
-  assignedToUserId       String?      @map("assigned_to_user_id") @db.Uuid
-  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String         @id @default(uuid()) @db.Uuid
+  status                 OrderStatus    @default(PENDING) @map("status")
+  totalCents             Int            @map("total_cents")
+  currency               String         @default("PKR") @map("currency")
+  customerEmail          String         @map("customer_email")
+  customerName           String?        @map("customer_name")
+  customerPhone          String?        @map("customer_phone")
+  shippingCountry        String?        @map("shipping_country")
+  shippingAddressLine1   String?        @map("shipping_address_line1")
+  shippingAddressLine2   String?        @map("shipping_address_line2")
+  shippingCity           String?        @map("shipping_city")
+  shippingPostalCode     String?        @map("shipping_postal_code")
+  paymentMethod          PaymentMethod  @default(COD) @map("payment_method")
+  paymentProofMediaId    String?        @map("payment_proof_media_id") @db.Uuid
+  customerUserId         String?        @map("customer_user_id") @db.Uuid
+  assignedToUserId       String?        @map("assigned_to_user_id") @db.Uuid
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  items         OrderItem[]
-  statusHistory OrderStatusHistory[]
-  assignedTo    User?         @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  customer      User?         @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  assignedTo      User?    @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  customer        User?    @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
+  paymentProof    Media?   @relation("OrderPaymentProof", fields: [paymentProofMediaId], references: [id], onDelete: SetNull)
 
   @@map("orders")
 }

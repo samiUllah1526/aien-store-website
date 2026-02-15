@@ -1,0 +1,2 @@
+# Build and output for Astro hybrid (static + SSR).
+# The order detail page /account/orders/[id] is server-rendered.

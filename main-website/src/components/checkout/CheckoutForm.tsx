@@ -1,13 +1,16 @@
 /**
  * Checkout: Contact, Delivery, Payment. Submits order to API (guest or with JWT).
- * Order summary is driven by server quote (POST /orders/quote) so the customer
- * always sees and pays the server-authoritative total.
+ * Form validation with React Hook Form + Zod. Bank Deposit requires payment proof upload.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useCart, useCartStore } from '../../store/cartStore';
-import { api } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
+import { api, profileApi, uploadPaymentProof } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './checkoutSchema';
 
 export interface QuoteLineItem {
   productId: string;
@@ -27,31 +30,65 @@ export interface Quote {
 
 export default function CheckoutForm() {
   const { items, totalAmount, cartCurrency, hasMixedCurrencies } = useCart();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
+  const storedEmail = useAuthStore((s) => s.email);
   const [submitted, setSubmitted] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank'>('cod');
-  const [saveInfo, setSaveInfo] = useState(false);
-  const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [shippingCountry, setShippingCountry] = useState('PK');
-  const [shippingAddressLine1, setShippingAddressLine1] = useState('');
-  const [shippingAddressLine2, setShippingAddressLine2] = useState('');
-  const [shippingCity, setShippingCity] = useState('');
-  const [shippingPostalCode, setShippingPostalCode] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const hasPrefilledShipping = useRef(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: checkoutDefaultValues,
+  });
+
+  const paymentMethod = watch('paymentMethod');
+  const saveInfo = watch('saveInfo');
 
   useEffect(() => {
     const unsub = useCartStore.persist.onFinishHydration(() => setHasHydrated(true));
     if (useCartStore.persist.hasHydrated()) setHasHydrated(true);
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (storedEmail) setValue('email', storedEmail);
+  }, [storedEmail, setValue]);
+
+  useEffect(() => {
+    if (!hasHydrated || !isLoggedIn || hasPrefilledShipping.current) return;
+    hasPrefilledShipping.current = true;
+    profileApi
+      .getShipping()
+      .then((saved) => {
+        if (!saved) return;
+        if (saved.customerName) {
+          const parts = saved.customerName.trim().split(/\s+/);
+          setValue('firstName', parts[0] ?? '');
+          setValue('lastName', parts.slice(1).join(' ') ?? '');
+        }
+        if (saved.customerPhone) setValue('phone', saved.customerPhone);
+        if (saved.shippingCountry) setValue('shippingCountry', saved.shippingCountry);
+        if (saved.shippingAddressLine1) setValue('shippingAddressLine1', saved.shippingAddressLine1);
+        if (saved.shippingAddressLine2) setValue('shippingAddressLine2', saved.shippingAddressLine2 ?? '');
+        if (saved.shippingCity) setValue('shippingCity', saved.shippingCity);
+        if (saved.shippingPostalCode) setValue('shippingPostalCode', saved.shippingPostalCode ?? '');
+      })
+      .catch(() => {
+        hasPrefilledShipping.current = false;
+      });
+  }, [hasHydrated, isLoggedIn, setValue]);
 
   useEffect(() => {
     if (!hasHydrated || items.length === 0) {
@@ -80,62 +117,77 @@ export default function CheckoutForm() {
   const subtotal = quote?.subtotalCents ?? totalAmount;
   const shippingCents = quote?.shippingCents ?? 0;
   const total = quote ? quote.totalCents : totalAmount + 299;
-
   const pricesUpdated =
     quote != null && totalAmount > 0 && quote.subtotalCents !== totalAmount;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setFormError('Email is required');
-      return;
-    }
-    const trimmedPhone = phone.trim();
-    if (!trimmedPhone) {
-      setFormError('Phone is required');
-      return;
-    }
-    const trimmedFirstName = firstName.trim();
-    if (!trimmedFirstName) {
-      setFormError('First name is required');
-      return;
-    }
+  const onSubmit = async (data: CheckoutFormData) => {
     if (items.length === 0) {
-      setFormError('Cart is empty');
+      setError('root', { message: 'Cart is empty' });
       return;
     }
     if (hasMixedCurrencies) {
-      setFormError('All items must be in the same currency. Please use one currency per order.');
+      setError('root', {
+        message: 'All items must be in the same currency. Please use one currency per order.',
+      });
       return;
     }
-    setSubmitting(true);
+    clearErrors('root');
+
+    let paymentProofMediaId: string | undefined;
+    if (data.paymentMethod === 'bank' && data.paymentProof?.length && data.paymentProof[0]) {
+      try {
+        paymentProofMediaId = await uploadPaymentProof(data.paymentProof[0]);
+      } catch (err) {
+        setError('paymentProof', {
+          message: err instanceof Error ? err.message : 'Upload failed. Please try again.',
+        });
+        return;
+      }
+    }
+
+    const customerName = [data.firstName.trim(), data.lastName?.trim()].filter(Boolean).join(' ').trim() || undefined;
     try {
-      const customerName = [trimmedFirstName, lastName.trim()].filter(Boolean).join(' ').trim() || undefined;
       const res = await api.post<{ id: string }>('/orders/checkout', {
-        customerEmail: trimmedEmail,
+        customerEmail: data.email.trim(),
         customerName,
-        customerPhone: trimmedPhone,
-        shippingCountry: shippingCountry.trim() || undefined,
-        shippingAddressLine1: shippingAddressLine1.trim() || undefined,
-        shippingAddressLine2: shippingAddressLine2.trim() || undefined,
-        shippingCity: shippingCity.trim() || undefined,
-        shippingPostalCode: shippingPostalCode.trim() || undefined,
+        customerPhone: data.phone.trim(),
+        shippingCountry: data.shippingCountry?.trim() || undefined,
+        shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
+        shippingAddressLine2: data.shippingAddressLine2?.trim() || undefined,
+        shippingCity: data.shippingCity?.trim() || undefined,
+        shippingPostalCode: data.shippingPostalCode?.trim() || undefined,
+        paymentMethod: data.paymentMethod === 'bank' ? 'BANK_DEPOSIT' : 'COD',
+        paymentProofMediaId: paymentProofMediaId || undefined,
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
       setOrderId(res.data?.id ?? null);
       setSubmitted(true);
+      if (data.saveInfo && useAuthStore.getState().isLoggedIn()) {
+        profileApi
+          .saveShipping({
+            customerName,
+            customerPhone: data.phone.trim(),
+            shippingCountry: data.shippingCountry?.trim() || undefined,
+            shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
+            shippingAddressLine2: data.shippingAddressLine2?.trim() || undefined,
+            shippingCity: data.shippingCity?.trim() || undefined,
+            shippingPostalCode: data.shippingPostalCode?.trim() || undefined,
+          })
+          .catch(() => {});
+      }
       items.forEach((item) => useCartStore.getState().removeItem(item.productId, item.size));
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
       const text = Array.isArray(msg) ? msg[0] : msg;
-      setFormError(text ?? (err instanceof Error ? err.message : 'Order failed. Please try again.'));
-    } finally {
-      setSubmitting(false);
+      setError('root', {
+        message: text ?? (err instanceof Error ? err.message : 'Order failed. Please try again.'),
+      });
     }
   };
+
+  const inputClass =
+    'rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50';
+  const inputErrorClass = 'border-red-500 dark:border-red-400';
 
   if (!hasHydrated) {
     return (
@@ -147,10 +199,7 @@ export default function CheckoutForm() {
     return (
       <div className="py-12 text-center text-charcoal/70 dark:text-cream/70">
         <p>Your cart is empty.</p>
-        <a
-          href="/shop"
-          className="mt-4 inline-block text-emerald hover:text-emerald-light font-medium"
-        >
+        <a href="/shop" className="mt-4 inline-block text-emerald hover:text-emerald-light font-medium">
           Continue shopping
         </a>
       </div>
@@ -163,17 +212,12 @@ export default function CheckoutForm() {
         <p className="font-display text-xl text-ink dark:text-cream">Thank you.</p>
         <p className="mt-2 text-charcoal/80 dark:text-cream/80">
           Your order has been placed.
-          {orderId && (
-            <span className="block mt-1 text-sm">Order ID: {orderId}</span>
-          )}
+          {orderId && <span className="block mt-1 text-sm">Order ID: {orderId}</span>}
         </p>
         <p className="mt-3 text-sm text-charcoal/70 dark:text-cream/70">
-          Payment method: {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Bank Transfer'}
+          Payment method: {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Bank Deposit'}
         </p>
-        <a
-          href="/shop"
-          className="mt-6 inline-block text-emerald hover:text-emerald-light font-medium"
-        >
+        <a href="/shop" className="mt-6 inline-block text-emerald hover:text-emerald-light font-medium">
           Back to shop
         </a>
       </div>
@@ -181,130 +225,136 @@ export default function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="lg:grid lg:grid-cols-[1fr,380px] lg:gap-12 xl:gap-16">
-      {formError && (
+    <form onSubmit={handleSubmit(onSubmit)} className="lg:grid lg:grid-cols-[1fr,380px] lg:gap-12 xl:gap-16">
+      {errors.root && (
         <div className="col-span-full rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-red-800 dark:text-red-300 text-sm">
-          {formError}
+          {errors.root.message}
         </div>
       )}
-      {/* Left: form sections */}
       <div className="space-y-10">
-        {/* Contact */}
         <section>
           <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Contact</h2>
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                required
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-              />
-              <a
-                href="/login"
-                className="text-sm text-emerald hover:text-emerald-light self-center sm:self-auto"
-              >
+              <div className="flex-1">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  {...register('email')}
+                  className={`w-full ${inputClass} ${errors.email ? inputErrorClass : ''}`}
+                />
+                {errors.email && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email.message}</p>
+                )}
+              </div>
+              <a href="/login" className="text-sm text-emerald hover:text-emerald-light self-center sm:self-auto">
                 Sign in
               </a>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                type="text"
-                required
-                placeholder="First name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-              />
-              <input
-                type="text"
-                placeholder="Last name (optional)"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="First name"
+                  {...register('firstName')}
+                  className={`w-full ${inputClass} ${errors.firstName ? inputErrorClass : ''}`}
+                />
+                {errors.firstName && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.firstName.message}</p>
+                )}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Last name (optional)"
+                  {...register('lastName')}
+                  className={`w-full ${inputClass}`}
+                />
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Delivery */}
         <section>
           <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Delivery</h2>
           <div className="space-y-3">
-            <select
-              required
-              value={shippingCountry}
-              onChange={(e) => setShippingCountry(e.target.value)}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-            >
-              <option value="PK">Pakistan</option>
-            </select>
-            <input
-              type="text"
-              required
-              placeholder="Address"
-              value={shippingAddressLine1}
-              onChange={(e) => setShippingAddressLine1(e.target.value)}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-            />
-            <input
-              type="text"
-              placeholder="Apartment, suite, etc. (optional)"
-              value={shippingAddressLine2}
-              onChange={(e) => setShippingAddressLine2(e.target.value)}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-            />
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <select {...register('shippingCountry')} className={`w-full ${inputClass}`}>
+                <option value="PK">Pakistan</option>
+              </select>
+            </div>
+            <div>
               <input
                 type="text"
-                required
-                placeholder="City"
-                value={shippingCity}
-                onChange={(e) => setShippingCity(e.target.value)}
-                className="rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+                placeholder="Address"
+                {...register('shippingAddressLine1')}
+                className={`w-full ${inputClass} ${errors.shippingAddressLine1 ? inputErrorClass : ''}`}
               />
+              {errors.shippingAddressLine1 && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.shippingAddressLine1.message}</p>
+              )}
+            </div>
+            <div>
               <input
                 type="text"
-                placeholder="Postal code (optional)"
-                value={shippingPostalCode}
-                onChange={(e) => setShippingPostalCode(e.target.value)}
-                className="rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+                placeholder="Apartment, suite, etc. (optional)"
+                {...register('shippingAddressLine2')}
+                className={`w-full ${inputClass}`}
               />
             </div>
-            <input
-              type="tel"
-              required
-              placeholder="Phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
-            />
-            <label className="flex items-center gap-2 text-sm text-charcoal dark:text-cream/90 cursor-pointer">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <input
+                  type="text"
+                  placeholder="City"
+                  {...register('shippingCity')}
+                  className={`w-full ${inputClass} ${errors.shippingCity ? inputErrorClass : ''}`}
+                />
+                {errors.shippingCity && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.shippingCity.message}</p>
+                )}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Postal code (optional)"
+                  {...register('shippingPostalCode')}
+                  className={`w-full ${inputClass}`}
+                />
+              </div>
+            </div>
+            <div>
               <input
-                type="checkbox"
-                checked={saveInfo}
-                onChange={(e) => setSaveInfo(e.target.checked)}
-                className="rounded border-sand dark:border-charcoal-light text-emerald focus:ring-emerald/50"
+                type="tel"
+                placeholder="Phone"
+                {...register('phone')}
+                className={`w-full ${inputClass} ${errors.phone ? inputErrorClass : ''}`}
               />
-              Save this information for next time
-            </label>
+              {errors.phone && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.phone.message}</p>
+              )}
+            </div>
+            {isLoggedIn && (
+              <label className="flex items-center gap-2 text-sm text-charcoal dark:text-cream/90 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('saveInfo')}
+                  className="rounded border-sand dark:border-charcoal-light text-emerald focus:ring-emerald/50"
+                />
+                Save this information for next time
+              </label>
+            )}
           </div>
         </section>
 
-        {/* Shipping method */}
         <section>
           <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Shipping method</h2>
-          <label className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3 cursor-pointer hover:border-charcoal/30 dark:hover:border-cream/30 transition-colors">
+          <div className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3">
             <span className="text-charcoal dark:text-cream">Standard Delivery</span>
-            <span className="text-charcoal/80 dark:text-cream/80">
-              {formatMoney(shippingCents, currency)}
-            </span>
-          </label>
+            <span className="text-charcoal/80 dark:text-cream/80">{formatMoney(shippingCents, currency)}</span>
+          </div>
         </section>
 
-        {/* Payment */}
         <section>
           <h2 className="font-display text-lg text-ink dark:text-cream mb-2">Payment</h2>
           <p className="text-sm text-charcoal/70 dark:text-cream/70 mb-4">
@@ -312,42 +362,43 @@ export default function CheckoutForm() {
           </p>
           <div className="space-y-3">
             <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3 cursor-pointer">
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'cod'}
-                onChange={() => setPaymentMethod('cod')}
-                className="text-emerald focus:ring-emerald/50"
-              />
+              <input type="radio" value="cod" {...register('paymentMethod')} className="text-emerald focus:ring-emerald/50" />
               <span className="text-charcoal dark:text-cream">Cash on Delivery (COD)</span>
             </label>
             <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3 cursor-pointer">
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'bank'}
-                onChange={() => setPaymentMethod('bank')}
-                className="text-emerald focus:ring-emerald/50"
-              />
+              <input type="radio" value="bank" {...register('paymentMethod')} className="text-emerald focus:ring-emerald/50" />
               <span className="text-charcoal dark:text-cream">Bank Deposit</span>
             </label>
             {paymentMethod === 'bank' && (
-              <div className="rounded-lg border border-sand dark:border-charcoal-light bg-sand/30 dark:bg-charcoal-light/30 p-4 text-sm text-charcoal dark:text-cream/90 space-y-2 animate-fade-in">
+              <div className="rounded-lg border border-sand dark:border-charcoal-light bg-sand/30 dark:bg-charcoal-light/30 p-4 text-sm text-charcoal dark:text-cream/90 space-y-3 animate-fade-in">
                 <p className="font-medium text-ink dark:text-cream">Bank account details</p>
                 <p><span className="text-charcoal/70 dark:text-cream/70">Bank name:</span> Adab Commerce Bank</p>
                 <p><span className="text-charcoal/70 dark:text-cream/70">Account title:</span> Adab Clothing (Pvt) Ltd</p>
                 <p><span className="text-charcoal/70 dark:text-cream/70">Account number:</span> 01234567890</p>
                 <p><span className="text-charcoal/70 dark:text-cream/70">IBAN:</span> PK00ADAB00000000001234567890</p>
                 <p className="pt-2 text-charcoal/70 dark:text-cream/70">
-                  After transferring, share the transaction ID in the order notes or via email.
+                  After transferring, upload a screenshot of your payment as proof.
                 </p>
+                <div>
+                  <label className="block text-sm font-medium text-ink dark:text-cream mb-1">
+                    Payment proof (screenshot) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    {...register('paymentProof')}
+                    className={`block w-full text-sm text-charcoal dark:text-cream file:mr-3 file:rounded file:border-0 file:bg-emerald file:px-3 file:py-2 file:text-sm file:text-cream file:hover:opacity-90 ${errors.paymentProof ? 'border-red-500' : ''}`}
+                  />
+                  {errors.paymentProof && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.paymentProof.message}</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </section>
       </div>
 
-      {/* Right: order summary (server quote = source of truth) */}
       <div className="mt-10 lg:mt-0">
         <div className="lg:sticky lg:top-24 rounded-lg border border-sand dark:border-charcoal-light bg-sand/20 dark:bg-charcoal-light/20 p-6">
           <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Order summary</h2>
@@ -371,9 +422,7 @@ export default function CheckoutForm() {
                             />
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-ink dark:text-cream text-sm truncate">
-                              {line.productName}
-                            </p>
+                            <p className="font-medium text-ink dark:text-cream text-sm truncate">{line.productName}</p>
                             <p className="text-xs text-charcoal/70 dark:text-cream/70">
                               {cartItem ? `${cartItem.size} × ` : ''}{line.quantity}
                             </p>
@@ -386,14 +435,12 @@ export default function CheckoutForm() {
                     })
                   : items.map((item) => (
                       <li key={`${item.productId}-${item.size}`} className="flex gap-3">
-                        <img
-                          src={item.image}
-                          alt=""
-                          className="w-14 h-14 object-cover rounded bg-sand dark:bg-charcoal shrink-0"
-                        />
+                        <img src={item.image} alt="" className="w-14 h-14 object-cover rounded bg-sand dark:bg-charcoal shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-ink dark:text-cream text-sm truncate">{item.name}</p>
-                          <p className="text-xs text-charcoal/70 dark:text-cream/70">{item.size} × {item.quantity}</p>
+                          <p className="text-xs text-charcoal/70 dark:text-cream/70">
+                            {item.size} × {item.quantity}
+                          </p>
                         </div>
                         <p className="text-sm text-charcoal dark:text-cream shrink-0">
                           {formatMoney(item.price * item.quantity, item.currency)}
@@ -429,10 +476,10 @@ export default function CheckoutForm() {
           )}
           <button
             type="submit"
-            disabled={submitting || hasMixedCurrencies || !!quoteError || quoteLoading || (items.length > 0 && !quote)}
+            disabled={isSubmitting || hasMixedCurrencies || !!quoteError || quoteLoading || (items.length > 0 && !quote)}
             className="w-full mt-6 py-3 bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink disabled:opacity-60"
           >
-            {submitting ? 'Placing order…' : 'Place order'}
+            {isSubmitting ? 'Placing order…' : 'Place order'}
           </button>
         </div>
       </div>

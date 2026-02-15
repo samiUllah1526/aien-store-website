@@ -85,6 +85,8 @@ export interface Order {
   shippingAddressLine2: string | null;
   shippingCity: string | null;
   shippingPostalCode: string | null;
+  paymentMethod: string;
+  paymentProofPath: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   items: OrderItem[];

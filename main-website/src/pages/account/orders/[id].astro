@@ -1,6 +1,11 @@
 ---
+/**
+ * Order detail by ID. Rendered on demand (SSR) so any order URL works without build-time paths.
+ */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import OrderDetailPage from '../../../components/account/OrderDetailPage';
+
+export const prerender = false;
 
 const { id } = Astro.params;
 ---

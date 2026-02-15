@@ -5,9 +5,16 @@ import {
   ValidateNested,
   IsOptional,
   IsNotEmpty,
+  IsEnum,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
+
+export enum CreateOrderPaymentMethod {
+  COD = 'COD',
+  BANK_DEPOSIT = 'BANK_DEPOSIT',
+}
 
 export class CreateOrderDto {
   @IsEmail()
@@ -20,6 +27,15 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   customerName?: string;
+
+  @IsOptional()
+  @IsEnum(CreateOrderPaymentMethod)
+  paymentMethod?: CreateOrderPaymentMethod;
+
+  /** Required when paymentMethod is BANK_DEPOSIT. */
+  @IsOptional()
+  @IsUUID()
+  paymentProofMediaId?: string;
 
   @IsOptional()
   @IsString()

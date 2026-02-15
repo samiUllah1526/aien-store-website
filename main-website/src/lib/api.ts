@@ -77,9 +77,36 @@ export const api = {
   post<T>(path: string, body: unknown) {
     return request<ApiSingleResponse<T>>(path, { method: 'POST', body: JSON.stringify(body) });
   },
+  put<T>(path: string, body: unknown) {
+    return request<ApiSingleResponse<T>>(path, { method: 'PUT', body: JSON.stringify(body) });
+  },
   delete<T>(path: string) {
     return request<ApiSingleResponse<T>>(path, { method: 'DELETE' });
   },
+};
+
+/** Saved shipping for checkout "Save for next time" (requires auth). */
+export interface SavedShippingDto {
+  customerName: string | null;
+  customerPhone: string | null;
+  shippingCountry: string | null;
+  shippingAddressLine1: string | null;
+  shippingAddressLine2: string | null;
+  shippingCity: string | null;
+  shippingPostalCode: string | null;
+}
+
+export const profileApi = {
+  getShipping: () => api.get<SavedShippingDto | null>('/profile/shipping').then((r) => r.data ?? null),
+  saveShipping: (body: {
+    customerName?: string;
+    customerPhone?: string;
+    shippingCountry?: string;
+    shippingAddressLine1?: string;
+    shippingAddressLine2?: string;
+    shippingCity?: string;
+    shippingPostalCode?: string;
+  }) => api.put<SavedShippingDto>('/profile/shipping', body).then((r) => r.data),
 };
 
 /** Customer favorites (requires auth). */
@@ -89,6 +116,26 @@ export const favoritesApi = {
   add: (productId: string) => api.post<{ added: boolean }>('/favorites/' + productId, {}),
   remove: (productId: string) => api.delete<{ removed: boolean }>('/favorites/' + productId),
 };
+
+/** Upload payment proof image for Bank Deposit (public). Returns media id to send in checkout. */
+export async function uploadPaymentProof(file: File): Promise<string> {
+  const base = getApiBaseUrl().replace(/\/$/, '');
+  const url = `${base}/media/upload-payment-proof`;
+  const form = new FormData();
+  form.append('file', file);
+  const token = getStoreToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { method: 'POST', body: form, headers });
+  const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: { id: string }; message?: string };
+  if (res.status === 401) {
+    useAuthStore.getState().clearAuth();
+    throw new Error(json.message || 'Unauthorized');
+  }
+  if (!res.ok) throw new Error(json.message || `Upload failed (${res.status})`);
+  if (!json.data?.id) throw new Error('No media id returned');
+  return json.data.id;
+}
 
 /** Customer order history (requires auth). */
 export const ordersApi = {
