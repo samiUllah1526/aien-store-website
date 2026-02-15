@@ -1,0 +1,8 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { EmailLogsManager } from '../../components/EmailLogsManager';
+---
+
+<AdminLayout title="Email Logs">
+  <EmailLogsManager client:load />
+</AdminLayout>
