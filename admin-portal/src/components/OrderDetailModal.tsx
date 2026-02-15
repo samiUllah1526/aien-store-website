@@ -49,6 +49,9 @@ export function OrderDetailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [courierServiceName, setCourierServiceName] = useState('');
+  const [trackingId, setTrackingId] = useState('');
+  const [savingCourier, setSavingCourier] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -59,8 +62,11 @@ export function OrderDetailModal({
     setError(null);
     try {
       const res = await api.get<Order>(`/orders/${id}`);
-      if (res.data) setOrder(res.data);
-      else setError('Order not found');
+      if (res.data) {
+        setOrder(res.data);
+        setCourierServiceName(res.data.courierServiceName ?? '');
+        setTrackingId(res.data.trackingId ?? '');
+      } else setError('Order not found');
     } catch (err) {
       setOrder(null);
       setError(err instanceof Error ? err.message : 'Failed to load order');
@@ -126,6 +132,22 @@ export function OrderDetailModal({
       onOrderUpdated?.();
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleSaveCourier = async () => {
+    if (!order) return;
+    setSavingCourier(true);
+    try {
+      await api.put<Order>(`/orders/${order.id}`, {
+        status: order.status,
+        courierServiceName: courierServiceName.trim() || null,
+        trackingId: trackingId.trim() || null,
+      });
+      await fetchOrder(order.id);
+      onOrderUpdated?.();
+    } finally {
+      setSavingCourier(false);
     }
   };
 
@@ -300,6 +322,47 @@ export function OrderDetailModal({
                     </div>
                   )}
                 </dl>
+              </section>
+
+              {/* Courier & tracking (admin can edit) */}
+              <section>
+                <h3 className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">Courier & tracking</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="order-courier-name" className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                      Courier service
+                    </label>
+                    <input
+                      id="order-courier-name"
+                      type="text"
+                      value={courierServiceName}
+                      onChange={(e) => setCourierServiceName(e.target.value)}
+                      placeholder="e.g. TCS, Leopards"
+                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="order-tracking-id" className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                      Tracking ID
+                    </label>
+                    <input
+                      id="order-tracking-id"
+                      type="text"
+                      value={trackingId}
+                      onChange={(e) => setTrackingId(e.target.value)}
+                      placeholder="e.g. 1234567890"
+                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveCourier}
+                  disabled={savingCourier}
+                  className="mt-2 rounded-lg bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
+                >
+                  {savingCourier ? 'Saving…' : 'Save courier & tracking'}
+                </button>
               </section>
 
               {/* Items */}

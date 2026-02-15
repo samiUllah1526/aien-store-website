@@ -9,4 +9,12 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   assignedToUserId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  courierServiceName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  trackingId?: string | null;
 }

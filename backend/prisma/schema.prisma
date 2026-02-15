@@ -288,6 +288,8 @@ model Order {
   shippingPostalCode     String?        @map("shipping_postal_code")
   paymentMethod          PaymentMethod  @default(COD) @map("payment_method")
   paymentProofMediaId    String?        @map("payment_proof_media_id") @db.Uuid
+  courierServiceName     String?        @map("courier_service_name")
+  trackingId             String?        @map("tracking_id")
   customerUserId         String?        @map("customer_user_id") @db.Uuid
   assignedToUserId       String?        @map("assigned_to_user_id") @db.Uuid
   createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)

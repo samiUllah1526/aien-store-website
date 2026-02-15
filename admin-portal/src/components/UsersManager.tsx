@@ -327,6 +327,8 @@ interface UserFormModalProps {
 }
 
 function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) {
+  const [firstName, setFirstName] = useState(user?.firstName ?? user?.name?.split(' ')[0] ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '');
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
@@ -338,6 +340,8 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setFirstName(user?.firstName ?? user?.name?.split(' ')[0] ?? '');
+    setLastName(user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '');
     setName(user?.name ?? '');
     setEmail(user?.email ?? '');
     setPassword('');
@@ -367,9 +371,12 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
     }
     setSubmitting(true);
     try {
+      const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ').trim() || name.trim();
       if (user) {
-        const body: { name?: string; password?: string; status?: string; roleIds?: string[] } = {
-          name,
+        const body: { firstName?: string; lastName?: string; name?: string; password?: string; status?: string; roleIds?: string[] } = {
+          firstName: firstName.trim() || undefined,
+          lastName: lastName.trim() || undefined,
+          name: displayName,
           status,
           roleIds: Array.from(selectedRoleIds),
         };
@@ -377,7 +384,9 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
         await api.put<User>(`/users/${user.id}`, body);
       } else {
         await api.post<User>('/users', {
-          name,
+          name: displayName,
+          firstName: firstName.trim() || undefined,
+          lastName: lastName.trim() || undefined,
           email,
           password,
           status,
@@ -409,18 +418,31 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
           {error && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">{error}</div>
           )}
-          <div>
-            <label htmlFor="user-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Name
-            </label>
-            <input
-              id="user-name"
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="user-first-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                First name
+              </label>
+              <input
+                id="user-first-name"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              />
+            </div>
+            <div>
+              <label htmlFor="user-last-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Last name
+              </label>
+              <input
+                id="user-last-name"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="user-email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">

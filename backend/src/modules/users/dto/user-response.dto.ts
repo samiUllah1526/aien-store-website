@@ -6,6 +6,8 @@ export interface UserRoleDto {
 export interface UserResponseDto {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   status: string;
   lastLoginAt: string | null;

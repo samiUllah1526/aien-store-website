@@ -31,6 +31,8 @@ export interface OrderResponseDto {
   paymentMethod: string;
   /** Path for payment proof image (e.g. "payment-proofs/uuid.jpg"). Build URL as baseUrl + "/media/file/" + path. */
   paymentProofPath: string | null;
+  courierServiceName: string | null;
+  trackingId: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   items: OrderItemResponseDto[];

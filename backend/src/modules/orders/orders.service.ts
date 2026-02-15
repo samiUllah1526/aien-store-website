@@ -21,14 +21,22 @@ import { canTransitionOrderStatus } from './order-status.enum';
 import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CURRENCIES } from '../../common/constants/currency';
-import { SHIPPING_COST_CENTS } from './constants';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly settingsService: SettingsService,
   ) {}
+
+  /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
+  private async getDeliveryChargesCents(): Promise<number> {
+    const delivery = await this.settingsService.getByKey('delivery');
+    const cents = (delivery as { deliveryChargesCents?: number } | null)?.deliveryChargesCents;
+    return typeof cents === 'number' && cents >= 0 ? cents : 0;
+  }
 
   /**
    * Single source of truth for order totals. Computes from DB only; no client-supplied amounts.
@@ -98,11 +106,12 @@ export class OrdersService {
   /** Returns server-computed quote (no order created). All amounts from DB. */
   async quote(items: Array<{ productId: string; quantity: number }>): Promise<QuoteResponseDto> {
     const { quoteItems, subtotalCents, currency } = await this.computeOrderFromItems(items);
-    const totalCents = subtotalCents + SHIPPING_COST_CENTS;
+    const shippingCents = await this.getDeliveryChargesCents();
+    const totalCents = subtotalCents + shippingCents;
     return {
       items: quoteItems,
       subtotalCents,
-      shippingCents: SHIPPING_COST_CENTS,
+      shippingCents,
       totalCents,
       currency,
     };
@@ -110,6 +119,8 @@ export class OrdersService {
 
   async create(dto: CreateOrderDto, customerUserId?: string | null): Promise<OrderResponseDto> {
     const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
+    const deliveryCents = await this.getDeliveryChargesCents();
+    const totalCents = subtotalCents + deliveryCents;
 
     const paymentMethod =
       dto.paymentMethod === CreateOrderPaymentMethod.BANK_DEPOSIT
@@ -127,7 +138,7 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         status: OrderStatus.PENDING,
-        totalCents: subtotalCents,
+        totalCents,
         currency,
         customerEmail: dto.customerEmail,
         customerFirstName,
@@ -191,12 +202,38 @@ export class OrdersService {
   async findAll(
     query: OrderQueryDto,
   ): Promise<{ data: OrderResponseDto[]; total: number }> {
-    const { page = 1, limit = 20, status, customerEmail, dateFrom, dateTo, assignedToUserId } = query;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      orderId,
+      customerEmail,
+      totalMinCents,
+      totalMaxCents,
+      dateFrom,
+      dateTo,
+      assignedToUserId,
+    } = query;
     const skip = (page - 1) * limit;
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status;
-    if (customerEmail) {
-      where.customerEmail = { equals: customerEmail, mode: 'insensitive' };
+    if (orderId?.trim()) {
+      const pattern = `%${orderId.trim()}%`;
+      const matching = await this.prisma.$queryRaw<[{ id: string }]>`
+        SELECT id FROM orders WHERE id::text LIKE ${pattern}
+      `;
+      const ids = matching.map((r) => r.id);
+      where.id = { in: ids };
+    }
+    if (customerEmail?.trim()) {
+      where.customerEmail = { contains: customerEmail.trim(), mode: 'insensitive' };
+    }
+    if (totalMinCents != null && totalMaxCents != null && totalMinCents >= 0 && totalMaxCents >= 0) {
+      where.totalCents = { gte: totalMinCents, lte: totalMaxCents };
+    } else if (totalMinCents != null && totalMinCents >= 0) {
+      where.totalCents = { gte: totalMinCents };
+    } else if (totalMaxCents != null && totalMaxCents >= 0) {
+      where.totalCents = { lte: totalMaxCents };
     }
     if (dateFrom || dateTo) {
       where.createdAt = {};
@@ -295,6 +332,9 @@ export class OrdersService {
         create: { status: dto.status },
       };
     }
+
+    if (dto.courierServiceName !== undefined) updates.courierServiceName = dto.courierServiceName;
+    if (dto.trackingId !== undefined) updates.trackingId = dto.trackingId;
 
     if (dto.assignedToUserId !== undefined) {
       if (dto.assignedToUserId) {
@@ -399,6 +439,8 @@ export class OrdersService {
     shippingPostalCode: string | null;
     paymentMethod: PaymentMethod;
     paymentProof: { path: string } | null;
+    courierServiceName: string | null;
+    trackingId: string | null;
     assignedToUserId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -446,6 +488,8 @@ export class OrdersService {
       shippingPostalCode: order.shippingPostalCode ?? null,
       paymentMethod: order.paymentMethod,
       paymentProofPath: order.paymentProof?.path ?? null,
+      courierServiceName: order.courierServiceName ?? null,
+      trackingId: order.trackingId ?? null,
       assignedToUserId: order.assignedToUserId,
       assignedToUserName: order.assignedTo?.name ?? null,
       items,

@@ -20,9 +20,29 @@ export class OrderQueryDto {
   @IsEnum(OrderStatus)
   status?: OrderStatus;
 
+  /** Exact order ID (UUID) to find a single order. */
+  @IsOptional()
+  @IsString()
+  orderId?: string;
+
+  /** Search customer email (partial match, case-insensitive). */
   @IsOptional()
   @IsString()
   customerEmail?: string;
+
+  /** Filter orders with totalCents >= this value. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  totalMinCents?: number;
+
+  /** Filter orders with totalCents <= this value. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  totalMaxCents?: number;
 
   @IsOptional()
   @IsDateString()

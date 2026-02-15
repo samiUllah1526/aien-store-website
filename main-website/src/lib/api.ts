@@ -154,6 +154,8 @@ export interface OrderDto {
   customerEmail: string;
   customerName: string | null;
   customerPhone: string | null;
+  courierServiceName: string | null;
+  trackingId: string | null;
   shippingCountry: string | null;
   shippingAddressLine1: string | null;
   shippingAddressLine2: string | null;

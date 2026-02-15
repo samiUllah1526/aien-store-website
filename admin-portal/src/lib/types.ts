@@ -89,6 +89,8 @@ export interface Order {
   shippingPostalCode: string | null;
   paymentMethod: string;
   paymentProofPath: string | null;
+  courierServiceName: string | null;
+  trackingId: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   items: OrderItem[];
@@ -109,6 +111,8 @@ export interface UserRoleDto {
 export interface User {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   status: string;
   lastLoginAt: string | null;

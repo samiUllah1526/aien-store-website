@@ -28,11 +28,17 @@ export interface SocialValue {
   youtubeVisible?: boolean;
 }
 
+export interface DeliveryValue {
+  deliveryChargesCents?: number;
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
+  /** Delivery charges in cents. 0 = free delivery. */
+  deliveryChargesCents: number;
 }
 
 @Injectable()
@@ -74,21 +80,28 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social] = await Promise.all([
+    const [general, about, footer, social, delivery] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
       this.getByKey('social'),
+      this.getByKey('delivery'),
     ]);
 
     const generalVal = general as GeneralValue | null;
     const logoPath = await this.resolveLogoPath(generalVal?.logoMediaId ?? null);
+    const deliveryVal = delivery as DeliveryValue | null;
+    const deliveryChargesCents =
+      typeof deliveryVal?.deliveryChargesCents === 'number' && deliveryVal.deliveryChargesCents >= 0
+        ? deliveryVal.deliveryChargesCents
+        : 0;
 
     return {
       logoPath,
       about: (about as AboutValue) ?? {},
       footer: (footer as FooterValue) ?? {},
       social: (social as SocialValue) ?? {},
+      deliveryChargesCents,
     };
   }
 }

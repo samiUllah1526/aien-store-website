@@ -124,6 +124,7 @@ async function main() {
       key: 'social',
       value: { facebook: '', instagram: '', twitter: '', youtube: '' },
     },
+    { key: 'delivery', value: { deliveryChargesCents: 0 } },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -132,7 +133,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery).');
 }
 
 main()

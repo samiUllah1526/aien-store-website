@@ -171,6 +171,26 @@ export default function OrderDetailPage({ orderId }: { orderId: string }) {
         </div>
       )}
 
+      {(order.courierServiceName || order.trackingId) && (
+        <div className="rounded-xl border border-sand dark:border-charcoal-light bg-white dark:bg-charcoal/30 p-4 shadow-soft">
+          <h3 className="font-medium text-ink dark:text-cream mb-2">Shipping & tracking</h3>
+          <dl className="space-y-1 text-sm">
+            {order.courierServiceName && (
+              <div>
+                <dt className="text-charcoal/70 dark:text-cream/70">Courier</dt>
+                <dd className="font-medium text-ink dark:text-cream">{order.courierServiceName}</dd>
+              </div>
+            )}
+            {order.trackingId && (
+              <div>
+                <dt className="text-charcoal/70 dark:text-cream/70">Tracking ID</dt>
+                <dd className="font-medium text-ink dark:text-cream font-mono">{order.trackingId}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
       <a
         href="/account/orders"
         className="inline-block text-sm font-medium text-emerald hover:underline"

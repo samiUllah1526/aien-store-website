@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import type { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import type {
   UserResponseDto,
@@ -80,9 +81,17 @@ export class UsersService {
       await this.validateRoleIds(dto.roleIds);
     }
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    const firstName = dto.firstName?.trim() || null;
+    const lastName = dto.lastName?.trim() || null;
+    const name =
+      dto.name?.trim() ||
+      [firstName, lastName].filter(Boolean).join(' ').trim() ||
+      dto.email;
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
+        name,
+        firstName,
+        lastName,
         email: dto.email,
         passwordHash,
         status: (dto.status as UserStatus) ?? UserStatus.ACTIVE,
@@ -111,6 +120,13 @@ export class UsersService {
     }
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
+    if (dto.firstName !== undefined) data.firstName = dto.firstName.trim() || null;
+    if (dto.lastName !== undefined) data.lastName = dto.lastName.trim() || null;
+    if (dto.firstName !== undefined || dto.lastName !== undefined) {
+      const first = (dto.firstName ?? user.firstName)?.trim() || '';
+      const last = (dto.lastName ?? user.lastName)?.trim() || '';
+      data.name = [first, last].filter(Boolean).join(' ').trim() || user.name;
+    }
     if (dto.status !== undefined) data.status = dto.status as UserStatus;
     if (dto.password !== undefined) {
       data.passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
@@ -130,6 +146,14 @@ export class UsersService {
       include: { roles: { include: { role: true } } },
     });
     return this.toResponseDto(updated);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserResponseDto> {
+    return this.update(userId, {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      password: dto.password,
+    });
   }
 
   async remove(id: string): Promise<void> {
@@ -163,6 +187,8 @@ export class UsersService {
   private toResponseDto(user: {
     id: string;
     name: string;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     status: string;
     lastLoginAt: Date | null;
@@ -177,6 +203,8 @@ export class UsersService {
     return {
       id: user.id,
       name: user.name,
+      firstName: user.firstName ?? null,
+      lastName: user.lastName ?? null,
       email: user.email,
       status: user.status,
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,

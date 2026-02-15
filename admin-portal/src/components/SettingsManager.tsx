@@ -25,11 +25,16 @@ interface SocialValue {
   youtubeVisible?: boolean;
 }
 
+interface DeliveryValue {
+  deliveryChargesCents?: number;
+}
+
 interface PublicSettings {
   logoPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
+  deliveryChargesCents?: number;
 }
 
 type SettingsMap = Record<string, Record<string, unknown>>;
@@ -52,6 +57,8 @@ export function SettingsManager() {
   const [about, setAbout] = useState<AboutValue>({});
   const [footer, setFooter] = useState<FooterValue>({});
   const [social, setSocial] = useState<SocialValue>({});
+  const [freeDelivery, setFreeDelivery] = useState(true);
+  const [deliveryChargesPkr, setDeliveryChargesPkr] = useState('');
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -68,6 +75,10 @@ export function SettingsManager() {
       setAbout((data['about'] as AboutValue) ?? {});
       setFooter((data['footer'] as FooterValue) ?? {});
       setSocial((data['social'] as SocialValue) ?? {});
+      const delivery = data['delivery'] as DeliveryValue | undefined;
+      const cents = delivery?.deliveryChargesCents ?? 0;
+      setFreeDelivery(cents === 0);
+      setDeliveryChargesPkr(cents === 0 ? '' : (cents / 100).toString());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setSettings(null);
@@ -133,6 +144,18 @@ export function SettingsManager() {
     await saveKey('social', social);
   };
 
+  const handleSaveDelivery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cents = freeDelivery ? 0 : Math.round(parseFloat(deliveryChargesPkr || '0') * 100);
+    if (!freeDelivery && (Number.isNaN(cents) || cents < 0)) {
+      setError('Enter a valid delivery charge (PKR).');
+      return;
+    }
+    setError(null);
+    await saveKey('delivery', { deliveryChargesCents: freeDelivery ? 0 : cents });
+    fetchSettings();
+  };
+
   if (loading) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-800">
@@ -186,6 +209,53 @@ export function SettingsManager() {
             />
           </div>
         </div>
+      </section>
+
+      {/* Delivery */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Delivery charges</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Set delivery charges applied at checkout. Enable free delivery to charge nothing. This applies globally on the storefront.
+        </p>
+        <form onSubmit={handleSaveDelivery} className="space-y-4">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={freeDelivery}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setFreeDelivery(checked);
+                if (!checked && !deliveryChargesPkr) setDeliveryChargesPkr('2.99');
+              }}
+              className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
+            />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Free delivery</span>
+          </label>
+          {!freeDelivery && (
+            <div>
+              <label htmlFor="delivery-charges" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Delivery charges (PKR)
+              </label>
+              <input
+                id="delivery-charges"
+                type="number"
+                min={0}
+                step={1}
+                value={deliveryChargesPkr}
+                onChange={(e) => setDeliveryChargesPkr(e.target.value)}
+                placeholder="e.g. 299"
+                className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={saving === 'delivery'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'delivery' ? 'Saving…' : 'Save delivery'}
+          </button>
+        </form>
       </section>
 
       {/* About */}

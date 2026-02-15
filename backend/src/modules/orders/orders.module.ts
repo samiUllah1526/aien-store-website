@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SettingsModule } from '../settings/settings.module';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 
 @Module({
   imports: [
+    SettingsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

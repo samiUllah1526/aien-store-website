@@ -100,6 +100,9 @@ export const api = {
   put<T>(path: string, body: unknown) {
     return request<ApiSingleResponse<T>>(path, { method: 'PUT', body: JSON.stringify(body) });
   },
+  patch<T>(path: string, body: unknown) {
+    return request<ApiSingleResponse<T>>(path, { method: 'PATCH', body: JSON.stringify(body) });
+  },
   delete(path: string) {
     return request<ApiSingleResponse<null>>(path, { method: 'DELETE' });
   },

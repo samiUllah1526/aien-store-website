@@ -347,10 +347,29 @@ export default function CheckoutForm() {
 
         <section>
           <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Shipping method</h2>
-          <div className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3">
-            <span className="text-charcoal dark:text-cream">Standard Delivery</span>
-            <span className="text-charcoal/80 dark:text-cream/80">{formatMoney(shippingCents, currency)}</span>
-          </div>
+          {shippingCents === 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald/30 bg-emerald/5 dark:bg-emerald/10 px-4 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald/20 dark:bg-emerald/30 text-emerald dark:text-emerald-300" aria-hidden>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="font-medium text-ink dark:text-cream">Standard Delivery</p>
+                  <p className="text-sm text-charcoal/70 dark:text-cream/70">Delivery to your address</p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-emerald px-3 py-1.5 text-sm font-semibold text-white shadow-sm dark:bg-emerald-600">
+                Free
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3">
+              <span className="text-charcoal dark:text-cream">Standard Delivery</span>
+              <span className="text-charcoal/80 dark:text-cream/80">{formatMoney(shippingCents, currency)}</span>
+            </div>
+          )}
         </section>
 
         <section>
@@ -453,7 +472,16 @@ export default function CheckoutForm() {
                 </p>
                 <p className="flex justify-between text-sm text-charcoal dark:text-cream">
                   <span>Shipping</span>
-                  <span>{formatMoney(shippingCents, currency)}</span>
+                  {shippingCents === 0 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald/15 px-2 py-0.5 text-emerald dark:bg-emerald/25 dark:text-emerald-300 font-medium">
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Free
+                    </span>
+                  ) : (
+                    <span>{formatMoney(shippingCents, currency)}</span>
+                  )}
                 </p>
                 <p className="flex justify-between font-display text-ink dark:text-cream pt-2">
                   <span>Total</span>

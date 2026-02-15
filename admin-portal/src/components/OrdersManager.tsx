@@ -21,6 +21,10 @@ export function OrdersManager() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [orderIdSearch, setOrderIdSearch] = useState('');
+  const [emailSearch, setEmailSearch] = useState('');
+  const [totalMinPkr, setTotalMinPkr] = useState('');
+  const [totalMaxPkr, setTotalMaxPkr] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [assignedToUserId, setAssignedToUserId] = useState('');
@@ -47,6 +51,12 @@ export function OrdersManager() {
         limit: PAGE_SIZE,
       };
       if (statusFilter) params.status = statusFilter;
+      if (orderIdSearch.trim()) params.orderId = orderIdSearch.trim();
+      if (emailSearch.trim()) params.customerEmail = emailSearch.trim();
+      const totalMin = totalMinPkr.trim() ? Math.round(parseFloat(totalMinPkr) * 100) : undefined;
+      const totalMax = totalMaxPkr.trim() ? Math.round(parseFloat(totalMaxPkr) * 100) : undefined;
+      if (totalMin != null && !Number.isNaN(totalMin) && totalMin >= 0) params.totalMinCents = totalMin;
+      if (totalMax != null && !Number.isNaN(totalMax) && totalMax >= 0) params.totalMaxCents = totalMax;
       if (dateFrom) params.dateFrom = new Date(dateFrom + 'T00:00:00').toISOString();
       if (dateTo) params.dateTo = new Date(dateTo + 'T23:59:59.999').toISOString();
       if (assignedToUserId.trim()) params.assignedToUserId = assignedToUserId.trim();
@@ -61,7 +71,7 @@ export function OrdersManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, dateFrom, dateTo, assignedToUserId]);
+  }, [page, statusFilter, orderIdSearch, emailSearch, totalMinPkr, totalMaxPkr, dateFrom, dateTo, assignedToUserId]);
 
   useEffect(() => {
     fetchOrders();
@@ -90,6 +100,10 @@ export function OrdersManager() {
 
   const handleClearFilters = () => {
     setStatusFilter('');
+    setOrderIdSearch('');
+    setEmailSearch('');
+    setTotalMinPkr('');
+    setTotalMaxPkr('');
     setDateFrom('');
     setDateTo('');
     setAssignedToUserId('');
@@ -138,7 +152,63 @@ export function OrdersManager() {
 
       {/* Filters */}
       <form onSubmit={handleApplyFilters} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <div>
+            <label htmlFor="orderId" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Order ID
+            </label>
+            <input
+              id="orderId"
+              type="text"
+              value={orderIdSearch}
+              onChange={(e) => setOrderIdSearch(e.target.value)}
+              placeholder="Partial or full UUID"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="emailSearch" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Customer email
+            </label>
+            <input
+              id="emailSearch"
+              type="text"
+              value={emailSearch}
+              onChange={(e) => setEmailSearch(e.target.value)}
+              placeholder="Partial match"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="totalMin" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Total min (PKR)
+            </label>
+            <input
+              id="totalMin"
+              type="number"
+              min={0}
+              step={1}
+              value={totalMinPkr}
+              onChange={(e) => setTotalMinPkr(e.target.value)}
+              placeholder="e.g. 1000"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="totalMax" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Total max (PKR)
+            </label>
+            <input
+              id="totalMax"
+              type="number"
+              min={0}
+              step={1}
+              value={totalMaxPkr}
+              onChange={(e) => setTotalMaxPkr(e.target.value)}
+              placeholder="e.g. 5000"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
           <div>
             <label htmlFor="status" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Status
