@@ -26,7 +26,11 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsString()
-  customerName?: string;
+  customerFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  customerLastName?: string;
 
   @IsOptional()
   @IsEnum(CreateOrderPaymentMethod)

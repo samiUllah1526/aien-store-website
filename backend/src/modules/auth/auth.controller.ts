@@ -9,12 +9,13 @@ export class AuthController {
   @Public()
   @Post('register')
   async register(
-    @Body('name') name: string,
+    @Body('firstName') firstName: string,
+    @Body('lastName') lastName: string | undefined,
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-      throw new BadRequestException('Name is required');
+    if (!firstName || typeof firstName !== 'string' || firstName.trim() === '') {
+      throw new BadRequestException('First name is required');
     }
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       throw new BadRequestException('Email and password are required');
@@ -22,7 +23,7 @@ export class AuthController {
     if (password.length < 8) {
       throw new BadRequestException('Password must be at least 8 characters');
     }
-    return this.authService.register(name.trim(), email, password);
+    return this.authService.register(firstName.trim(), lastName?.trim() || undefined, email, password);
   }
 
   @Public()

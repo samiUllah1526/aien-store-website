@@ -52,6 +52,8 @@ enum PaymentMethod {
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String     @map("name")
+  firstName    String?    @map("first_name")
+  lastName     String?    @map("last_name")
   email        String     @unique @map("email")
   passwordHash String     @map("password_hash")
   status       UserStatus @default(ACTIVE) @map("status")
@@ -74,7 +76,8 @@ model User {
 // -----------------------------------------------------------------------------
 model UserSavedShipping {
   userId                 String   @id @map("user_id") @db.Uuid
-  customerName           String?  @map("customer_name")
+  firstName              String?  @map("first_name")
+  lastName               String?  @map("last_name")
   customerPhone          String?  @map("customer_phone")
   shippingCountry        String?  @map("shipping_country")
   shippingAddressLine1   String?  @map("shipping_address_line1")
@@ -274,6 +277,8 @@ model Order {
   totalCents             Int            @map("total_cents")
   currency               String         @default("PKR") @map("currency")
   customerEmail          String         @map("customer_email")
+  customerFirstName      String?        @map("customer_first_name")
+  customerLastName       String?        @map("customer_last_name")
   customerName           String?        @map("customer_name")
   customerPhone          String?        @map("customer_phone")
   shippingCountry        String?        @map("shipping_country")

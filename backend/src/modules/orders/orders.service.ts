@@ -121,13 +121,18 @@ export class OrdersService {
       );
     }
 
+    const customerFirstName = dto.customerFirstName?.trim() || undefined;
+    const customerLastName = dto.customerLastName?.trim() || undefined;
+    const customerName = [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || undefined;
     const order = await this.prisma.order.create({
       data: {
         status: OrderStatus.PENDING,
         totalCents: subtotalCents,
         currency,
         customerEmail: dto.customerEmail,
-        customerName: dto.customerName?.trim() || undefined,
+        customerFirstName,
+        customerLastName,
+        customerName,
         customerPhone: dto.customerPhone?.trim() || undefined,
         shippingCountry: dto.shippingCountry?.trim() || undefined,
         shippingAddressLine1: dto.shippingAddressLine1?.trim() || undefined,
@@ -383,6 +388,8 @@ export class OrdersService {
     totalCents: number;
     currency: string;
     customerEmail: string;
+    customerFirstName: string | null;
+    customerLastName: string | null;
     customerName: string | null;
     customerPhone: string | null;
     shippingCountry: string | null;
@@ -428,7 +435,9 @@ export class OrdersService {
       totalCents: order.totalCents,
       currency: order.currency,
       customerEmail: order.customerEmail,
-      customerName: order.customerName ?? null,
+      customerFirstName: order.customerFirstName ?? null,
+      customerLastName: order.customerLastName ?? null,
+      customerName: order.customerName ?? ([order.customerFirstName, order.customerLastName].filter(Boolean).join(' ').trim() || null),
       customerPhone: order.customerPhone ?? null,
       shippingCountry: order.shippingCountry ?? null,
       shippingAddressLine1: order.shippingAddressLine1 ?? null,

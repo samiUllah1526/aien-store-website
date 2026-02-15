@@ -33,15 +33,18 @@ export class AuthService {
     return { accessToken, payload };
   }
 
-  async register(name: string, email: string, password: string) {
+  async register(firstName: string, lastName: string | undefined, email: string, password: string) {
     const existing = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    const name = [firstName.trim(), lastName?.trim()].filter(Boolean).join(' ').trim() || firstName.trim();
     const user = await this.prisma.user.create({
       data: {
-        name: name.trim(),
+        name,
+        firstName: firstName.trim(),
+        lastName: lastName?.trim() || null,
         email: email.trim().toLowerCase(),
         passwordHash,
         status: 'ACTIVE',

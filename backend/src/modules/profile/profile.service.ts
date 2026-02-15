@@ -3,7 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SaveShippingDto } from './dto/save-shipping.dto';
 
 export interface SavedShippingDto {
-  customerName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   customerPhone: string | null;
   shippingCountry: string | null;
   shippingAddressLine1: string | null;
@@ -22,7 +23,8 @@ export class ProfileService {
     });
     if (!row) return null;
     return {
-      customerName: row.customerName ?? null,
+      firstName: row.firstName ?? null,
+      lastName: row.lastName ?? null,
       customerPhone: row.customerPhone ?? null,
       shippingCountry: row.shippingCountry ?? null,
       shippingAddressLine1: row.shippingAddressLine1 ?? null,
@@ -34,7 +36,8 @@ export class ProfileService {
 
   async saveShipping(userId: string, dto: SaveShippingDto): Promise<SavedShippingDto> {
     const data = {
-      customerName: dto.customerName?.trim() || null,
+      firstName: dto.firstName?.trim() || null,
+      lastName: dto.lastName?.trim() || null,
       customerPhone: dto.customerPhone?.trim() || null,
       shippingCountry: dto.shippingCountry?.trim() || null,
       shippingAddressLine1: dto.shippingAddressLine1?.trim() || null,
@@ -48,7 +51,8 @@ export class ProfileService {
       update: data,
     });
     return {
-      customerName: row.customerName ?? null,
+      firstName: row.firstName ?? null,
+      lastName: row.lastName ?? null,
       customerPhone: row.customerPhone ?? null,
       shippingCountry: row.shippingCountry ?? null,
       shippingAddressLine1: row.shippingAddressLine1 ?? null,

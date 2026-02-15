@@ -3,7 +3,11 @@ import { IsString, IsOptional } from 'class-validator';
 export class SaveShippingDto {
   @IsOptional()
   @IsString()
-  customerName?: string;
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 
   @IsOptional()
   @IsString()

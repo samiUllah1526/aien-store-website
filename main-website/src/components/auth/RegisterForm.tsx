@@ -22,10 +22,10 @@ export default function RegisterForm() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    const name = [data.firstName.trim(), data.lastName?.trim()].filter(Boolean).join(' ').trim();
     try {
       const res = (await api.post<unknown>('/auth/register', {
-        name: name || data.firstName.trim(),
+        firstName: data.firstName.trim(),
+        lastName: data.lastName?.trim() || undefined,
         email: data.email.trim(),
         password: data.password,
       })) as { accessToken?: string; user?: { email?: string } };

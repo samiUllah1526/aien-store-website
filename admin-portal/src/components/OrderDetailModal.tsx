@@ -272,10 +272,12 @@ export function OrderDetailModal({
                     <dt className="text-slate-500 dark:text-slate-400">Email</dt>
                     <dd className="text-slate-900 dark:text-slate-100">{order.customerEmail}</dd>
                   </div>
-                  {order.customerName && (
+                  {(order.customerFirstName != null || order.customerLastName != null || order.customerName) && (
                     <div>
                       <dt className="text-slate-500 dark:text-slate-400">Name</dt>
-                      <dd className="text-slate-900 dark:text-slate-100">{order.customerName}</dd>
+                      <dd className="text-slate-900 dark:text-slate-100">
+                        {[order.customerFirstName, order.customerLastName].filter(Boolean).join(' ') || order.customerName}
+                      </dd>
                     </div>
                   )}
                   {order.customerPhone && (

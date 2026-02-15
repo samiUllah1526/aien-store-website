@@ -78,6 +78,8 @@ export interface Order {
   totalCents: number;
   currency: string;
   customerEmail: string;
+  customerFirstName: string | null;
+  customerLastName: string | null;
   customerName: string | null;
   customerPhone: string | null;
   shippingCountry: string | null;

@@ -87,7 +87,8 @@ export const api = {
 
 /** Saved shipping for checkout "Save for next time" (requires auth). */
 export interface SavedShippingDto {
-  customerName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   customerPhone: string | null;
   shippingCountry: string | null;
   shippingAddressLine1: string | null;
@@ -99,7 +100,8 @@ export interface SavedShippingDto {
 export const profileApi = {
   getShipping: () => api.get<SavedShippingDto | null>('/profile/shipping').then((r) => r.data ?? null),
   saveShipping: (body: {
-    customerName?: string;
+    firstName?: string;
+    lastName?: string;
     customerPhone?: string;
     shippingCountry?: string;
     shippingAddressLine1?: string;

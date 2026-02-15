@@ -73,11 +73,8 @@ export default function CheckoutForm() {
       .getShipping()
       .then((saved) => {
         if (!saved) return;
-        if (saved.customerName) {
-          const parts = saved.customerName.trim().split(/\s+/);
-          setValue('firstName', parts[0] ?? '');
-          setValue('lastName', parts.slice(1).join(' ') ?? '');
-        }
+        if (saved.firstName) setValue('firstName', saved.firstName);
+        if (saved.lastName) setValue('lastName', saved.lastName);
         if (saved.customerPhone) setValue('phone', saved.customerPhone);
         if (saved.shippingCountry) setValue('shippingCountry', saved.shippingCountry);
         if (saved.shippingAddressLine1) setValue('shippingAddressLine1', saved.shippingAddressLine1);
@@ -145,11 +142,11 @@ export default function CheckoutForm() {
       }
     }
 
-    const customerName = [data.firstName.trim(), data.lastName?.trim()].filter(Boolean).join(' ').trim() || undefined;
     try {
       const res = await api.post<{ id: string }>('/orders/checkout', {
         customerEmail: data.email.trim(),
-        customerName,
+        customerFirstName: data.firstName.trim(),
+        customerLastName: data.lastName?.trim() || undefined,
         customerPhone: data.phone.trim(),
         shippingCountry: data.shippingCountry?.trim() || undefined,
         shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
@@ -165,7 +162,8 @@ export default function CheckoutForm() {
       if (data.saveInfo && useAuthStore.getState().isLoggedIn()) {
         profileApi
           .saveShipping({
-            customerName,
+            firstName: data.firstName.trim(),
+            lastName: data.lastName?.trim() || undefined,
             customerPhone: data.phone.trim(),
             shippingCountry: data.shippingCountry?.trim() || undefined,
             shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
