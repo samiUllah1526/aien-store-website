@@ -9,13 +9,14 @@ import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
 import { API_BASE_URL } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
+// Order: overview → operations (orders, products, inventory) → structure → people & comms → config → help
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/admin/profile', label: 'Profile', icon: 'users' },
+  // { href: '/admin/profile', label: 'Profile', icon: 'users' },
+  { href: '/admin/orders', label: 'Orders', icon: 'orders' },
   { href: '/admin/products', label: 'Products', icon: 'products' },
   { href: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
   { href: '/admin/categories', label: 'Categories', icon: 'categories' },
-  { href: '/admin/orders', label: 'Orders', icon: 'orders' },
   { href: '/admin/users', label: 'Users', icon: 'users' },
   { href: '/admin/email-logs', label: 'Email Logs', icon: 'emaillogs' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings' },

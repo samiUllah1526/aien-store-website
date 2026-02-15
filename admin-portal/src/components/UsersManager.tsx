@@ -152,6 +152,8 @@ export function UsersManager() {
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">First name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
@@ -166,6 +168,12 @@ export function UsersManager() {
                 <tr key={i}>
                   <td className="px-4 py-3">
                     <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -200,6 +208,8 @@ export function UsersManager() {
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">First name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last name</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
@@ -213,7 +223,9 @@ export function UsersManager() {
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{user.name}</td>
-                    <td className="px-4 py-3 text-slate-700">{user.email}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{user.firstName ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{user.lastName ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{user.email}</td>
                     <td className="px-4 py-3">
                       <span className="text-sm text-slate-700">
                         {user.roles?.length

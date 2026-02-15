@@ -39,6 +39,10 @@ export class AuthService {
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
+    const customerRole = await this.prisma.role.findFirst({ where: { name: 'Customer' } });
+    if (!customerRole) {
+      throw new ConflictException('Customer role not found; run database seed.');
+    }
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const name = [firstName.trim(), lastName?.trim()].filter(Boolean).join(' ').trim() || firstName.trim();
     const user = await this.prisma.user.create({
@@ -49,6 +53,7 @@ export class AuthService {
         email: email.trim().toLowerCase(),
         passwordHash,
         status: 'ACTIVE',
+        roles: { create: [{ roleId: customerRole.id }] },
       },
     });
     const { accessToken, payload } = this.buildTokens({
@@ -56,7 +61,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       permissions: [],
-      roleNames: [],
+      roleNames: ['Customer'],
     });
     this.mail.sendWelcome({ to: user.email, name: user.name }).catch((err) => {
       console.warn('[AuthService] Welcome email failed:', err);
@@ -64,7 +69,7 @@ export class AuthService {
     return {
       accessToken,
       expiresIn: this.accessExpiresSec,
-      user: { id: user.id, email: user.email, name: user.name, permissions: payload.permissions ?? [], roleNames: payload.roleNames ?? [] },
+      user: { id: user.id, email: user.email, name: user.name, permissions: payload.permissions ?? [], roleNames: payload.roleNames ?? ['Customer'] },
     };
   }
 

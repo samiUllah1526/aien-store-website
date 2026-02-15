@@ -46,6 +46,12 @@ async function main() {
     update: {},
   });
 
+  await prisma.role.upsert({
+    where: { name: 'Customer' },
+    create: { name: 'Customer' },
+    update: {},
+  });
+
   for (const perm of permissions) {
     await prisma.rolePermission.upsert({
       where: {
