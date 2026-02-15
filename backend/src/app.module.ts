@@ -11,6 +11,7 @@ import { UsersModule } from './modules/users/users.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
@@ -33,6 +34,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     DashboardModule,
     CategoriesModule,
     SettingsModule,
+    InventoryModule,
     EmailLogsModule,
     FavoritesModule,
     ProfileModule,

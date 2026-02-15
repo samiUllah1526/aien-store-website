@@ -3,25 +3,32 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
+import { InventoryService } from '../inventory/inventory.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly inventoryService: InventoryService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -49,6 +56,24 @@ export class ProductsController {
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.productsService.findOne(id);
     return ApiResponseDto.ok(data);
+  }
+
+  @Patch(':id/stock')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('products:write')
+  async adjustStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdjustStockDto,
+    @Req() req: { user?: { userId: string } },
+  ) {
+    await this.inventoryService.adjust(
+      id,
+      dto.quantityDelta,
+      dto.reference ?? 'Admin adjustment',
+      req.user?.userId,
+    );
+    const data = await this.productsService.findOne(id);
+    return ApiResponseDto.ok(data, 'Stock updated');
   }
 
   @Put(':id')

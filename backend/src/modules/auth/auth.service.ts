@@ -6,7 +6,8 @@ import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
-const ACCESS_EXPIRES_DEFAULT = 900; // 15 min
+/** Default 24h so admin sessions survive a work day; override with JWT_ACCESS_EXPIRES_SEC. */
+const ACCESS_EXPIRES_DEFAULT = 86400;
 
 @Injectable()
 export class AuthService {

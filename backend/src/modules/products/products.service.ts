@@ -233,6 +233,8 @@ export class ProductsService {
     }
     if (query.featured === 'true') where.featured = true;
     if (query.featured === 'false') where.featured = false;
+    if (query.stockFilter === 'out_of_stock') where.stockQuantity = 0;
+    if (query.stockFilter === 'low_stock') where.stockQuantity = { gte: 1, lte: 5 };
     return where;
   }
 
@@ -274,6 +276,7 @@ export class ProductsService {
     currency: string;
     sizes: unknown;
     featured: boolean;
+    stockQuantity: number;
     urduVerse: string | null;
     urduVerseTransliteration: string | null;
     createdAt: Date;
@@ -302,6 +305,8 @@ export class ProductsService {
       featured: p.featured,
       urduVerse: p.urduVerse,
       urduVerseTransliteration: p.urduVerseTransliteration,
+      stockQuantity: p.stockQuantity,
+      inStock: p.stockQuantity > 0,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     };
@@ -315,6 +320,7 @@ export class ProductsService {
     currency: string;
     sizes: unknown;
     featured: boolean;
+    stockQuantity: number;
     productCategories: Array<{ category: { name: string } }>;
     productMedia: Array<{ media: { path: string } }>;
   }): ProductListResponseDto {
@@ -332,6 +338,8 @@ export class ProductsService {
       image,
       sizes,
       featured: p.featured,
+      stockQuantity: p.stockQuantity,
+      inStock: p.stockQuantity > 0,
       categories,
     };
   }

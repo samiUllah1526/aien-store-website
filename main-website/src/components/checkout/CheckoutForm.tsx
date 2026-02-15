@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { randomUUID } from '../../lib/idempotency';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCart, useCartStore } from '../../store/cartStore';
@@ -46,6 +47,8 @@ export default function CheckoutForm() {
     instructions?: string;
   } | null>(null);
   const hasPrefilledShipping = useRef(false);
+  /** One key per checkout attempt; reused on retry so server returns same order (no duplicate). */
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const {
     register,
@@ -159,21 +162,26 @@ export default function CheckoutForm() {
       }
     }
 
+    if (!idempotencyKeyRef.current) idempotencyKeyRef.current = randomUUID();
     try {
-      const res = await api.post<{ id: string }>('/orders/checkout', {
-        customerEmail: data.email.trim(),
-        customerFirstName: data.firstName.trim(),
-        customerLastName: data.lastName?.trim() || undefined,
-        customerPhone: data.phone.trim(),
-        shippingCountry: data.shippingCountry?.trim() || undefined,
-        shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
-        shippingAddressLine2: data.shippingAddressLine2?.trim() || undefined,
-        shippingCity: data.shippingCity?.trim() || undefined,
-        shippingPostalCode: data.shippingPostalCode?.trim() || undefined,
-        paymentMethod: data.paymentMethod === 'bank' ? 'BANK_DEPOSIT' : 'COD',
-        paymentProofMediaId: paymentProofMediaId || undefined,
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-      });
+      const res = await api.post<{ id: string }>(
+        '/orders/checkout',
+        {
+          customerEmail: data.email.trim(),
+          customerFirstName: data.firstName.trim(),
+          customerLastName: data.lastName?.trim() || undefined,
+          customerPhone: data.phone.trim(),
+          shippingCountry: data.shippingCountry?.trim() || undefined,
+          shippingAddressLine1: data.shippingAddressLine1?.trim() || undefined,
+          shippingAddressLine2: data.shippingAddressLine2?.trim() || undefined,
+          shippingCity: data.shippingCity?.trim() || undefined,
+          shippingPostalCode: data.shippingPostalCode?.trim() || undefined,
+          paymentMethod: data.paymentMethod === 'bank' ? 'BANK_DEPOSIT' : 'COD',
+          paymentProofMediaId: paymentProofMediaId || undefined,
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        },
+        { headers: { 'Idempotency-Key': idempotencyKeyRef.current } },
+      );
       setOrderId(res.data?.id ?? null);
       setSubmitted(true);
       if (data.saveInfo && useAuthStore.getState().isLoggedIn()) {

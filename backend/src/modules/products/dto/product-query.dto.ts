@@ -30,13 +30,19 @@ export class ProductQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['name', 'price', 'createdAt', 'slug'])
-  sortBy?: 'name' | 'price' | 'createdAt' | 'slug' = 'createdAt';
+  @IsIn(['name', 'price', 'createdAt', 'slug', 'stockQuantity'])
+  sortBy?: 'name' | 'price' | 'createdAt' | 'slug' | 'stockQuantity' = 'createdAt';
 
   @IsOptional()
   @IsString()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  /** Inventory page: filter by stock level. */
+  @IsOptional()
+  @IsString()
+  @IsIn(['all', 'low_stock', 'out_of_stock'])
+  stockFilter?: 'all' | 'low_stock' | 'out_of_stock' = 'all';
 
   @IsOptional()
   @Type(() => Number)

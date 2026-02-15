@@ -74,8 +74,12 @@ export const api = {
   getList<T>(path: string, params?: Record<string, string | number | undefined>) {
     return request<ApiListResponse<T>>(path, { method: 'GET', params });
   },
-  post<T>(path: string, body: unknown) {
-    return request<ApiSingleResponse<T>>(path, { method: 'POST', body: JSON.stringify(body) });
+  post<T>(path: string, body: unknown, options?: { headers?: Record<string, string> }) {
+    return request<ApiSingleResponse<T>>(path, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      ...(options?.headers && { headers: options.headers }),
+    });
   },
   put<T>(path: string, body: unknown) {
     return request<ApiSingleResponse<T>>(path, { method: 'PUT', body: JSON.stringify(body) });

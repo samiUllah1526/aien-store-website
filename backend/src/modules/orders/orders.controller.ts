@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Headers,
   UseGuards,
   ParseUUIDPipe,
   Req,
@@ -46,7 +47,11 @@ export class OrdersController {
   /** Public checkout: guest or optional JWT to link order to customer. */
   @Public()
   @Post('checkout')
-  async checkout(@Body() dto: CreateOrderDto, @Req() req: { headers: { authorization?: string } }) {
+  async checkout(
+    @Body() dto: CreateOrderDto,
+    @Req() req: { headers: { authorization?: string } },
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
     let customerUserId: string | null = null;
     const authHeader = req.headers?.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -58,7 +63,7 @@ export class OrdersController {
         // Invalid or expired token: proceed as guest
       }
     }
-    const data = await this.ordersService.create(dto, customerUserId);
+    const data = await this.ordersService.create(dto, customerUserId, idempotencyKey);
     return ApiResponseDto.ok(data, 'Order placed');
   }
 

@@ -21,6 +21,10 @@ export class ProductResponseDto {
   featured: boolean;
   urduVerse: string | null;
   urduVerseTransliteration: string | null;
+  /** Current stock level. */
+  stockQuantity: number;
+  /** True when stockQuantity > 0 (convenience for storefront). */
+  inStock: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +38,10 @@ export class ProductListResponseDto {
   image: string;
   sizes: string[];
   featured: boolean;
+  /** Current stock level. */
+  stockQuantity: number;
+  /** True when stockQuantity > 0. */
+  inStock: boolean;
   /** Category names for display/tags. */
   categories: string[];
 }

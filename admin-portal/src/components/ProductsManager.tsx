@@ -3,6 +3,7 @@ import { api, getApiBaseUrl } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
 import type { ProductListItem, Product, ProductFormData } from '../lib/types';
 import { ProductForm } from './ProductForm';
+import { AdjustStockModal } from './AdjustStockModal';
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +25,8 @@ export function ProductsManager() {
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [adjustStockProduct, setAdjustStockProduct] = useState<ProductListItem | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -118,6 +121,22 @@ export function ProductsManager() {
     }
   };
 
+  const handleStockAdjusted = (productId: string, newStockQuantity: number) => {
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              stockQuantity: newStockQuantity,
+              inStock: newStockQuantity > 0,
+            }
+          : p
+      )
+    );
+    setSuccessMessage('Stock updated successfully.');
+    setTimeout(() => setSuccessMessage(null), 4000);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -156,6 +175,16 @@ export function ProductsManager() {
         </div>
       )}
 
+      {successMessage && (
+        <div
+          className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+          role="status"
+          aria-live="polite"
+        >
+          {successMessage}
+        </div>
+      )}
+
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -165,6 +194,7 @@ export function ProductsManager() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Stock</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
               </tr>
@@ -183,6 +213,9 @@ export function ProductsManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -209,6 +242,7 @@ export function ProductsManager() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Stock</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
                 </tr>
@@ -216,6 +250,8 @@ export function ProductsManager() {
               <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
                 {items.map((item) => {
                   const categoryNames = item.categories ?? [];
+                  const stockQty = item.stockQuantity ?? 0;
+                  const isOutOfStock = !(item.inStock ?? (stockQty > 0));
                   return (
                   <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
                     <td className="px-4 py-3">
@@ -253,6 +289,27 @@ export function ProductsManager() {
                     </td>
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                       {formatMoney(item.price, item.currency)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`tabular-nums font-medium ${
+                          isOutOfStock
+                            ? 'rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            : stockQty <= 5
+                              ? 'rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                              : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                        title={isOutOfStock ? 'Out of stock' : stockQty <= 5 ? 'Low stock' : undefined}
+                      >
+                        {stockQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAdjustStockProduct(item)}
+                        className="ml-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-medium underline focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 rounded"
+                      >
+                        Adjust
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       {item.featured ? (
@@ -341,6 +398,21 @@ export function ProductsManager() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Adjust stock */}
+      {adjustStockProduct && (
+        <AdjustStockModal
+          product={{
+            id: adjustStockProduct.id,
+            name: adjustStockProduct.name,
+            stockQuantity: adjustStockProduct.stockQuantity ?? 0,
+          }}
+          onClose={() => setAdjustStockProduct(null)}
+          onSuccess={(newStockQuantity) => {
+            handleStockAdjusted(adjustStockProduct.id, newStockQuantity);
+          }}
+        />
       )}
     </div>
   );

@@ -19,6 +19,7 @@ const PERMISSION_NAMES = [
   'users:write',
   'orders:read',
   'orders:write',
+  'products:read',
   'products:write',
   'categories:read',
   'categories:write',

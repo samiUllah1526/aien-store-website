@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { CreateOrderDto, CreateOrderPaymentMethod } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -29,6 +30,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly settingsService: SettingsService,
+    private readonly inventory: InventoryService,
   ) {}
 
   /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
@@ -117,7 +119,11 @@ export class OrdersService {
     };
   }
 
-  async create(dto: CreateOrderDto, customerUserId?: string | null): Promise<OrderResponseDto> {
+  async create(
+    dto: CreateOrderDto,
+    customerUserId?: string | null,
+    idempotencyKey?: string | null,
+  ): Promise<OrderResponseDto> {
     const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
     const deliveryCents = await this.getDeliveryChargesCents();
     const totalCents = subtotalCents + deliveryCents;
@@ -135,34 +141,56 @@ export class OrdersService {
     const customerFirstName = dto.customerFirstName?.trim() || undefined;
     const customerLastName = dto.customerLastName?.trim() || undefined;
     const customerName = [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || undefined;
-    const order = await this.prisma.order.create({
-      data: {
-        status: OrderStatus.PENDING,
-        totalCents,
-        currency,
-        customerEmail: dto.customerEmail,
-        customerFirstName,
-        customerLastName,
-        customerName,
-        customerPhone: dto.customerPhone?.trim() || undefined,
-        shippingCountry: dto.shippingCountry?.trim() || undefined,
-        shippingAddressLine1: dto.shippingAddressLine1?.trim() || undefined,
-        shippingAddressLine2: dto.shippingAddressLine2?.trim() || undefined,
-        paymentMethod,
-        paymentProofMediaId: dto.paymentProofMediaId?.trim() || undefined,
-        customerUserId: customerUserId ?? undefined,
-        items: {
-          create: orderItemsData,
+    const key = idempotencyKey?.trim() || undefined;
+    const include = this.orderInclude();
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      if (key) {
+        const existingOrderId = await this.inventory.getIdempotentOrderId(key, tx);
+        if (existingOrderId) {
+          const existing = await tx.order.findUnique({
+            where: { id: existingOrderId },
+            include,
+          });
+          if (existing) return { order: existing, skipEmail: true };
+        }
+      }
+
+      const newOrder = await tx.order.create({
+        data: {
+          status: OrderStatus.PENDING,
+          totalCents,
+          currency,
+          customerEmail: dto.customerEmail,
+          customerFirstName,
+          customerLastName,
+          customerName,
+          customerPhone: dto.customerPhone?.trim() || undefined,
+          shippingCountry: dto.shippingCountry?.trim() || undefined,
+          shippingAddressLine1: dto.shippingAddressLine1?.trim() || undefined,
+          shippingAddressLine2: dto.shippingAddressLine2?.trim() || undefined,
+          paymentMethod,
+          paymentProofMediaId: dto.paymentProofMediaId?.trim() || undefined,
+          customerUserId: customerUserId ?? undefined,
+          items: { create: orderItemsData },
+          statusHistory: { create: { status: OrderStatus.PENDING } },
         },
-        statusHistory: {
-          create: { status: OrderStatus.PENDING },
-        },
-      },
-      include: this.orderInclude(),
+        include,
+      });
+
+      await this.inventory.deductForOrder(newOrder.id, orderItemsData, tx);
+      if (key) {
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        await this.inventory.setIdempotencyKey(key, newOrder.id, expiresAt, tx);
+      }
+      return { order: newOrder, skipEmail: false };
     });
 
-    await this.sendOrderConfirmationEmail(order);
-    return this.toResponseDto(order);
+    if (!result.skipEmail) {
+      await this.sendOrderConfirmationEmail(result.order);
+    }
+    return this.toResponseDto(result.order);
   }
 
   private async sendOrderConfirmationEmail(
@@ -352,11 +380,26 @@ export class OrdersService {
       }
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: updates,
-      include: this.orderInclude(),
-    });
+    const isTransitionToCancelled =
+      dto.status !== undefined &&
+      dto.status === OrderStatus.CANCELLED &&
+      order.status !== OrderStatus.CANCELLED;
+
+    const updated = isTransitionToCancelled
+      ? await this.prisma.$transaction(async (tx) => {
+          const updatedOrder = await tx.order.update({
+            where: { id },
+            data: updates,
+            include: this.orderInclude(),
+          });
+          await this.inventory.restoreForOrder(id, tx);
+          return updatedOrder;
+        })
+      : await this.prisma.order.update({
+          where: { id },
+          data: updates,
+          include: this.orderInclude(),
+        });
 
     if (dto.status !== undefined && dto.status !== order.status) {
       this.sendStatusChangeEmail(updated, dto.status).catch((err) => {

@@ -8,6 +8,10 @@ export interface ProductListItem {
   image: string;
   sizes: string[];
   featured: boolean;
+  /** Current stock level. */
+  stockQuantity: number;
+  /** True when stockQuantity > 0. */
+  inStock: boolean;
   /** Category names (from backend categories array). */
   categories?: string[];
 }
@@ -27,6 +31,10 @@ export interface Product {
   category: string | null;
   categoryId: string | null;
   featured: boolean;
+  /** Current stock level. */
+  stockQuantity: number;
+  /** True when stockQuantity > 0. */
+  inStock: boolean;
   urduVerse: string | null;
   urduVerseTransliteration: string | null;
   createdAt: string;

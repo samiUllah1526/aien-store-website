@@ -67,6 +67,7 @@ model User {
   ordersPlaced      Order[]            @relation("CustomerOrders")
   favorites         UserFavorite[]     @relation("UserFavorites")
   savedShipping     UserSavedShipping? @relation("UserSavedShipping")
+  inventoryMovementsPerformed InventoryMovement[] @relation("InventoryMovementPerformedBy")
 
   @@map("users")
 }
@@ -216,15 +217,18 @@ model Product {
   currency              String    @default("PKR") @map("currency")
   sizes                 Json?     @map("sizes")
   featured              Boolean   @default(false) @map("featured")
+  /** Current sellable quantity. Never negative. Deduct on order create, restore on cancel. */
+  stockQuantity         Int       @default(0) @map("stock_quantity")
   urduVerse             String?   @map("urdu_verse")
   urduVerseTransliteration String? @map("urdu_verse_transliteration")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  productCategories ProductCategory[]
-  productMedia       ProductMedia[]
-  orderItems         OrderItem[]
-  userFavorites      UserFavorite[] @relation("ProductFavorites")
+  productCategories   ProductCategory[]
+  productMedia         ProductMedia[]
+  orderItems           OrderItem[]
+  userFavorites        UserFavorite[] @relation("ProductFavorites")
+  inventoryMovements   InventoryMovement[]
 
   @@map("products")
 }
@@ -317,6 +321,52 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@map("order_items")
+}
+
+// -----------------------------------------------------------------------------
+// Inventory: audit trail and idempotency for order creation
+// -----------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  SALE      @map("sale")      // order created: stock deducted
+  RESTORE   @map("restore")   // order cancelled: stock returned
+  ADJUSTMENT @map("adjustment") // admin correction
+  @@map("inventory_movement_type")
+}
+
+model InventoryMovement {
+  id                 String                @id @default(uuid()) @db.Uuid
+  productId          String                @map("product_id") @db.Uuid
+  orderId            String?               @map("order_id") @db.Uuid
+  type               InventoryMovementType @map("type")
+  /** Positive = stock in, negative = stock out. */
+  quantityDelta      Int                   @map("quantity_delta")
+  reference          String?               @map("reference")
+  /** Admin who performed the adjustment (for ADJUSTMENT type). */
+  performedByUserId  String?               @map("performed_by_user_id") @db.Uuid
+  /** Stock quantity after this movement (for audit display). */
+  stockAfter         Int?                  @map("stock_after")
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  performedBy User? @relation("InventoryMovementPerformedBy", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([orderId])
+  @@map("inventory_movements")
+}
+
+/** Idempotency keys for order creation (and future webhooks). Prevents double-deduct on retries. */
+model IdempotencyKey {
+  id               String    @id @default(uuid()) @db.Uuid
+  key              String    @unique @map("key")
+  orderId          String?   @map("order_id") @db.Uuid
+  responseSnapshot Json?     @map("response_snapshot")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+
+  @@index([key])
+  @@map("idempotency_keys")
 }
 
 model OrderStatusHistory {
