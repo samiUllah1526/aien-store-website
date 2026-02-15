@@ -32,6 +32,14 @@ export interface DeliveryValue {
   deliveryChargesCents?: number;
 }
 
+export interface BankingValue {
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
+  iban?: string;
+  instructions?: string;
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
@@ -39,6 +47,8 @@ export interface PublicSettingsDto {
   social: SocialValue;
   /** Delivery charges in cents. 0 = free delivery. */
   deliveryChargesCents: number;
+  /** Bank account details shown at checkout for Bank Deposit. */
+  banking: BankingValue;
 }
 
 @Injectable()
@@ -80,12 +90,13 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery] = await Promise.all([
+    const [general, about, footer, social, delivery, banking] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
       this.getByKey('social'),
       this.getByKey('delivery'),
+      this.getByKey('banking'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -95,6 +106,7 @@ export class SettingsService {
       typeof deliveryVal?.deliveryChargesCents === 'number' && deliveryVal.deliveryChargesCents >= 0
         ? deliveryVal.deliveryChargesCents
         : 0;
+    const bankingVal = banking as BankingValue | null;
 
     return {
       logoPath,
@@ -102,6 +114,15 @@ export class SettingsService {
       footer: (footer as FooterValue) ?? {},
       social: (social as SocialValue) ?? {},
       deliveryChargesCents,
+      banking: bankingVal
+        ? {
+            bankName: bankingVal.bankName ?? '',
+            accountTitle: bankingVal.accountTitle ?? '',
+            accountNumber: bankingVal.accountNumber ?? '',
+            iban: bankingVal.iban ?? '',
+            instructions: bankingVal.instructions ?? '',
+          }
+        : {},
     };
   }
 }

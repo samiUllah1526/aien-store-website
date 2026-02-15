@@ -38,6 +38,13 @@ export default function CheckoutForm() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [banking, setBanking] = useState<{
+    bankName?: string;
+    accountTitle?: string;
+    accountNumber?: string;
+    iban?: string;
+    instructions?: string;
+  } | null>(null);
   const hasPrefilledShipping = useRef(false);
 
   const {
@@ -109,6 +116,16 @@ export default function CheckoutForm() {
       })
       .finally(() => setQuoteLoading(false));
   }, [hasHydrated, items]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    api
+      .get<{ banking?: { bankName?: string; accountTitle?: string; accountNumber?: string; iban?: string; instructions?: string } }>('/settings/public')
+      .then((res) => {
+        if (res.data?.banking) setBanking(res.data.banking);
+      })
+      .catch(() => {});
+  }, []);
 
   const currency = quote?.currency ?? cartCurrency ?? 'PKR';
   const subtotal = quote?.subtotalCents ?? totalAmount;
@@ -389,13 +406,21 @@ export default function CheckoutForm() {
             {paymentMethod === 'bank' && (
               <div className="rounded-lg border border-sand dark:border-charcoal-light bg-sand/30 dark:bg-charcoal-light/30 p-4 text-sm text-charcoal dark:text-cream/90 space-y-3 animate-fade-in">
                 <p className="font-medium text-ink dark:text-cream">Bank account details</p>
-                <p><span className="text-charcoal/70 dark:text-cream/70">Bank name:</span> Adab Commerce Bank</p>
-                <p><span className="text-charcoal/70 dark:text-cream/70">Account title:</span> Adab Clothing (Pvt) Ltd</p>
-                <p><span className="text-charcoal/70 dark:text-cream/70">Account number:</span> 01234567890</p>
-                <p><span className="text-charcoal/70 dark:text-cream/70">IBAN:</span> PK00ADAB00000000001234567890</p>
-                <p className="pt-2 text-charcoal/70 dark:text-cream/70">
-                  After transferring, upload a screenshot of your payment as proof.
-                </p>
+                {banking?.bankName ? (
+                  <p><span className="text-charcoal/70 dark:text-cream/70">Bank name:</span> {banking.bankName}</p>
+                ) : null}
+                {banking?.accountTitle ? (
+                  <p><span className="text-charcoal/70 dark:text-cream/70">Account title:</span> {banking.accountTitle}</p>
+                ) : null}
+                {banking?.accountNumber ? (
+                  <p><span className="text-charcoal/70 dark:text-cream/70">Account number:</span> {banking.accountNumber}</p>
+                ) : null}
+                {banking?.iban ? (
+                  <p><span className="text-charcoal/70 dark:text-cream/70">IBAN:</span> {banking.iban}</p>
+                ) : null}
+                {banking?.instructions ? (
+                  <p className="pt-2 text-charcoal/70 dark:text-cream/70">{banking.instructions}</p>
+                ) : null}
                 <div>
                   <label className="block text-sm font-medium text-ink dark:text-cream mb-1">
                     Payment proof (screenshot) <span className="text-red-500">*</span>

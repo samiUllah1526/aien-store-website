@@ -29,12 +29,21 @@ interface DeliveryValue {
   deliveryChargesCents?: number;
 }
 
+interface BankingValue {
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
+  iban?: string;
+  instructions?: string;
+}
+
 interface PublicSettings {
   logoPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
   deliveryChargesCents?: number;
+  banking?: BankingValue;
 }
 
 type SettingsMap = Record<string, Record<string, unknown>>;
@@ -59,6 +68,7 @@ export function SettingsManager() {
   const [social, setSocial] = useState<SocialValue>({});
   const [freeDelivery, setFreeDelivery] = useState(true);
   const [deliveryChargesPkr, setDeliveryChargesPkr] = useState('');
+  const [banking, setBanking] = useState<BankingValue>({});
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -79,6 +89,7 @@ export function SettingsManager() {
       const cents = delivery?.deliveryChargesCents ?? 0;
       setFreeDelivery(cents === 0);
       setDeliveryChargesPkr(cents === 0 ? '' : (cents / 100).toString());
+      setBanking((data['banking'] as BankingValue) ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setSettings(null);
@@ -153,6 +164,18 @@ export function SettingsManager() {
     }
     setError(null);
     await saveKey('delivery', { deliveryChargesCents: freeDelivery ? 0 : cents });
+    fetchSettings();
+  };
+
+  const handleSaveBanking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveKey('banking', {
+      bankName: banking.bankName?.trim() ?? '',
+      accountTitle: banking.accountTitle?.trim() ?? '',
+      accountNumber: banking.accountNumber?.trim() ?? '',
+      iban: banking.iban?.trim() ?? '',
+      instructions: banking.instructions?.trim() ?? '',
+    });
     fetchSettings();
   };
 
@@ -254,6 +277,88 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'delivery' ? 'Saving…' : 'Save delivery'}
+          </button>
+        </form>
+      </section>
+
+      {/* Banking (checkout) */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Banking details (checkout)</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Shown to customers when they choose Bank Deposit at checkout. Leave blank to hide a field.
+        </p>
+        <form onSubmit={handleSaveBanking} className="space-y-4">
+          <div>
+            <label htmlFor="bank-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Bank name
+            </label>
+            <input
+              id="bank-name"
+              type="text"
+              value={banking.bankName ?? ''}
+              onChange={(e) => setBanking((b) => ({ ...b, bankName: e.target.value }))}
+              placeholder="e.g. Adab Commerce Bank"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="bank-account-title" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Account title
+            </label>
+            <input
+              id="bank-account-title"
+              type="text"
+              value={banking.accountTitle ?? ''}
+              onChange={(e) => setBanking((b) => ({ ...b, accountTitle: e.target.value }))}
+              placeholder="e.g. Adab Clothing (Pvt) Ltd"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="bank-account-number" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Account number
+            </label>
+            <input
+              id="bank-account-number"
+              type="text"
+              value={banking.accountNumber ?? ''}
+              onChange={(e) => setBanking((b) => ({ ...b, accountNumber: e.target.value }))}
+              placeholder="e.g. 01234567890"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="bank-iban" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              IBAN
+            </label>
+            <input
+              id="bank-iban"
+              type="text"
+              value={banking.iban ?? ''}
+              onChange={(e) => setBanking((b) => ({ ...b, iban: e.target.value }))}
+              placeholder="e.g. PK00ADAB00000000001234567890"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="bank-instructions" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Instructions (optional)
+            </label>
+            <textarea
+              id="bank-instructions"
+              rows={2}
+              value={banking.instructions ?? ''}
+              onChange={(e) => setBanking((b) => ({ ...b, instructions: e.target.value }))}
+              placeholder="e.g. After transferring, upload a screenshot of your payment as proof."
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving === 'banking'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'banking' ? 'Saving…' : 'Save banking details'}
           </button>
         </form>
       </section>

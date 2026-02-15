@@ -125,6 +125,16 @@ async function main() {
       value: { facebook: '', instagram: '', twitter: '', youtube: '' },
     },
     { key: 'delivery', value: { deliveryChargesCents: 0 } },
+    {
+      key: 'banking',
+      value: {
+        bankName: 'Adab Commerce Bank',
+        accountTitle: 'Adab Clothing (Pvt) Ltd',
+        accountNumber: '01234567890',
+        iban: 'PK00ADAB00000000001234567890',
+        instructions: 'After transferring, upload a screenshot of your payment as proof.',
+      },
+    },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -133,7 +143,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking).');
 }
 
 main()
