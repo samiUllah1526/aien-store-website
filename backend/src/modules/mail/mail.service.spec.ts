@@ -2,7 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from './mail.service';
-import { OrderStatusEmailPayload } from './interfaces/mail.interface';
+import {
+  OrderStatusEmailPayload,
+  OrderConfirmationEmailPayload,
+  WelcomeEmailPayload,
+  UserCreatedEmailPayload,
+  PasswordResetEmailPayload,
+} from './interfaces/mail.interface';
 import { MAIL_TRANSPORT } from './constants';
 
 describe('MailService', () => {
@@ -26,7 +32,7 @@ describe('MailService', () => {
         },
         {
           provide: PrismaService,
-          useValue: { emailLog: { create: jest.fn().mockResolvedValue({}) } },
+          useValue: { emailLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) } },
         },
         {
           provide: MAIL_TRANSPORT,
@@ -38,11 +44,7 @@ describe('MailService', () => {
     service = module.get<MailService>(MailService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  it('should call transport.send with order status email', async () => {
+  it('sends order status change', async () => {
     const payload: OrderStatusEmailPayload = {
       to: 'customer@example.com',
       orderId: 'order-123',
@@ -62,7 +64,7 @@ describe('MailService', () => {
     );
   });
 
-  it('should include customerName in built content when provided', async () => {
+  it('includes customerName in order status content when provided', async () => {
     const payload: OrderStatusEmailPayload = {
       to: 'customer@example.com',
       orderId: 'order-123',
@@ -76,14 +78,74 @@ describe('MailService', () => {
     expect(call.html).toContain('Jane Doe');
   });
 
-  it('should not throw when transport fails', async () => {
+  it('throws when transport fails', async () => {
     transportSend.mockRejectedValueOnce(new Error('Brevo 401'));
-    const payload: OrderStatusEmailPayload = {
+    await expect(
+      service.sendOrderStatusChange({
+        to: 'c@ex.com',
+        orderId: 'o1',
+        status: 'SHIPPED',
+        statusUpdatedAt: new Date().toISOString(),
+      }),
+    ).rejects.toThrow('Brevo 401');
+  });
+
+  it('sends order confirmation', async () => {
+    const payload: OrderConfirmationEmailPayload = {
       to: 'customer@example.com',
-      orderId: 'order-123',
-      status: 'SHIPPED',
-      statusUpdatedAt: new Date().toISOString(),
+      orderId: 'ord-456',
+      totalCents: 5299,
+      currency: 'PKR',
+      orderDate: '2025-01-15',
+      items: [{ productName: 'Widget', quantity: 2, unitCents: 2500 }],
     };
-    await expect(service.sendOrderStatusChange(payload)).resolves.not.toThrow();
+    const logId = await service.sendOrderConfirmation(payload);
+    expect(logId).toBeDefined();
+    expect(transportSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: payload.to,
+        from: 'noreply@test.com',
+        subject: expect.stringContaining('ord-456'),
+        text: expect.any(String),
+        html: expect.any(String),
+      }),
+    );
+  });
+
+  it('sends welcome email', async () => {
+    const payload: WelcomeEmailPayload = { to: 'new@user.com', name: 'New User' };
+    await service.sendWelcome(payload);
+    expect(transportSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: payload.to,
+        subject: expect.stringContaining('Welcome'),
+        text: expect.stringContaining('New User'),
+      }),
+    );
+  });
+
+  it('sends user-created email', async () => {
+    const payload: UserCreatedEmailPayload = { to: 'staff@co.com', name: 'Staff' };
+    await service.sendUserCreated(payload);
+    expect(transportSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: payload.to,
+        subject: expect.stringContaining('account has been created'),
+        text: expect.any(String),
+      }),
+    );
+  });
+
+  it('sends password reset email', async () => {
+    const payload: PasswordResetEmailPayload = {
+      to: 'user@ex.com',
+      name: 'User',
+      resetLink: 'https://app.com/reset?token=abc123',
+    };
+    await service.sendPasswordReset(payload);
+    const call = transportSend.mock.calls[0][0];
+    expect(call.to).toBe(payload.to);
+    expect(call.subject).toContain('Reset');
+    expect(call.html).toContain('https://app.com/reset');
   });
 });
