@@ -358,7 +358,23 @@ export function VouchersManager() {
                         ? `${v.usedCount} / ${v.usageLimitGlobal}`
                         : `${v.usedCount}`;
                     return (
-                      <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <tr
+                        key={v.id}
+                        role="button"
+                        tabIndex={0}
+                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('button, a')) return;
+                          window.location.href = `/admin/vouchers/${v.id}`;
+                        }}
+                        onKeyDown={(e) => {
+                          if ((e.target as HTMLElement).closest('button, a')) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            window.location.href = `/admin/vouchers/${v.id}`;
+                          }
+                        }}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <a
