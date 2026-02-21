@@ -197,6 +197,8 @@ model Media {
   deliveryUrl      String? @map("delivery_url")
   /** Entity association: product, payment_proof, etc. For cleanup/orphan detection. */
   source    String?  @default("product") @map("source")
+  /** When set, this row represents a failed upload; object holds message, code, purpose, context. */
+  uploadError Json?  @map("upload_error")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

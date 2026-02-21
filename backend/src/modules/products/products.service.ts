@@ -211,6 +211,7 @@ export class ProductsService {
     return {
       productCategories: { include: { category: true } },
       productMedia: {
+        where: { media: { uploadError: { equals: Prisma.DbNull } } },
         include: { media: { select: { path: true, deliveryUrl: true } } },
         orderBy: { sortOrder: Prisma.SortOrder.asc },
       },
@@ -249,7 +250,7 @@ export class ProductsService {
 
   private async validateMediaIds(mediaIds: string[]): Promise<void> {
     const found = await this.prisma.media.findMany({
-      where: { id: { in: mediaIds } },
+      where: { id: { in: mediaIds }, uploadError: { equals: Prisma.DbNull } },
       select: { id: true },
     });
     const foundSet = new Set(found.map((m) => m.id));
