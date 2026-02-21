@@ -1,0 +1,101 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Deployment
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Deployment
+
+Both the **main website** and **admin portal** deploy separately to Cloudflare Pages via GitHub Actions. Deploys run automatically when you push changes to `main`—and only when the relevant project files change (path-based triggers).
+
+---
+
+## Overview
+
+| Project        | Cloudflare Pages project | Deploys when these paths change          |
+|----------------|--------------------------|------------------------------------------|
+| Main website   | `aien-store`             | `main-website/**` or its workflow file   |
+| Admin portal   | `admin-portal`           | `admin-portal/**` or its workflow file   |
+
+Push to `main`, and only the projects you changed will be built and deployed.
+
+---
+
+## GitHub Secrets
+
+The workflows use a GitHub **environment** called `CLOUDFLARE` with these secrets:
+
+| Secret                  | Purpose                                                       |
+|-------------------------|---------------------------------------------------------------|
+| `CLOUDFLARE_API_TOKEN`  | API token with Cloudflare Pages edit permission               |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (32-character hex, e.g. from the dashboard URL) |
+
+To create an API token:
+
+1. Cloudflare dashboard → **My Profile** → **API Tokens**
+2. **Create Token** → use the “Edit Cloudflare Workers” template or create a custom token
+3. Ensure **Account → Cloudflare Pages → Edit** permission is enabled
+
+Account ID: In the dashboard URL (`https://dash.cloudflare.com/<ACCOUNT_ID>/...`) or under **Workers & Pages** → **Account details**.
+
+---
+
+## Cloudflare Pages Projects
+
+Both projects must exist in Cloudflare before the first deploy:
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages**
+2. Choose **Upload your static files**
+3. Create project `aien-store` for the main website
+4. Create project `admin-portal` for the admin portal
+
+You can upload a dummy file or leave them empty; GitHub Actions will upload the built `dist` folder on each deploy.
+
+---
+
+## Deployment Flow
+
+1. Push changes to `main`
+2. GitHub Actions runs only if the relevant paths changed (see table above)
+3. Job installs dependencies (`npm ci`), builds (`npm run build`), then runs `wrangler pages deploy dist`
+4. Cloudflare Pages serves the new build
+
+View runs and logs under the repository **Actions** tab.
+
+---
+
+## Manual Deployment (Optional)
+
+If you need to deploy from your machine:
+
+**Main website:**
+
+```bash
+cd main-website
+npm run build
+npx wrangler@3 pages deploy dist --project-name=aien-store
+```
+
+**Admin portal:**
+
+```bash
+cd admin-portal
+npm run build
+npx wrangler@3 pages deploy dist --project-name=admin-portal
+```
+
+Log in first: `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in your environment.
+
+> **Note:** Use `wrangler@3` locally if you see `@cloudflare/workerd-darwin-arm64` errors with newer Wrangler versions on Apple Silicon.
+
+---
+
+## Summary
+
+- Path-based deploys: only changed projects run
+- Uses GitHub environment `CLOUDFLARE` and its secrets
+- Cloudflare Pages projects: `aien-store`, `admin-portal`
+- Deploys run on push to `main` automatically
