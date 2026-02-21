@@ -99,14 +99,15 @@ export class SettingsService {
     });
   }
 
-  /** Resolve logo media ID to file path for public API. */
+  /** Resolve logo media ID to URL for public API. Returns deliveryUrl (Cloudinary) or path for local. */
   private async resolveLogoPath(logoMediaId: string | null | undefined): Promise<string | null> {
     if (!logoMediaId) return null;
     const media = await this.prisma.media.findUnique({
       where: { id: logoMediaId },
-      select: { path: true },
+      select: { path: true, deliveryUrl: true },
     });
-    return media?.path ?? null;
+    if (!media) return null;
+    return media.deliveryUrl ?? media.path ?? null;
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
