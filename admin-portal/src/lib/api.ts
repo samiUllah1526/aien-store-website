@@ -28,6 +28,8 @@ export interface ApiSingleResponse<T> {
   message?: string;
 }
 
+const FETCH_TIMEOUT_MS = 15000;
+
 async function request<T>(
   path: string,
   options: RequestInit & { params?: Record<string, string | number | undefined> } = {}
@@ -47,7 +49,22 @@ async function request<T>(
   const token = getStoredToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url.toString(), { ...init, headers });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { ...init, headers, signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        `Request timed out. Check that the backend is running at ${base} and the API URL is correct.`
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string | string[]; meta?: unknown };
 
   if (res.status === 401) {
