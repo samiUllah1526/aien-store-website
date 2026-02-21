@@ -85,6 +85,11 @@ export interface Order {
   status: string;
   totalCents: number;
   currency: string;
+  subtotalCents?: number | null;
+  shippingCents?: number | null;
+  discountType?: string | null;
+  voucherCode?: string | null;
+  discountCents?: number;
   customerEmail: string;
   customerFirstName: string | null;
   customerLastName: string | null;
@@ -196,4 +201,11 @@ export interface VoucherStats {
   remainingUses: number | null;
   usedCount: number;
   usageLimitGlobal: number | null;
+  redemptions?: Array<{
+    id: string;
+    orderId: string;
+    userId: string | null;
+    createdAt: string;
+    order: { id: string; discountCents: number; totalCents: number; createdAt: string };
+  }>;
 }

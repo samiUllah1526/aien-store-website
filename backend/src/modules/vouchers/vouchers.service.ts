@@ -6,9 +6,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VoucherAuditService } from './voucher-audit.service';
+import type { VoucherAuditContext } from './dto/voucher-audit-context.dto';
 import { CreateVoucherDto, VoucherTypeDto } from './dto/create-voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
 import { VoucherQueryDto } from './dto/voucher-query.dto';
+import { VoucherAuditQueryDto } from './dto/voucher-audit-query.dto';
 import { ValidateVoucherDto } from './dto/validate-voucher.dto';
 import { VoucherType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -47,7 +50,10 @@ export interface ValidateVoucherError {
 export class VouchersService {
   private readonly logger = new Logger(VouchersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: VoucherAuditService,
+  ) {}
 
   private toVoucherType(dto: VoucherTypeDto): VoucherType {
     return dto as unknown as VoucherType;
@@ -125,7 +131,10 @@ export class VouchersService {
   }
 
   /** Validate voucher for customer checkout. Returns result or error. */
-  async validate(dto: ValidateVoucherDto): Promise<ValidateVoucherResult | ValidateVoucherError> {
+  async validate(
+    dto: ValidateVoucherDto,
+    auditCtx?: VoucherAuditContext,
+  ): Promise<ValidateVoucherResult | ValidateVoucherError> {
     const code = dto.code?.trim().toUpperCase();
     if (!code) {
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_FOUND, message: 'Voucher code is required.' };
@@ -140,22 +149,71 @@ export class VouchersService {
 
     if (!voucher) {
       this.logger.warn(`Voucher validation failed: code=${code} error=NOT_FOUND`);
+      this.audit.publishAsync({
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.NOT_FOUND,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_FOUND, message: 'Invalid voucher code.' };
     }
 
     const now = new Date();
     if (voucher.expiryDate < now) {
       this.logger.warn(`Voucher validation failed: code=${code} error=EXPIRED`);
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.EXPIRED,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.EXPIRED, message: 'This voucher has expired.' };
     }
     if (voucher.startDate > now) {
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.NOT_STARTED,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_STARTED, message: 'This voucher is not yet valid.' };
     }
     if (!voucher.isActive) {
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.INACTIVE,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.INACTIVE, message: 'This voucher is no longer active.' };
     }
 
     if (voucher.usageLimitGlobal != null && voucher.usedCount >= voucher.usageLimitGlobal) {
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.USAGE_LIMIT_REACHED,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return {
         valid: false,
         errorCode: VOUCHER_ERROR_CODES.USAGE_LIMIT_REACHED,
@@ -168,6 +226,16 @@ export class VouchersService {
         where: { voucherId: voucher.id, userId: dto.customerUserId },
       });
       if (userRedemptions >= voucher.usageLimitPerUser) {
+        this.audit.publishAsync({
+          voucherId: voucher.id,
+          action: 'VALIDATION_FAILED',
+          actorType: 'CUSTOMER',
+          actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+          code,
+          result: 'INVALID',
+          errorCode: VOUCHER_ERROR_CODES.USER_LIMIT_REACHED,
+          requestId: auditCtx?.requestId ?? null,
+        });
         return {
           valid: false,
           errorCode: VOUCHER_ERROR_CODES.USER_LIMIT_REACHED,
@@ -198,6 +266,16 @@ export class VouchersService {
 
     const minOrder = voucher.minOrderValueCents ?? 0;
     if (subtotalCents < minOrder) {
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.MIN_ORDER_NOT_MET,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return {
         valid: false,
         errorCode: VOUCHER_ERROR_CODES.MIN_ORDER_NOT_MET,
@@ -206,6 +284,16 @@ export class VouchersService {
     }
 
     if (eligibleSubtotalCents === 0 && (applicableProductIds?.length || applicableCategoryIds?.length)) {
+      this.audit.publishAsync({
+        voucherId: voucher.id,
+        action: 'VALIDATION_FAILED',
+        actorType: 'CUSTOMER',
+        actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+        code,
+        result: 'INVALID',
+        errorCode: VOUCHER_ERROR_CODES.NO_ELIGIBLE_PRODUCTS,
+        requestId: auditCtx?.requestId ?? null,
+      });
       return {
         valid: false,
         errorCode: VOUCHER_ERROR_CODES.NO_ELIGIBLE_PRODUCTS,
@@ -229,6 +317,16 @@ export class VouchersService {
     const totalCents = Math.max(0, orderTotalCents - discountCents);
 
     this.logger.log(`Voucher validated: code=${code} valid=true discountCents=${discountCents}`);
+    this.audit.publishAsync({
+      voucherId: voucher.id,
+      action: 'VALIDATED',
+      actorType: 'CUSTOMER',
+      actorId: dto.customerUserId ?? auditCtx?.actorId ?? null,
+      code,
+      result: 'VALID',
+      metadata: { discountCents, subtotalCents, totalCents },
+      requestId: auditCtx?.requestId ?? null,
+    });
 
     return {
       valid: true,
@@ -249,7 +347,7 @@ export class VouchersService {
     items: Array<{ productId: string; quantity: number }>,
     customerUserId?: string | null,
     throwOnInvalid = false,
-  ): Promise<{ voucherId: string; voucherCode: string; discountCents: number } | null> {
+  ): Promise<{ voucherId: string; voucherCode: string; discountCents: number; discountType: string } | null> {
     if (!voucherCode?.trim()) return null;
     const result = await this.validate({
       code: voucherCode.trim(),
@@ -268,10 +366,11 @@ export class VouchersService {
       voucherId: result.voucherId,
       voucherCode: result.code,
       discountCents: result.discountCents,
+      discountType: result.type,
     };
   }
 
-  async create(dto: CreateVoucherDto) {
+  async create(dto: CreateVoucherDto, auditCtx?: VoucherAuditContext) {
     const code = dto.code.trim().toUpperCase();
     const existing = await this.prisma.voucher.findFirst({
       where: { code: { equals: code, mode: 'insensitive' }, deletedAt: null },
@@ -308,6 +407,16 @@ export class VouchersService {
         applicableCategoryIds: dto.applicableCategoryIds?.length ? dto.applicableCategoryIds : undefined,
         isActive: dto.isActive ?? true,
       },
+    });
+    await this.audit.publish({
+      voucherId: voucher.id,
+      action: 'CREATED',
+      actorType: 'ADMIN',
+      actorId: auditCtx?.actorId ?? null,
+      code: voucher.code,
+      result: 'VALID',
+      metadata: { type: voucher.type, value: voucher.value },
+      requestId: auditCtx?.requestId ?? null,
     });
     return this.toResponseDto(voucher);
   }
@@ -356,7 +465,7 @@ export class VouchersService {
     return this.toResponseDto(voucher);
   }
 
-  async update(id: string, dto: UpdateVoucherDto) {
+  async update(id: string, dto: UpdateVoucherDto, auditCtx?: VoucherAuditContext) {
     const existing = await this.prisma.voucher.findFirst({
       where: { id, deletedAt: null },
     });
@@ -398,10 +507,29 @@ export class VouchersService {
       where: { id },
       data,
     });
+    const changes: Record<string, unknown> = {};
+    if (dto.code != null) changes.code = dto.code;
+    if (dto.type != null) changes.type = dto.type;
+    if (dto.value != null) changes.value = dto.value;
+    if (dto.minOrderValueCents != null) changes.minOrderValueCents = dto.minOrderValueCents;
+    if (dto.maxDiscountCents != null) changes.maxDiscountCents = dto.maxDiscountCents;
+    if (dto.startDate != null) changes.startDate = dto.startDate;
+    if (dto.expiryDate != null) changes.expiryDate = dto.expiryDate;
+    if (dto.usageLimitGlobal != null) changes.usageLimitGlobal = dto.usageLimitGlobal;
+    if (dto.usageLimitPerUser != null) changes.usageLimitPerUser = dto.usageLimitPerUser;
+    if (dto.isActive != null) changes.isActive = dto.isActive;
+    await this.audit.publish({
+      voucherId: voucher.id,
+      action: 'UPDATED',
+      actorType: 'ADMIN',
+      actorId: auditCtx?.actorId ?? null,
+      metadata: { changes },
+      requestId: auditCtx?.requestId ?? null,
+    });
     return this.toResponseDto(voucher);
   }
 
-  async updateStatus(id: string, isActive: boolean) {
+  async updateStatus(id: string, isActive: boolean, auditCtx?: VoucherAuditContext) {
     const voucher = await this.prisma.voucher.findFirst({
       where: { id, deletedAt: null },
     });
@@ -410,11 +538,19 @@ export class VouchersService {
       where: { id },
       data: { isActive },
     });
+    await this.audit.publish({
+      voucherId: voucher.id,
+      action: isActive ? 'ACTIVATED' : 'DEACTIVATED',
+      actorType: 'ADMIN',
+      actorId: auditCtx?.actorId ?? null,
+      metadata: { isActive },
+      requestId: auditCtx?.requestId ?? null,
+    });
     return this.toResponseDto(updated);
   }
 
   /** Soft delete. */
-  async remove(id: string) {
+  async remove(id: string, auditCtx?: VoucherAuditContext) {
     const voucher = await this.prisma.voucher.findFirst({
       where: { id, deletedAt: null },
     });
@@ -423,7 +559,102 @@ export class VouchersService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    await this.audit.publish({
+      voucherId: voucher.id,
+      action: 'DELETED',
+      actorType: 'ADMIN',
+      actorId: auditCtx?.actorId ?? null,
+      code: voucher.code,
+      metadata: { type: voucher.type },
+      requestId: auditCtx?.requestId ?? null,
+    });
     return { success: true };
+  }
+
+  async findAuditLogs(query: VoucherAuditQueryDto): Promise<{ data: unknown[]; total: number }> {
+    const { page = 1, limit = 20, action, code, actorId, from, to } = query;
+    const skip = (page - 1) * limit;
+    const where: Prisma.VoucherAuditLogWhereInput = {};
+    if (action?.trim()) where.action = action.trim();
+    if (code?.trim()) where.code = { contains: code.trim(), mode: 'insensitive' };
+    if (actorId?.trim()) where.actorId = actorId.trim();
+    if (from || to) {
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) where.createdAt.lte = new Date(to);
+    }
+    const [logs, total] = await Promise.all([
+      this.prisma.voucherAuditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.voucherAuditLog.count({ where }),
+    ]);
+    return {
+      data: logs.map((l) => ({
+        id: l.id,
+        voucherId: l.voucherId,
+        action: l.action,
+        actorType: l.actorType,
+        actorId: l.actorId,
+        orderId: l.orderId,
+        code: l.code,
+        result: l.result,
+        errorCode: l.errorCode,
+        metadata: l.metadata,
+        requestId: l.requestId,
+        createdAt: l.createdAt.toISOString(),
+      })),
+      total,
+    };
+  }
+
+  async findAuditLogsByVoucher(
+    voucherId: string,
+    query: VoucherAuditQueryDto,
+  ): Promise<{ data: unknown[]; total: number }> {
+    const voucher = await this.prisma.voucher.findFirst({
+      where: { id: voucherId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!voucher) throw new NotFoundException('Voucher not found');
+    const { page = 1, limit = 20, action, from, to } = query;
+    const skip = (page - 1) * limit;
+    const where: Prisma.VoucherAuditLogWhereInput = { voucherId };
+    if (action?.trim()) where.action = action.trim();
+    if (from || to) {
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) where.createdAt.lte = new Date(to);
+    }
+    const [logs, total] = await Promise.all([
+      this.prisma.voucherAuditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.voucherAuditLog.count({ where }),
+    ]);
+    return {
+      data: logs.map((l) => ({
+        id: l.id,
+        voucherId: l.voucherId,
+        action: l.action,
+        actorType: l.actorType,
+        actorId: l.actorId,
+        orderId: l.orderId,
+        code: l.code,
+        result: l.result,
+        errorCode: l.errorCode,
+        metadata: l.metadata,
+        requestId: l.requestId,
+        createdAt: l.createdAt.toISOString(),
+      })),
+      total,
+    };
   }
 
   async getStats(id: string) {
@@ -434,7 +665,7 @@ export class VouchersService {
 
     const redemptions = await this.prisma.voucherRedemption.findMany({
       where: { voucherId: id },
-      include: { order: { select: { discountCents: true, totalCents: true } } },
+      include: { order: { select: { id: true, discountCents: true, totalCents: true, createdAt: true } } },
     });
 
     const totalRedemptions = redemptions.length;
@@ -449,6 +680,13 @@ export class VouchersService {
       remainingUses: remaining,
       usedCount: voucher.usedCount,
       usageLimitGlobal: voucher.usageLimitGlobal,
+      redemptions: redemptions.map((r) => ({
+        id: r.id,
+        orderId: r.orderId,
+        userId: r.userId,
+        createdAt: r.createdAt.toISOString(),
+        order: { id: r.order.id, discountCents: r.order.discountCents, totalCents: r.order.totalCents, createdAt: r.order.createdAt.toISOString() },
+      })),
     };
   }
 

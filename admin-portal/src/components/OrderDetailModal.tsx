@@ -245,10 +245,33 @@ export function OrderDetailModal({
                       {updatingStatus && <span className="ml-1 text-xs text-slate-500">Updating…</span>}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-slate-500 dark:text-slate-400">Total</dt>
-                    <dd className="font-medium text-slate-900 dark:text-slate-100">
-                      {formatMoney(order.totalCents, order.currency ?? 'PKR')}
+                  <div className="sm:col-span-2">
+                    <dt className="text-slate-500 dark:text-slate-400 mb-1">Pricing</dt>
+                    <dd className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">Subtotal (products)</span>
+                        <span className="text-slate-900 dark:text-slate-100">
+                          {formatMoney(order.subtotalCents ?? order.items.reduce((s, i) => s + i.unitCents * i.quantity, 0), order.currency ?? 'PKR')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">Shipping</span>
+                        <span className="text-slate-900 dark:text-slate-100">
+                          {formatMoney(order.shippingCents ?? 0, order.currency ?? 'PKR')}
+                        </span>
+                      </div>
+                      {(order.discountCents ?? 0) > 0 && (
+                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                          <span>Discount{order.voucherCode ? ` (${order.voucherCode})` : ''}</span>
+                          <span>-{formatMoney(order.discountCents ?? 0, order.currency ?? 'PKR')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-medium pt-1 border-t border-slate-200 dark:border-slate-600">
+                        <span className="text-slate-900 dark:text-slate-100">Total</span>
+                        <span className="text-slate-900 dark:text-slate-100">
+                          {formatMoney(order.totalCents, order.currency ?? 'PKR')}
+                        </span>
+                      </div>
                     </dd>
                   </div>
                   <div>

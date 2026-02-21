@@ -1,0 +1,84 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Voucher audit & order pricing
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Voucher audit & order pricing
+
+Overview of the voucher audit system, order-level pricing transparency, and where to find this information in the admin portal.
+
+---
+
+## Overview
+
+The voucher management system includes:
+
+- **Voucher audit logs** — lifecycle events, validation attempts, redemptions
+- **Order pricing persistence** — subtotal, shipping, discount breakdown stored per order
+- **Admin APIs** — view audit logs, filter by action, date, or user
+- **Event abstraction** — ready for future scalability (e.g. Kafka/queue integration)
+
+---
+
+## Where to find it in the admin portal
+
+### Voucher detail page
+
+Click a voucher code in the [Vouchers](/admin/vouchers) list to open the voucher detail page (`/admin/vouchers/[id]`). You’ll see:
+
+- **Details** — Type, value, start/expiry dates, usage counts
+- **Usage** — Total redemptions, revenue impact, remaining uses
+- **Linked orders** — Orders that used this voucher (with discount amounts)
+- **Action logs** — Timeline of events (created, updated, validated, redeemed, etc.)
+
+### Order detail
+
+When you open an order in [Orders](/admin/orders), the detail modal now shows a **pricing breakdown**:
+
+- **Subtotal (products)** — Before discounts
+- **Shipping** — Delivery charges
+- **Discount** — Voucher code and amount (if applied)
+- **Total** — Final payable amount
+
+This breakdown is immutable: historical orders stay accurate even if voucher rules change later.
+
+---
+
+## Audit events
+
+| Event | Meaning |
+|-------|---------|
+| **CREATED** | Admin created the voucher |
+| **UPDATED** | Admin edited the voucher |
+| **ACTIVATED** | Admin activated the voucher |
+| **DEACTIVATED** | Admin deactivated the voucher |
+| **DELETED** | Admin soft-deleted the voucher |
+| **VALIDATED** | Customer validated the voucher (success) |
+| **VALIDATION_FAILED** | Customer validation failed (expired, limit reached, etc.) |
+| **REDEEMED** | Order was placed using this voucher |
+| **EXPIRED** | Voucher passed its expiry date (logged by a background job) |
+
+---
+
+## Order pricing fields
+
+Each order stores:
+
+- **Subtotal** — Product total before discounts
+- **Shipping** — Delivery charges
+- **Discount type** — PERCENTAGE, FIXED_AMOUNT, or FREE_SHIPPING
+- **Discount amount** — Applied voucher discount
+- **Voucher code** — Code used (if any)
+- **Total** — Subtotal + Shipping − Discount
+
+**Invariant:** `Total = Subtotal + Shipping − Discount`
+
+---
+
+## Background jobs
+
+The **voucher expired** job writes `EXPIRED` audit logs for vouchers past their expiry date. See [Background jobs setup](/admin/docs/jobs-setup) for how to run it manually or set up automated scheduling.

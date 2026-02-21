@@ -361,9 +361,12 @@ export function VouchersManager() {
                       <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                            <a
+                              href={`/admin/vouchers/${v.id}`}
+                              className="font-mono font-medium text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300"
+                            >
                               {v.code}
-                            </span>
+                            </a>
                             <button
                               type="button"
                               onClick={() => handleCopyCode(v.code, v.id)}

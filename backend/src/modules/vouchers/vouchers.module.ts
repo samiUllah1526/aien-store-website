@@ -3,6 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { VouchersController } from './vouchers.controller';
 import { VouchersService } from './vouchers.service';
+import { VoucherAuditService } from './voucher-audit.service';
+import { VoucherExpiredJob } from './voucher-expired.job';
 
 @Module({
   imports: [
@@ -15,7 +17,7 @@ import { VouchersService } from './vouchers.service';
     }),
   ],
   controllers: [VouchersController],
-  providers: [VouchersService],
-  exports: [VouchersService],
+  providers: [VouchersService, VoucherAuditService, VoucherExpiredJob],
+  exports: [VouchersService, VoucherAuditService],
 })
 export class VouchersModule {}

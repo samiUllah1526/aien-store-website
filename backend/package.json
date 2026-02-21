@@ -28,7 +28,8 @@
     "db:migrate:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
     "db:pull": "prisma db pull",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "job:voucher-expired": "ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",

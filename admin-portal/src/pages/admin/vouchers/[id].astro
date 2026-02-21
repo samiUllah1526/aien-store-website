@@ -1,0 +1,11 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { VoucherDetail } from '../../../components/VoucherDetail';
+const { id } = Astro.params;
+---
+
+<AdminLayout title={id ? `Voucher ${id}` : 'Voucher'}>
+  <VoucherDetail voucherId={id ?? ''} client:load />
+</AdminLayout>

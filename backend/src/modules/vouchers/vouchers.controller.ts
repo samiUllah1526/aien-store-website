@@ -18,6 +18,7 @@ import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
 import { VoucherQueryDto } from './dto/voucher-query.dto';
 import { ValidateVoucherDto } from './dto/validate-voucher.dto';
+import { VoucherAuditQueryDto } from './dto/voucher-audit-query.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -27,7 +28,7 @@ import { JwtService } from '@nestjs/jwt';
 
 interface RequestWithUser {
   user?: { userId: string };
-  headers?: { authorization?: string };
+  headers?: { authorization?: string; 'x-request-id'?: string };
 }
 
 @Controller('vouchers')
@@ -36,6 +37,14 @@ export class VouchersController {
     private readonly vouchersService: VouchersService,
     private readonly jwtService: JwtService,
   ) {}
+
+  private getRequestId(headers?: { 'x-request-id'?: string }): string {
+    const id = headers?.['x-request-id'];
+    if (id?.trim()) return id.trim();
+    return typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `req-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
 
   /** Public: validate voucher for checkout (optional JWT for per-user limit check). */
   @Public()
@@ -57,10 +66,10 @@ export class VouchersController {
         // Invalid token: proceed without user
       }
     }
-    const result = await this.vouchersService.validate({
-      ...dto,
-      customerUserId: customerUserId ?? dto.customerUserId,
-    });
+    const result = await this.vouchersService.validate(
+      { ...dto, customerUserId: customerUserId ?? dto.customerUserId },
+      { actorId: customerUserId ?? null, requestId: this.getRequestId(req.headers) },
+    );
     if (result.valid) {
       return ApiResponseDto.ok(result as ValidateVoucherResult);
     }
@@ -74,8 +83,9 @@ export class VouchersController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
-  async create(@Body() dto: CreateVoucherDto) {
-    const data = await this.vouchersService.create(dto);
+  async create(@Body() dto: CreateVoucherDto, @Req() req: RequestWithUser) {
+    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const data = await this.vouchersService.create(dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher created');
   }
 
@@ -89,12 +99,35 @@ export class VouchersController {
     return ApiResponseDto.list(data, { total, page, limit });
   }
 
+  @Get('audit-logs')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('vouchers:read')
+  async findAllAuditLogs(@Query() query: VoucherAuditQueryDto) {
+    const { data, total } = await this.vouchersService.findAuditLogs(query);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    return ApiResponseDto.list(data, { total, page, limit });
+  }
+
   @Get(':id/stats')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
   async getStats(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.vouchersService.getStats(id);
     return ApiResponseDto.ok(data);
+  }
+
+  @Get(':id/audit-logs')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('vouchers:read')
+  async findVoucherAuditLogs(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: VoucherAuditQueryDto,
+  ) {
+    const { data, total } = await this.vouchersService.findAuditLogsByVoucher(id, query);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    return ApiResponseDto.list(data, { total, page, limit });
   }
 
   @Get(':id')
@@ -111,8 +144,10 @@ export class VouchersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVoucherDto,
+    @Req() req: RequestWithUser,
   ) {
-    const data = await this.vouchersService.update(id, dto);
+    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const data = await this.vouchersService.update(id, dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher updated');
   }
 
@@ -122,16 +157,19 @@ export class VouchersController {
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { isActive: boolean },
+    @Req() req: RequestWithUser,
   ) {
-    const data = await this.vouchersService.updateStatus(id, body.isActive ?? false);
+    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const data = await this.vouchersService.updateStatus(id, body.isActive ?? false, ctx);
     return ApiResponseDto.ok(data, body.isActive ? 'Voucher activated' : 'Voucher deactivated');
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.vouchersService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
+    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    await this.vouchersService.remove(id, ctx);
     return ApiResponseDto.ok(null, 'Voucher deleted');
   }
 }

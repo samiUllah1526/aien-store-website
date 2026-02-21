@@ -157,6 +157,11 @@ export interface OrderDto {
   status: string;
   totalCents: number;
   currency: string;
+  subtotalCents?: number | null;
+  shippingCents?: number | null;
+  discountType?: string | null;
+  voucherCode?: string | null;
+  discountCents?: number;
   customerEmail: string;
   customerName: string | null;
   customerPhone: string | null;

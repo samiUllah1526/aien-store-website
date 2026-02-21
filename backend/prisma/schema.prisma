@@ -308,6 +308,12 @@ model Order {
   createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  /** Product subtotal before discounts (immutable after creation). */
+  subtotalCents   Int?      @map("subtotal_cents")
+  /** Delivery charges (immutable after creation). */
+  shippingCents   Int?      @map("shipping_cents")
+  /** Voucher type used: PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING (immutable after creation). */
+  discountType    String?   @map("discount_type")
   voucherId       String?   @map("voucher_id") @db.Uuid
   voucherCode     String?   @map("voucher_code")
   discountCents   Int       @default(0) @map("discount_cents")
@@ -352,6 +358,7 @@ model Voucher {
 
   orders            Order[]            @relation("OrderVoucher")
   redemptions       VoucherRedemption[]
+  auditLogs         VoucherAuditLog[]
 
   @@index([code])
   @@index([isActive, expiryDate])
@@ -373,6 +380,33 @@ model VoucherRedemption {
   @@index([voucherId])
   @@index([userId])
   @@map("voucher_redemptions")
+}
+
+// -----------------------------------------------------------------------------
+// Voucher audit log: lifecycle events, validation attempts, redemptions
+// -----------------------------------------------------------------------------
+model VoucherAuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  voucherId String?  @map("voucher_id") @db.Uuid
+  action    String   @map("action")
+  actorType String   @map("actor_type")
+  actorId   String?  @map("actor_id") @db.Uuid
+  orderId   String?  @map("order_id") @db.Uuid
+  code      String?  @map("code")
+  result    String?  @map("result")
+  errorCode String?  @map("error_code")
+  metadata  Json?    @map("metadata")
+  requestId String?  @map("request_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  voucher Voucher? @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+
+  @@index([voucherId])
+  @@index([orderId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([code])
+  @@map("voucher_audit_logs")
 }
 
 model OrderItem {

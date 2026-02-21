@@ -18,6 +18,12 @@ export interface OrderResponseDto {
   status: string;
   totalCents: number;
   currency: string;
+  /** Product subtotal before discounts (immutable). */
+  subtotalCents?: number | null;
+  /** Delivery charges (immutable). */
+  shippingCents?: number | null;
+  /** Voucher type used: PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING (immutable). */
+  discountType?: string | null;
   voucherCode?: string | null;
   discountCents?: number;
   customerEmail: string;

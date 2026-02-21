@@ -130,10 +130,36 @@ export default function OrderDetailPage({ orderId }: { orderId: string }) {
             </li>
           ))}
         </ul>
-        <div className="border-t border-sand dark:border-charcoal-light px-4 py-3 flex justify-end">
-          <span className="font-semibold text-ink dark:text-cream">
-            Total {formatMoney(order.totalCents, order.currency)}
-          </span>
+        <div className="border-t border-sand dark:border-charcoal-light px-4 py-3 space-y-1.5 text-sm">
+          {(() => {
+            const subtotal = order.subtotalCents ?? order.items.reduce((s, i) => s + (i.unitCents ?? 0) * i.quantity, 0);
+            const shipping = order.shippingCents ?? 0;
+            const discount = order.discountCents ?? 0;
+            return (
+              <>
+                <div className="flex justify-between text-charcoal dark:text-cream/90">
+                  <span>Subtotal</span>
+                  <span>{formatMoney(subtotal, order.currency)}</span>
+                </div>
+                {shipping > 0 && (
+                  <div className="flex justify-between text-charcoal dark:text-cream/90">
+                    <span>Shipping</span>
+                    <span>{formatMoney(shipping, order.currency)}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                    <span>Discount{order.voucherCode ? ` (${order.voucherCode})` : ''}</span>
+                    <span>-{formatMoney(discount, order.currency)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold text-ink dark:text-cream pt-1">
+                  <span>Total</span>
+                  <span>{formatMoney(order.totalCents, order.currency)}</span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 

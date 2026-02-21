@@ -24,6 +24,7 @@ import { Prisma } from '@prisma/client';
 import { CURRENCIES } from '../../common/constants/currency';
 import { SettingsService } from '../settings/settings.service';
 import { VouchersService } from '../vouchers/vouchers.service';
+import { VoucherAuditService } from '../vouchers/voucher-audit.service';
 
 @Injectable()
 export class OrdersService {
@@ -33,6 +34,7 @@ export class OrdersService {
     private readonly settingsService: SettingsService,
     private readonly inventory: InventoryService,
     private readonly vouchersService: VouchersService,
+    private readonly voucherAudit: VoucherAuditService,
   ) {}
 
   /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
@@ -158,6 +160,7 @@ export class OrdersService {
       true, // throw if voucher invalid at checkout (data integrity)
     );
     const discountCents = voucherResult?.discountCents ?? 0;
+    const discountType = voucherResult?.discountType ?? undefined;
     // Safeguard: discount must never exceed subtotal + shipping (avoids negative totals)
     const maxAllowedDiscount = subtotalCents + deliveryCents;
     const safeDiscountCents = Math.min(discountCents, maxAllowedDiscount);
@@ -194,8 +197,11 @@ export class OrdersService {
       const newOrder = await tx.order.create({
         data: {
           status: OrderStatus.PENDING,
+          subtotalCents,
+          shippingCents: deliveryCents,
           totalCents,
           currency,
+          discountType: discountType ?? undefined,
           discountCents: safeDiscountCents,
           voucherId: voucherResult?.voucherId ?? undefined,
           voucherCode: voucherResult?.voucherCode ?? undefined,
@@ -228,6 +234,20 @@ export class OrdersService {
           where: { id: voucherResult.voucherId },
           data: { usedCount: { increment: 1 } },
         });
+        await this.voucherAudit.publish(
+          {
+            voucherId: voucherResult.voucherId,
+            action: 'REDEEMED',
+            actorType: 'CUSTOMER',
+            actorId: customerUserId ?? null,
+            orderId: newOrder.id,
+            code: voucherResult.voucherCode,
+            result: 'VALID',
+            metadata: { discountCents: safeDiscountCents, discountType },
+            requestId: null,
+          },
+          tx,
+        );
       }
 
       await this.inventory.deductForOrder(newOrder.id, orderItemsData, tx);
@@ -522,6 +542,9 @@ export class OrdersService {
     status: OrderStatus;
     totalCents: number;
     currency: string;
+    subtotalCents?: number | null;
+    shippingCents?: number | null;
+    discountType?: string | null;
     voucherCode?: string | null;
     discountCents?: number;
     customerEmail: string;
@@ -568,13 +591,19 @@ export class OrdersService {
         status: h.status,
         createdAt: h.createdAt.toISOString(),
       }));
+    const subtotalCents = order.subtotalCents ?? order.items.reduce((s, i) => s + i.unitCents * i.quantity, 0);
+    const discountCentsVal = order.discountCents ?? 0;
+    const shippingCentsVal = order.shippingCents ?? Math.max(0, order.totalCents - subtotalCents + discountCentsVal);
     return {
       id: order.id,
       status: order.status,
       totalCents: order.totalCents,
       currency: order.currency,
+      subtotalCents,
+      shippingCents: shippingCentsVal,
+      discountType: order.discountType ?? null,
       voucherCode: order.voucherCode ?? null,
-      discountCents: order.discountCents ?? 0,
+      discountCents: discountCentsVal,
       customerEmail: order.customerEmail,
       customerFirstName: order.customerFirstName ?? null,
       customerLastName: order.customerLastName ?? null,
