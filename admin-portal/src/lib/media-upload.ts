@@ -41,8 +41,8 @@ async function getSignedParams(folder: 'products' | 'payment-proofs'): Promise<S
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(url, { headers });
-  const json = await res.json().catch(() => ({})) as { success?: boolean; data?: SignedUploadParams };
-  if (!res.ok) throw new Error(json.message || 'Failed to get upload parameters');
+  const json = await res.json().catch(() => ({})) as { success?: boolean; data?: SignedUploadParams; message?: string };
+  if (!res.ok) throw new Error(json.message ?? 'Failed to get upload parameters');
   if (!json.data) throw new Error('No upload params returned');
   return json.data;
 }
@@ -66,8 +66,8 @@ async function registerUpload(
       filename: payload.filename,
     }),
   });
-  const json = await res.json().catch(() => ({})) as { success?: boolean; data?: { id: string } };
-  if (!res.ok) throw new Error(json.message || 'Failed to register upload');
+  const json = await res.json().catch(() => ({})) as { success?: boolean; data?: { id: string }; message?: string };
+  if (!res.ok) throw new Error(json.message ?? 'Failed to register upload');
   if (!json.data?.id) throw new Error('No media id returned');
   return json.data;
 }

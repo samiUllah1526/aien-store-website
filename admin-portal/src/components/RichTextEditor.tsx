@@ -11,7 +11,7 @@ interface RichTextEditorProps {
   className?: string;
 }
 
-function Toolbar({ editor }: { editor: ReturnType<typeof useEditor>['editor'] }) {
+function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   if (!editor) return null;
 
   const btn =
@@ -129,7 +129,7 @@ export function RichTextEditor({
     const current = editor.getHTML();
     const empty = !current || current === '<p></p>' || current === '<p></p>\n';
     if (empty && value && value.trim() !== '') {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [editor, value]);
 
@@ -138,10 +138,14 @@ export function RichTextEditor({
       className={`overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 ${className}`}
       style={{ minHeight }}
     >
-      <Toolbar editor={editor} />
-      <div className="bg-white dark:bg-slate-800 [&_.ProseMirror]:min-h-32 [&_.ProseMirror]:text-slate-900 [&_.ProseMirror]:dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none">
-        <EditorContent editor={editor} />
-      </div>
+      {editor && (
+        <>
+          <Toolbar editor={editor} />
+          <div className="bg-white dark:bg-slate-800 [&_.ProseMirror]:min-h-32 [&_.ProseMirror]:text-slate-900 [&_.ProseMirror]:dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-slate-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none">
+            <EditorContent editor={editor} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
