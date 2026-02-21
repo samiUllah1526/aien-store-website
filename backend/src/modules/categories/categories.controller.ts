@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -22,11 +23,11 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  /** Public list for shop dropdown; no auth required. */
+  /** Public list for shop dropdown; no auth required. Optional search filters by name and description. */
   @Get()
   @Public()
-  async findAll() {
-    const data = await this.categoriesService.findAll();
+  async findAll(@Query('search') search?: string) {
+    const data = await this.categoriesService.findAll(search);
     return ApiResponseDto.ok(data);
   }
 

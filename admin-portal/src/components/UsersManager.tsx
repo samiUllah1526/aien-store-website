@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatDateTime } from '../lib/format';
 import type { User, Role } from '../lib/types';
 
@@ -12,7 +13,8 @@ export function UsersManager() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput.trim(), 400);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export function UsersManager() {
         page,
         limit: PAGE_SIZE,
       };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
       const res = await api.getList<User>('/users', params);
       setUsers(res.data ?? []);
@@ -56,11 +58,15 @@ export function UsersManager() {
     } finally {
       setLoading(false);
     }
-  }, [canRead, page, search, statusFilter]);
+  }, [canRead, page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchRoles();
   }, [fetchRoles]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     fetchUsers();
@@ -71,7 +77,6 @@ export function UsersManager() {
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchUsers();
   };
 
   if (!canRead) {
@@ -109,8 +114,8 @@ export function UsersManager() {
             id="search"
             type="search"
             placeholder="Name or email"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           />
         </div>
@@ -121,7 +126,10 @@ export function UsersManager() {
           <select
             id="statusFilter"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           >
             <option value="">All</option>

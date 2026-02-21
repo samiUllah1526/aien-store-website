@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatDateTime } from '../lib/format';
 
 const PAGE_SIZE = 15;
@@ -27,6 +28,8 @@ export function EmailLogsManager() {
   const [typeFilter, setTypeFilter] = useState('');
   const [emailSearch, setEmailSearch] = useState('');
   const [orderIdSearch, setOrderIdSearch] = useState('');
+  const debouncedEmail = useDebounce(emailSearch.trim(), 400);
+  const debouncedOrderId = useDebounce(orderIdSearch.trim(), 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(true);
@@ -44,8 +47,8 @@ export function EmailLogsManager() {
       };
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.type = typeFilter;
-      if (emailSearch.trim()) params.email = emailSearch.trim();
-      if (orderIdSearch.trim()) params.orderId = orderIdSearch.trim();
+      if (debouncedEmail) params.email = debouncedEmail;
+      if (debouncedOrderId) params.orderId = debouncedOrderId;
       if (fromDate) params.fromDate = fromDate;
       if (toDate) params.toDate = toDate;
 
@@ -59,7 +62,11 @@ export function EmailLogsManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, typeFilter, emailSearch, orderIdSearch, fromDate, toDate]);
+  }, [page, statusFilter, typeFilter, debouncedEmail, debouncedOrderId, fromDate, toDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedEmail, debouncedOrderId]);
 
   useEffect(() => {
     fetchLogs();
@@ -83,7 +90,6 @@ export function EmailLogsManager() {
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchLogs();
   };
 
   const handleClearFilters = () => {

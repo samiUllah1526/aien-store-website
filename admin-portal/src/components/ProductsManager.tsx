@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, getApiBaseUrl } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
-import type { ProductListItem, Product, ProductFormData } from '../lib/types';
+import { useDebounce } from '../hooks/useDebounce';
+import type { ProductListItem, Product, ProductFormData, Category } from '../lib/types';
 import { ProductForm } from './ProductForm';
 import { AdjustStockModal } from './AdjustStockModal';
 
 const PAGE_SIZE = 10;
+const SORT_OPTIONS = [
+  { value: 'createdAt', label: 'Date created' },
+  { value: 'name', label: 'Name' },
+  { value: 'price', label: 'Price' },
+  { value: 'stockQuantity', label: 'Stock' },
+] as const;
 
 function imageUrl(path: string): string {
   if (!path) return '';
@@ -16,10 +23,19 @@ function imageUrl(path: string): string {
 
 export function ProductsManager() {
   const [items, setItems] = useState<ProductListItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [minPriceInput, setMinPriceInput] = useState('');
+  const [maxPriceInput, setMaxPriceInput] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState('');
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  const [featuredFilter, setFeaturedFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
@@ -28,17 +44,38 @@ export function ProductsManager() {
   const [adjustStockProduct, setAdjustStockProduct] = useState<ProductListItem | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const debouncedSearch = useDebounce(searchInput.trim(), 400);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await api.get<Category[]>('/categories');
+      setCategories(res.data ?? []);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
   const fetchList = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.getList<ProductListItem>('/products', {
+      const params: Record<string, string | number | undefined> = {
         page,
         limit: PAGE_SIZE,
-        search: search || undefined,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      });
+        sortBy,
+        sortOrder,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (categoryFilter) params.categoryId = categoryFilter;
+      const min = parseInt(appliedMinPrice, 10);
+      if (!Number.isNaN(min) && min >= 0) params.minPriceCents = min * 100;
+      const max = parseInt(appliedMaxPrice, 10);
+      if (!Number.isNaN(max) && max >= 0) params.maxPriceCents = max * 100;
+      if (featuredFilter === 'true') params.featured = 'true';
+      if (featuredFilter === 'false') params.featured = 'false';
+      if (stockFilter) params.stockFilter = stockFilter;
+
+      const res = await api.getList<ProductListItem>('/products', params);
       setItems(res.data ?? []);
       setTotal(res.meta?.total ?? 0);
     } catch (err) {
@@ -48,7 +85,11 @@ export function ProductsManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, debouncedSearch, categoryFilter, appliedMinPrice, appliedMaxPrice, featuredFilter, stockFilter, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
     fetchList();
@@ -56,10 +97,24 @@ export function ProductsManager() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearch(searchInput.trim());
+    setAppliedMinPrice(minPriceInput);
+    setAppliedMaxPrice(maxPriceInput);
     setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setCategoryFilter('');
+    setMinPriceInput('');
+    setMaxPriceInput('');
+    setAppliedMinPrice('');
+    setAppliedMaxPrice('');
+    setFeaturedFilter('');
+    setStockFilter('');
+    setPage(1);
+    setError(null);
   };
 
   const handleCreate = async (data: ProductFormData) => {
@@ -153,20 +208,143 @@ export function ProductsManager() {
         </button>
       </div>
 
-      <form onSubmit={handleSearchSubmit} className="flex gap-2">
-        <input
-          type="search"
-          placeholder="Search by name, slug, description…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-        />
-        <button
-          type="submit"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
-          Search
-        </button>
+      <form
+        onSubmit={handleApplyFilters}
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="sm:col-span-2">
+            <label htmlFor="product-search" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Search
+            </label>
+            <input
+              id="product-search"
+              type="search"
+              placeholder="Name, slug, description…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-category" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Category
+            </label>
+            <select
+              id="product-category"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-min-price" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Min price
+            </label>
+            <input
+              id="product-min-price"
+              type="number"
+              min={0}
+              placeholder="0"
+              value={minPriceInput}
+              onChange={(e) => setMinPriceInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-max-price" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Max price
+            </label>
+            <input
+              id="product-max-price"
+              type="number"
+              min={0}
+              placeholder="—"
+              value={maxPriceInput}
+              onChange={(e) => setMaxPriceInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-featured" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Featured
+            </label>
+            <select
+              id="product-featured"
+              value={featuredFilter}
+              onChange={(e) => setFeaturedFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-stock" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Stock
+            </label>
+            <select
+              id="product-stock"
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              <option value="low_stock">Low (1–5)</option>
+              <option value="out_of_stock">Out of stock</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-sort" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Sort by
+            </label>
+            <select
+              id="product-sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-order" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Order
+            </label>
+            <select
+              id="product-order"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Clear
+          </button>
+        </div>
       </form>
 
       {error && (
@@ -230,7 +408,7 @@ export function ProductsManager() {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-          {search ? 'No products match your search.' : 'No products yet. Add one to get started.'}
+          {(debouncedSearch || categoryFilter || appliedMinPrice || appliedMaxPrice || featuredFilter || stockFilter) ? 'No products match your filters.' : 'No products yet. Add one to get started.'}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">

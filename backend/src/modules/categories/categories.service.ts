@@ -32,7 +32,7 @@ export class CategoriesService {
     });
   }
 
-  async findAll(): Promise<
+  async findAll(search?: string): Promise<
     Array<{
       id: string;
       name: string;
@@ -44,7 +44,16 @@ export class CategoriesService {
       productCount?: number;
     }>
   > {
+    const where = search?.trim()
+      ? {
+          OR: [
+            { name: { contains: search.trim(), mode: 'insensitive' as const } },
+            { description: { contains: search.trim(), mode: 'insensitive' as const } },
+          ],
+        }
+      : undefined;
     const categories = await this.prisma.category.findMany({
+      where,
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { productCategories: true } },

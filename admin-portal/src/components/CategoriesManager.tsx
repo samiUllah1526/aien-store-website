@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
+import { useDebounce } from '../hooks/useDebounce';
 import type { Category } from '../lib/types';
 
 function slugFromName(value: string): string {
@@ -14,6 +15,8 @@ export function CategoriesManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput.trim(), 400);
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -29,7 +32,8 @@ export function CategoriesManager() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<Category[]>('/categories');
+      const params = debouncedSearch ? { search: debouncedSearch } : undefined;
+      const res = await api.get<Category[]>('/categories', params);
       setCategories(res.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load categories');
@@ -37,11 +41,16 @@ export function CategoriesManager() {
     } finally {
       setLoading(false);
     }
-  }, [canRead]);
+  }, [canRead, debouncedSearch]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setError(null);
+  };
 
   if (!canRead) {
     return (
@@ -74,6 +83,29 @@ export function CategoriesManager() {
           {error}
         </div>
       )}
+
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[200px] flex-1">
+          <label htmlFor="category-search" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Search
+          </label>
+          <input
+            id="category-search"
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Name or description"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleClearSearch}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Clear
+        </button>
+      </form>
 
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
@@ -116,7 +148,7 @@ export function CategoriesManager() {
         </div>
       ) : categories.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-          No categories yet. Add one to get started.
+          {debouncedSearch ? 'No categories match your search.' : 'No categories yet. Add one to get started.'}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">

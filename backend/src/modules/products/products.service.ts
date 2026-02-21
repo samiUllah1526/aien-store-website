@@ -234,7 +234,10 @@ export class ProductsService {
     if (query.featured === 'true') where.featured = true;
     if (query.featured === 'false') where.featured = false;
     if (query.stockFilter === 'out_of_stock') where.stockQuantity = 0;
-    if (query.stockFilter === 'low_stock') where.stockQuantity = { gte: 1, lte: 5 };
+    if (query.stockFilter === 'low_stock') {
+      const max = query.lowStockMax ?? 5;
+      where.stockQuantity = { gte: 1, lte: max };
+    }
     return where;
   }
 

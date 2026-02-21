@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, getApiBaseUrl } from '../lib/api';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatDateTime } from '../lib/format';
 import { formatMoney } from '../lib/formatMoney';
 import { OrderDetailModal } from './OrderDetailModal';
@@ -23,6 +24,8 @@ export function OrdersManager() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [orderIdSearch, setOrderIdSearch] = useState('');
   const [emailSearch, setEmailSearch] = useState('');
+  const debouncedOrderId = useDebounce(orderIdSearch.trim(), 400);
+  const debouncedEmail = useDebounce(emailSearch.trim(), 400);
   const [totalMinPkr, setTotalMinPkr] = useState('');
   const [totalMaxPkr, setTotalMaxPkr] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -51,8 +54,8 @@ export function OrdersManager() {
         limit: PAGE_SIZE,
       };
       if (statusFilter) params.status = statusFilter;
-      if (orderIdSearch.trim()) params.orderId = orderIdSearch.trim();
-      if (emailSearch.trim()) params.customerEmail = emailSearch.trim();
+      if (debouncedOrderId) params.orderId = debouncedOrderId;
+      if (debouncedEmail) params.customerEmail = debouncedEmail;
       const totalMin = totalMinPkr.trim() ? Math.round(parseFloat(totalMinPkr) * 100) : undefined;
       const totalMax = totalMaxPkr.trim() ? Math.round(parseFloat(totalMaxPkr) * 100) : undefined;
       if (totalMin != null && !Number.isNaN(totalMin) && totalMin >= 0) params.totalMinCents = totalMin;
@@ -71,7 +74,11 @@ export function OrdersManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, orderIdSearch, emailSearch, totalMinPkr, totalMaxPkr, dateFrom, dateTo, assignedToUserId]);
+  }, [page, statusFilter, debouncedOrderId, debouncedEmail, totalMinPkr, totalMaxPkr, dateFrom, dateTo, assignedToUserId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedOrderId, debouncedEmail]);
 
   useEffect(() => {
     fetchOrders();
@@ -95,7 +102,6 @@ export function OrdersManager() {
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchOrders();
   };
 
   const handleClearFilters = () => {

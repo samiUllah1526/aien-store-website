@@ -44,6 +44,13 @@ export class ProductQueryDto {
   @IsIn(['all', 'low_stock', 'out_of_stock'])
   stockFilter?: 'all' | 'low_stock' | 'out_of_stock' = 'all';
 
+  /** When stockFilter=low_stock, max stock to consider "low" (default 5). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  lowStockMax?: number = 5;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

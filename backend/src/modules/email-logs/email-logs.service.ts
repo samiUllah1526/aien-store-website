@@ -47,8 +47,9 @@ export class EmailLogsService {
 
     let orderLogIds: string[] | null = null;
     if (orderId?.trim()) {
+      const orderIdPattern = `%${orderId.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
       const rows = await this.prisma.$queryRaw<{ id: string }[]>`
-        SELECT id FROM email_logs WHERE metadata->>'orderId' = ${orderId.trim()}
+        SELECT id FROM email_logs WHERE metadata->>'orderId' ILIKE ${orderIdPattern}
       `;
       orderLogIds = rows.map((r) => r.id);
       if (orderLogIds.length === 0) {
