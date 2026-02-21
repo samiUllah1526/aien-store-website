@@ -1,0 +1,214 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Database migrations
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Database migrations
+
+How to write, manage, and deploy database migrations for production. The backend uses **Prisma Migrate** with PostgreSQL.
+
+---
+
+## Overview
+
+| Item | Details |
+|------|---------|
+| Migration tool | Prisma Migrate |
+| Database | PostgreSQL |
+| Location | `backend/prisma/migrations/` |
+| Initial migration | `0_init` — creates the full schema from scratch |
+
+---
+
+## Commands reference
+
+| Command | Purpose |
+|---------|---------|
+| `npm run db:migrate:deploy` | Apply pending migrations (use in production and CI) |
+| `npx prisma migrate dev --name <name>` | Create and apply a new migration (development only) |
+| `npm run db:seed` | Seed the database (e.g. admin user) |
+| `npx prisma migrate status` | Show migration status |
+
+---
+
+## Development: Writing a new migration
+
+### 1. Edit the schema
+
+Edit `backend/prisma/schema.prisma` — add or change models, fields, indexes, etc.
+
+### 2. Create the migration
+
+```bash
+cd backend
+npx prisma migrate dev --name add_order_notes
+```
+
+Replace `add_order_notes` with a short, descriptive name (e.g. `add_product_variants`, `add_user_preferences`).
+
+### 3. What happens
+
+- Prisma generates a SQL file in `prisma/migrations/<timestamp>_<name>/migration.sql`
+- The migration is applied to your local database
+- Prisma Client is regenerated
+
+### 4. Review and commit
+
+- Open the generated `migration.sql` and confirm it does what you expect
+- Commit both `schema.prisma` and the new migration folder
+
+---
+
+## Production: Deploying migrations
+
+### When to run
+
+Run migrations **before** starting or restarting the backend. Migrations must complete successfully before the app serves traffic.
+
+### Command
+
+```bash
+cd backend
+npm run db:migrate:deploy
+```
+
+### In CI/CD
+
+Add a migration step before your deploy step. Example (GitHub Actions):
+
+```yaml
+- name: Run migrations
+  run: npm run db:migrate:deploy
+  working-directory: backend
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+### What it does
+
+- Connects to the database
+- Reads `_prisma_migrations` to see which migrations have been applied
+- Applies any **pending** migrations in order
+- Exits with success or failure (no data loss on failure — migrations run in transactions where supported)
+
+---
+
+## Fresh database (new environment)
+
+When you create a **new** database (new staging, new region, disaster recovery):
+
+1. Set `DATABASE_URL` to the new database
+2. Run:
+
+```bash
+cd backend
+npm run db:migrate:deploy
+```
+
+The `0_init` migration (or any pending migrations) will create all tables from scratch.
+
+3. Optionally seed:
+
+```bash
+npm run db:seed
+```
+
+---
+
+## Baselining an existing database
+
+If you have a database that was created with `db push` or manual SQL **before** migrations existed, you must **baseline** it so Prisma treats it as already migrated.
+
+### When to baseline
+
+- You introduced Prisma Migrate after the database already had tables
+- You need to start tracking migrations on an existing production database
+
+### Steps
+
+1. Generate the initial migration (if you don’t have it):
+
+```bash
+cd backend
+mkdir -p prisma/migrations/0_init
+npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > prisma/migrations/0_init/migration.sql
+```
+
+2. Remove any stray first line (e.g. "Loaded Prisma config...") from `migration.sql` if present
+
+3. Mark the migration as applied **without** running it (the schema already exists):
+
+```bash
+npx prisma migrate resolve --applied 0_init
+```
+
+4. From now on, use `npm run db:migrate:deploy` for new migrations
+
+> **Important:** Only baseline when the database schema matches what the migration would create. If it doesn’t, fix the schema or migration first.
+
+---
+
+## Best practices for production
+
+### 1. Always use migrations
+
+- Use `prisma migrate dev` and `prisma migrate deploy`
+- Do **not** use `prisma db push` in production — it can cause schema drift and data loss
+
+### 2. Make migrations idempotent where possible
+
+When adding columns or indexes, use `IF NOT EXISTS` so migrations can be re-run safely:
+
+```sql
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "notes" TEXT;
+CREATE INDEX IF NOT EXISTS "orders_notes_idx" ON "orders"("notes");
+```
+
+### 3. Test before deploying
+
+- Run `npx prisma migrate dev` locally and verify the app works
+- If you have staging, run `npm run db:migrate:deploy` there first
+
+### 4. Back up before major migrations
+
+For migrations that change or drop columns, take a database backup first.
+
+### 5. Run migrations in CI/CD
+
+Include `npm run db:migrate:deploy` in your deployment pipeline so every deploy applies pending migrations automatically.
+
+---
+
+## Workflow summary
+
+| Scenario | Command |
+|----------|---------|
+| Local schema change | `npx prisma migrate dev --name <name>` |
+| Deploy to production | `npm run db:migrate:deploy` (before starting app) |
+| New empty database | `npm run db:migrate:deploy` then `npm run db:seed` |
+| Existing DB without migration history | Baseline with `prisma migrate resolve --applied 0_init` |
+
+---
+
+## Troubleshooting
+
+### "Database schema is not empty" (P3005)
+
+The database has tables but no migration history. **Baseline** the database (see above).
+
+### "Migration failed to apply cleanly" (P3006)
+
+The migration failed on a shadow database. Often caused by:
+- Migration references tables that don’t exist in the migration order
+- Use a single initial migration (`0_init`) for the full schema, then add incremental migrations for changes
+
+### Migrations out of sync
+
+If your schema and migrations have drifted:
+
+1. Review the diff: `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script`
+2. Create a new migration to bring the schema in line, or fix the schema to match migrations

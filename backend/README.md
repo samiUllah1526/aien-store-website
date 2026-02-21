@@ -46,6 +46,21 @@ No changes to app code are needed; the config factory accepts any `EnvSource`.
 $ npm install
 ```
 
+## Database migrations
+
+The project uses Prisma Migrate with a single initial migration (`0_init`) that creates the full schema.
+
+**Development:**
+- Apply pending migrations: `npm run db:migrate:deploy`
+- After schema changes: `npx prisma migrate dev --name your_migration_name` to create and apply new migrations
+- Seed (optional): `npm run db:seed`
+
+**Production / CI:**
+- Run `npm run db:migrate:deploy` before starting the app to apply any pending migrations
+
+**Fresh database (new environment):**
+- Run `npm run db:migrate:deploy` — the `0_init` migration creates all tables from scratch
+
 ## Compile and run the project
 
 ```bash
