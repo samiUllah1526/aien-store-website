@@ -10,6 +10,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -19,6 +20,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
+@ApiTags('categories')
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
@@ -26,6 +28,7 @@ export class CategoriesController {
   /** Public list for shop dropdown; no auth required. Optional search filters by name and description. */
   @Get()
   @Public()
+  @ApiOperation({ summary: 'List categories (public)', security: [] })
   async findAll(@Query('search') search?: string) {
     const data = await this.categoriesService.findAll(search);
     return ApiResponseDto.ok(data);
@@ -34,6 +37,7 @@ export class CategoriesController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('categories:read')
+  @ApiBearerAuth('bearer')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.categoriesService.findOne(id);
     return ApiResponseDto.ok(data);
@@ -42,6 +46,7 @@ export class CategoriesController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('categories:write')
+  @ApiBearerAuth('bearer')
   async create(@Body() dto: CreateCategoryDto) {
     const data = await this.categoriesService.create(dto);
     return ApiResponseDto.ok(data, 'Category created');
@@ -50,6 +55,7 @@ export class CategoriesController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('categories:write')
+  @ApiBearerAuth('bearer')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCategoryDto,
@@ -61,6 +67,7 @@ export class CategoriesController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('categories:write')
+  @ApiBearerAuth('bearer')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.categoriesService.remove(id);
     return ApiResponseDto.ok(null, 'Category deleted');
