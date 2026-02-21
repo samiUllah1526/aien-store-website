@@ -51,7 +51,6 @@ export function renderMjmlTemplate(
   const mjmlSource = replacePlaceholders(raw, vars);
   const result = mjml2html(mjmlSource, {
     validationLevel: 'soft',
-    minify: true,
     filePath: templatesDir,
   });
   if (result.errors?.length) {

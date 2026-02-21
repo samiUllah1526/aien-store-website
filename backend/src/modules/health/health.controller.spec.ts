@@ -40,19 +40,15 @@ describe('HealthController', () => {
     controller = module.get<HealthController>(HealthController);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
   describe('check', () => {
-    it('should run health checks and return result', async () => {
+    it('returns health check result', async () => {
       const result = await controller.check();
       expect(result).toEqual(mockHealthResult);
       expect(healthCheckService.check).toHaveBeenCalled();
       expect(memoryHealthIndicator.checkHeap).not.toHaveBeenCalled();
     });
 
-    it('should call memory heap check with expected threshold', async () => {
+    it('runs memory heap check with 300MB threshold', async () => {
       await controller.check();
       const indicators = healthCheckService.check.mock.calls[0][0];
       expect(Array.isArray(indicators)).toBe(true);
@@ -67,7 +63,7 @@ describe('HealthController', () => {
   });
 
   describe('liveness', () => {
-    it('should return status ok and ISO timestamp', () => {
+    it('returns status ok and ISO timestamp', () => {
       const before = new Date().toISOString();
       const result = controller.liveness();
       const after = new Date().toISOString();
