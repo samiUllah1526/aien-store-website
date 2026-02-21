@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "redirects": [
+    { "source": "/account/orders/:id", "destination": "/account/orders/order?id=:id", "permanent": false }
+  ]
+}

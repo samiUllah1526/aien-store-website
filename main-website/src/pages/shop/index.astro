@@ -1,0 +1,12 @@
+---
+/**
+ * Shop: static shell. Products and categories fetched client-side.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShopPage from '../../components/shop/ShopPage';
+import { brandName, shopMetaDescription } from '../../config';
+---
+
+<BaseLayout title={`Shop — ${brandName}`} description={shopMetaDescription}>
+  <ShopPage client:load />
+</BaseLayout>

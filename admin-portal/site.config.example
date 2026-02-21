@@ -1,0 +1,33 @@
+# Admin Portal Configuration
+# Copy these to your .env file and fill in the values.
+# This is the single source of truth for all configurable values.
+
+# ─── Required ───────────────────────────────────────────────────────────────
+
+# Backend API URL (no trailing slash). Required for all admin operations.
+PUBLIC_API_URL=http://localhost:3000
+
+# ─── Branding (optional) ─────────────────────────────────────────────────────
+
+# Admin app display name (sidebar, page titles, login screen)
+# PUBLIC_ADMIN_APP_NAME=E-Commerce Admin
+
+# Favicon path (default: /favicon.svg)
+# PUBLIC_ADMIN_FAVICON=/favicon.svg
+
+# ─── Storage keys (optional) ─────────────────────────────────────────────────
+
+# Theme (dark mode) localStorage key (default: admin_dark)
+# PUBLIC_ADMIN_THEME_STORAGE_KEY=admin_dark
+
+# JWT access token localStorage key (default: admin_token)
+# For manual token injection: localStorage.setItem('<key>', 'YOUR_JWT')
+# PUBLIC_ADMIN_AUTH_TOKEN_KEY=admin_token
+
+# ─── Paths (optional) ───────────────────────────────────────────────────────
+
+# Redirect path on 401 logout (default: /admin/login)
+# PUBLIC_ADMIN_LOGIN_PATH=/admin/login
+
+# Main storefront URL (optional; for "Back to store" links)
+# PUBLIC_MAIN_WEBSITE_URL=https://yoursite.com

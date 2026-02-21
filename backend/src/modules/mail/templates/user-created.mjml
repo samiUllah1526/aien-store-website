@@ -1,0 +1,26 @@
+<mjml>
+  <mj-head>
+    <mj-title>Your account has been created</mj-title>
+    <mj-preview>An admin has created an account for you.</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text color="#333333" font-size="16px" line-height="24px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4" width="600px">
+    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+          Your account is ready
+        </mj-text>
+        <mj-text>Hello {{name}},</mj-text>
+        <mj-text>An administrator has created an account for you. You can sign in using your email and the password that was set for you.</mj-text>
+        <mj-button href="{{loginUrl}}" background-color="#2563eb" color="#ffffff" padding-top="24px">
+          Sign in
+        </mj-button>
+        <mj-text font-size="14px" color="#666666" padding-top="24px">If the button doesn't work, copy this link: {{loginUrl}}</mj-text>
+        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

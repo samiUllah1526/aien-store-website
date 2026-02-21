@@ -1,0 +1,2 @@
+# Redirect old order detail URLs to query-param format
+/account/orders/:id  /account/orders/order?id=:id  302

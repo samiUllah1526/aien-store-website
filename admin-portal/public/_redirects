@@ -1,0 +1,2 @@
+# Redirect old voucher detail URLs to query-param format
+/admin/vouchers/:id  /admin/vouchers/detail?id=:id  302

@@ -1,0 +1,7 @@
+# Cloudflare Pages (static site)
+# Deploy: npx wrangler pages deploy dist --project-name=YOUR_PROJECT
+# Or connect to Git for automatic deploys.
+
+name = "aien-store"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"

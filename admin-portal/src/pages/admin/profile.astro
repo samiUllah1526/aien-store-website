@@ -1,0 +1,12 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { ProfilePage } from '../../components/ProfilePage';
+---
+
+<AdminLayout title="Profile">
+  <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Profile</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">Update your name and password.</p>
+  <div class="mt-6">
+    <ProfilePage client:load />
+  </div>
+</AdminLayout>

@@ -1,0 +1,146 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Background jobs setup
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Background jobs setup
+
+How to set up background jobs for the backend. Jobs are currently **not** scheduled; this guide explains how to add them when ready.
+
+---
+
+## Current state
+
+- **Voucher expired job** — A script exists that writes `EXPIRED` audit logs for vouchers past their expiry date. Run it manually:
+
+  ```bash
+  cd backend && npm run job:voucher-expired
+  ```
+
+- **Archival job** — Not implemented yet. Plan: delete or archive voucher audit logs older than a configurable retention period.
+
+---
+
+## Option 1: NestJS Schedule (in-process cron)
+
+Use `@nestjs/schedule` to run jobs inside the NestJS process.
+
+### 1. Install
+
+```bash
+cd backend && npm install @nestjs/schedule
+```
+
+### 2. Register module
+
+In `app.module.ts`:
+
+```ts
+import { ScheduleModule } from '@nestjs/schedule';
+
+@Module({
+  imports: [
+    ScheduleModule.forRoot(),
+    // ... other imports
+  ],
+})
+export class AppModule {}
+```
+
+### 3. Create a cron service
+
+Create `src/modules/jobs/jobs.service.ts`:
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { VoucherExpiredJob } from '../vouchers/voucher-expired.job';
+
+@Injectable()
+export class JobsService {
+  constructor(private readonly voucherExpiredJob: VoucherExpiredJob) {}
+
+  @Cron('0 2 * * *') // Daily at 2:00 AM
+  async handleVoucherExpired() {
+    const { processed } = await this.voucherExpiredJob.processExpiredVouchers();
+    console.log(`[Jobs] Voucher expired: processed ${processed}`);
+  }
+}
+```
+
+### 4. Register JobsService
+
+Add `JobsService` as a provider in a new `JobsModule` or in `VouchersModule`.
+
+---
+
+## Option 2: System cron (standalone script)
+
+Run the script via system cron. No code changes needed.
+
+### Crontab example
+
+```cron
+# Voucher expired job - daily at 2:00 AM
+0 2 * * * cd /path/to/backend && npm run job:voucher-expired >> /var/log/voucher-expired.log 2>&1
+```
+
+### With PM2
+
+```bash
+pm2 start "npm run job:voucher-expired" --cron "0 2 * * *" --no-autorestart --name voucher-expired
+```
+
+---
+
+## Option 3: External scheduler (GitHub Actions, AWS EventBridge, etc.)
+
+Trigger the job via HTTP or by running the script in CI.
+
+### Example: GitHub Actions
+
+```yaml
+name: Voucher Expired Job
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily 2 AM UTC
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run job:voucher-expired
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+---
+
+## Archival job (future)
+
+When ready to add archival for voucher audit logs:
+
+1. Add env var: `VOUCHER_AUDIT_RETENTION_DAYS=730`
+2. Create `scripts/job-voucher-audit-archival.ts`:
+   - Query rows where `created_at < now() - retention_days`
+   - Delete in batches (e.g. 1000 at a time) to avoid long locks
+3. Run daily via cron or `@nestjs/schedule`
+
+---
+
+## Summary
+
+| Job | Run command | Recommended schedule |
+|-----|-------------|----------------------|
+| Voucher expired | `npm run job:voucher-expired` | Daily |
+| Audit archival | (to be added) | Daily |
+
+**For now:** Run `npm run job:voucher-expired` manually or via system cron until you add `@nestjs/schedule` or another scheduler.

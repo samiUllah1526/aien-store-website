@@ -1,0 +1,507 @@
+// =============================================================================
+// E-commerce management portal — Prisma 7 schema
+// =============================================================================
+// Database: PostgreSQL (adab)
+// Conventions: UUID PKs, snake_case in DB via @@map / @map
+// Prisma 7: FK constraint names are auto-generated; no relation map needed.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  @@map("user_status")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  @@map("order_status")
+}
+
+enum PaymentMethod {
+  COD
+  BANK_DEPOSIT
+  @@map("payment_method")
+}
+
+enum VoucherType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+  @@map("voucher_type")
+}
+
+// -----------------------------------------------------------------------------
+// RBAC: User ↔ Role (M:N), User ↔ Permission (M:N overrides), Role ↔ Permission (M:N)
+// -----------------------------------------------------------------------------
+// Roles and permissions are editable at runtime from the frontend (no hard-coded
+// values). Users get permissions via roles; user_permissions are direct overrides
+// (grant or revoke). Resolve effective permissions in app: role permissions
+// plus/minus user_permissions.granted.
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String     @map("name")
+  firstName    String?    @map("first_name")
+  lastName     String?    @map("last_name")
+  email        String     @unique @map("email")
+  passwordHash String     @map("password_hash")
+  status       UserStatus @default(ACTIVE) @map("status")
+  lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  passwordResetToken    String?   @map("password_reset_token")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  roles             UserRole[]       @relation("UserRoles")
+  directPermissions UserPermission[] @relation("UserDirectPermissions")
+  ordersAssigned    Order[]            @relation("AssignedOrders")
+  ordersPlaced      Order[]            @relation("CustomerOrders")
+  favorites         UserFavorite[]     @relation("UserFavorites")
+  savedShipping     UserSavedShipping? @relation("UserSavedShipping")
+  inventoryMovementsPerformed InventoryMovement[] @relation("InventoryMovementPerformedBy")
+
+  @@map("users")
+}
+
+// -----------------------------------------------------------------------------
+// Customer saved shipping: one row per user for "Save for next time" at checkout
+// -----------------------------------------------------------------------------
+model UserSavedShipping {
+  userId                 String   @id @map("user_id") @db.Uuid
+  firstName              String?  @map("first_name")
+  lastName               String?  @map("last_name")
+  customerPhone          String?  @map("customer_phone")
+  shippingCountry        String?  @map("shipping_country")
+  shippingAddressLine1   String?  @map("shipping_address_line1")
+  shippingAddressLine2   String?  @map("shipping_address_line2")
+  shippingCity           String?  @map("shipping_city")
+  shippingPostalCode     String?  @map("shipping_postal_code")
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation("UserSavedShipping", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_saved_shipping")
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @map("name")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users       UserRole[]         @relation("RoleUsers")
+  permissions RolePermission[]   @relation("RolePermissions")
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  roles RolePermission[] @relation("PermissionRoles")
+  users UserPermission[] @relation("PermissionUsers")
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation("RoleUsers", fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  role       Role       @relation("RolePermissions", fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation("PermissionRoles", fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  userId       String   @map("user_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  granted      Boolean  @default(true) @map("granted")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User       @relation("UserDirectPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation("PermissionUsers", fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+// -----------------------------------------------------------------------------
+// Site settings: key-value store for logo, about, footer, social (admin-editable)
+// -----------------------------------------------------------------------------
+model SiteSetting {
+  key       String   @id @map("key")
+  value     Json     @map("value")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_settings")
+}
+
+// -----------------------------------------------------------------------------
+// Media: uploads stored by backend; frontend references by UUID on products
+// -----------------------------------------------------------------------------
+// Backend stores files and returns a UUID. Frontend sends that UUID when
+// creating/updating products. ProductMedia links products to media (e.g. gallery).
+// -----------------------------------------------------------------------------
+
+model Media {
+  id        String   @id @default(uuid()) @db.Uuid
+  filename  String   @map("filename")
+  mimeType  String   @map("mime_type")
+  sizeBytes Int      @map("size_bytes")
+  path      String   @map("path")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  productMedia     ProductMedia[]
+  orderPaymentProof Order[]      @relation("OrderPaymentProof")
+
+  @@map("media")
+}
+
+// -----------------------------------------------------------------------------
+// Catalog: Category (tree), Product (many-to-many categories via ProductCategory)
+// -----------------------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @map("name")
+  slug        String    @unique @map("slug")
+  description String?   @map("description")
+  parentId    String?   @map("parent_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent           Category?         @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children         Category[]       @relation("CategoryHierarchy")
+  productCategories ProductCategory[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                    String    @id @default(uuid()) @db.Uuid
+  name                  String    @map("name")
+  slug                  String    @unique @map("slug")
+  description           String?   @map("description")
+  priceCents            Int       @map("price_cents")
+  currency              String    @default("PKR") @map("currency")
+  sizes                 Json?     @map("sizes")
+  featured              Boolean   @default(false) @map("featured")
+  /** Current sellable quantity. Never negative. Deduct on order create, restore on cancel. */
+  stockQuantity         Int       @default(0) @map("stock_quantity")
+  urduVerse             String?   @map("urdu_verse")
+  urduVerseTransliteration String? @map("urdu_verse_transliteration")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  productCategories   ProductCategory[]
+  productMedia         ProductMedia[]
+  orderItems           OrderItem[]
+  userFavorites        UserFavorite[] @relation("ProductFavorites")
+  inventoryMovements   InventoryMovement[]
+
+  @@map("products")
+}
+
+model UserFavorite {
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation("ProductFavorites", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([userId])
+  @@map("user_favorites")
+}
+
+model ProductCategory {
+  productId  String   @map("product_id") @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model ProductMedia {
+  productId String   @map("product_id") @db.Uuid
+  mediaId   String   @map("media_id") @db.Uuid
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([productId, mediaId])
+  @@map("product_media")
+}
+
+// -----------------------------------------------------------------------------
+// Orders: Order, OrderItem, OrderStatusHistory (audit trail of status changes)
+// -----------------------------------------------------------------------------
+
+model Order {
+  id                     String         @id @default(uuid()) @db.Uuid
+  status                 OrderStatus    @default(PENDING) @map("status")
+  totalCents             Int            @map("total_cents")
+  currency               String         @default("PKR") @map("currency")
+  customerEmail          String         @map("customer_email")
+  customerFirstName      String?        @map("customer_first_name")
+  customerLastName       String?        @map("customer_last_name")
+  customerName           String?        @map("customer_name")
+  customerPhone          String?        @map("customer_phone")
+  shippingCountry        String?        @map("shipping_country")
+  shippingAddressLine1   String?        @map("shipping_address_line1")
+  shippingAddressLine2   String?        @map("shipping_address_line2")
+  shippingCity           String?        @map("shipping_city")
+  shippingPostalCode     String?        @map("shipping_postal_code")
+  paymentMethod          PaymentMethod  @default(COD) @map("payment_method")
+  paymentProofMediaId    String?        @map("payment_proof_media_id") @db.Uuid
+  courierServiceName     String?        @map("courier_service_name")
+  trackingId             String?        @map("tracking_id")
+  customerUserId         String?        @map("customer_user_id") @db.Uuid
+  assignedToUserId       String?        @map("assigned_to_user_id") @db.Uuid
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /** Product subtotal before discounts (immutable after creation). */
+  subtotalCents   Int?      @map("subtotal_cents")
+  /** Delivery charges (immutable after creation). */
+  shippingCents   Int?      @map("shipping_cents")
+  /** Voucher type used: PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING (immutable after creation). */
+  discountType    String?   @map("discount_type")
+  voucherId       String?   @map("voucher_id") @db.Uuid
+  voucherCode     String?   @map("voucher_code")
+  discountCents   Int       @default(0) @map("discount_cents")
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  assignedTo      User?    @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  customer        User?    @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
+  paymentProof    Media?   @relation("OrderPaymentProof", fields: [paymentProofMediaId], references: [id], onDelete: SetNull)
+  voucher         Voucher? @relation("OrderVoucher", fields: [voucherId], references: [id], onDelete: SetNull)
+  voucherRedemptions VoucherRedemption[]
+
+  @@map("orders")
+}
+
+// -----------------------------------------------------------------------------
+// Vouchers (coupons): percentage, fixed amount, free shipping
+// -----------------------------------------------------------------------------
+
+model Voucher {
+  id                    String      @id @default(uuid()) @db.Uuid
+  code                  String      @unique @map("code")
+  type                  VoucherType @map("type")
+  /** For PERCENTAGE: 1-100. For FIXED_AMOUNT: cents. For FREE_SHIPPING: ignored. */
+  value                 Int         @map("value")
+  /** Minimum order subtotal (cents) to apply. */
+  minOrderValueCents    Int         @default(0) @map("min_order_value_cents")
+  /** Max discount (cents). Only for PERCENTAGE; caps the discount. */
+  maxDiscountCents      Int?        @map("max_discount_cents")
+  startDate             DateTime    @map("start_date") @db.Timestamptz(6)
+  expiryDate            DateTime    @map("expiry_date") @db.Timestamptz(6)
+  usageLimitGlobal      Int?        @map("usage_limit_global")
+  usageLimitPerUser     Int?        @map("usage_limit_per_user")
+  usedCount             Int         @default(0) @map("used_count")
+  /** JSON array of product UUIDs. Empty = all products. */
+  applicableProductIds  Json?       @map("applicable_product_ids")
+  /** JSON array of category UUIDs. Empty = all categories. */
+  applicableCategoryIds Json?       @map("applicable_category_ids")
+  isActive              Boolean     @default(true) @map("is_active")
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  orders            Order[]            @relation("OrderVoucher")
+  redemptions       VoucherRedemption[]
+  auditLogs         VoucherAuditLog[]
+
+  @@index([code])
+  @@index([isActive, expiryDate])
+  @@index([deletedAt])
+  @@map("vouchers")
+}
+
+model VoucherRedemption {
+  id        String   @id @default(uuid()) @db.Uuid
+  voucherId String   @map("voucher_id") @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([voucherId, orderId])
+  @@index([voucherId])
+  @@index([userId])
+  @@map("voucher_redemptions")
+}
+
+// -----------------------------------------------------------------------------
+// Voucher audit log: lifecycle events, validation attempts, redemptions
+// -----------------------------------------------------------------------------
+model VoucherAuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  voucherId String?  @map("voucher_id") @db.Uuid
+  action    String   @map("action")
+  actorType String   @map("actor_type")
+  actorId   String?  @map("actor_id") @db.Uuid
+  orderId   String?  @map("order_id") @db.Uuid
+  code      String?  @map("code")
+  result    String?  @map("result")
+  errorCode String?  @map("error_code")
+  metadata  Json?    @map("metadata")
+  requestId String?  @map("request_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  voucher Voucher? @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+
+  @@index([voucherId])
+  @@index([orderId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([code])
+  @@map("voucher_audit_logs")
+}
+
+model OrderItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int      @map("quantity")
+  unitCents Int      @map("unit_cents")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("order_items")
+}
+
+// -----------------------------------------------------------------------------
+// Inventory: audit trail and idempotency for order creation
+// -----------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  SALE      @map("sale")      // order created: stock deducted
+  RESTORE   @map("restore")   // order cancelled: stock returned
+  ADJUSTMENT @map("adjustment") // admin correction
+  @@map("inventory_movement_type")
+}
+
+model InventoryMovement {
+  id                 String                @id @default(uuid()) @db.Uuid
+  productId          String                @map("product_id") @db.Uuid
+  orderId            String?               @map("order_id") @db.Uuid
+  type               InventoryMovementType @map("type")
+  /** Positive = stock in, negative = stock out. */
+  quantityDelta      Int                   @map("quantity_delta")
+  reference          String?               @map("reference")
+  /** Admin who performed the adjustment (for ADJUSTMENT type). */
+  performedByUserId  String?               @map("performed_by_user_id") @db.Uuid
+  /** Stock quantity after this movement (for audit display). */
+  stockAfter         Int?                  @map("stock_after")
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  performedBy User? @relation("InventoryMovementPerformedBy", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([orderId])
+  @@map("inventory_movements")
+}
+
+/** Idempotency keys for order creation (and future webhooks). Prevents double-deduct on retries. */
+model IdempotencyKey {
+  id               String    @id @default(uuid()) @db.Uuid
+  key              String    @unique @map("key")
+  orderId          String?   @map("order_id") @db.Uuid
+  responseSnapshot Json?     @map("response_snapshot")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+
+  @@index([key])
+  @@map("idempotency_keys")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @map("order_id") @db.Uuid
+  status    OrderStatus @map("status")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// -----------------------------------------------------------------------------
+// Email delivery log: success/failure audit for transactional emails
+// -----------------------------------------------------------------------------
+model EmailLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String    @map("type")
+  to          String    @map("to")
+  subject     String    @map("subject")
+  status      String    @map("status")
+  error       Json?     @map("error")
+  content     Json?     @map("content")
+  metadata    Json?     @map("metadata")
+  resentLogId String?   @map("resent_log_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  resentLog   EmailLog?  @relation("ResentFrom", fields: [resentLogId], references: [id])
+  resentedBy  EmailLog[] @relation("ResentFrom")
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
+}

@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply font-sans text-soft-charcoal dark:text-off-white bg-bone dark:bg-charcoal antialiased;
+  }
+  .urdu-text {
+    @apply font-urdu text-right;
+    direction: rtl;
+    font-feature-settings: 'kern' 1;
+  }
+}
+
+html {
+  @apply transition-colors duration-400;
+}
+
+/* Soft focus – accessibility without loud accent */
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ash/40 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

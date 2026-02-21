@@ -1,0 +1,16 @@
+---
+/**
+ * Cart page (UI only): minimal list of items when user lands on /cart.
+ * For full cart UI we rely on the cart sidebar from the shell; this page can show same content or a message.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CartPage from '../components/cart/CartPage';
+import { brandName, cartMetaDescription } from '../config';
+---
+
+<BaseLayout title={`Cart — ${brandName}`} description={cartMetaDescription}>
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 py-14">
+    <h1 class="font-display text-3xl text-ink mb-8">Cart</h1>
+    <CartPage client:load />
+  </div>
+</BaseLayout>

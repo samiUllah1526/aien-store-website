@@ -1,0 +1,15 @@
+---
+/**
+ * Voucher detail: static shell. Data fetched client-side (no build-time API dependency).
+ * URL: /admin/vouchers/detail?id=xxx
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { VoucherDetail } from '../../../components/VoucherDetail';
+import { appName } from '../../../lib/config';
+
+const voucherId = Astro.url.searchParams.get('id') ?? '';
+---
+
+<AdminLayout title={voucherId ? `Voucher ${voucherId.slice(0, 8)}… — ${appName}` : 'Voucher'}>
+  <VoucherDetail voucherId={voucherId} client:load />
+</AdminLayout>
