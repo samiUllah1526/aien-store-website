@@ -51,8 +51,27 @@ export function VouchersManager() {
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statsModalId, setStatsModalId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(searchInput.trim(), 400);
+
+  const handleCopyCode = async (code: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
   const canRead = hasPermission('vouchers:read');
   const canWrite = hasPermission('vouchers:write');
 
@@ -340,8 +359,29 @@ export function VouchersManager() {
                         : `${v.usedCount}`;
                     return (
                       <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="px-4 py-3 font-mono font-medium text-slate-900 dark:text-slate-100">
-                          {v.code}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                              {v.code}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCode(v.code, v.id)}
+                              className="rounded p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+                              title={copiedId === v.id ? 'Copied!' : 'Copy code'}
+                              aria-label={copiedId === v.id ? 'Copied!' : 'Copy code'}
+                            >
+                              {copiedId === v.id ? (
+                                <svg className="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                           {v.type.replace(/_/g, ' ')}
