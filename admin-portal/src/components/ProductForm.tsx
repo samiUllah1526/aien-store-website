@@ -17,8 +17,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [description, setDescription] = useState(product?.description ?? '');
-  const [priceCents, setPriceCents] = useState(
-    product != null ? String(product.price) : ''
+  const [pricePkr, setPricePkr] = useState(
+    product != null ? (product.price / 100).toString() : ''
   );
   const [categoryIds, setCategoryIds] = useState<string[]>(
     () => product?.categories?.map((c) => c.id) ?? []
@@ -76,11 +76,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    const cents = parseInt(priceCents, 10);
-    if (Number.isNaN(cents) || cents < 0) {
-      setError('Price must be a non-negative number (in cents).');
+    const pkr = parseFloat(pricePkr);
+    if (Number.isNaN(pkr) || pkr < 0) {
+      setError('Price must be a non-negative number (PKR).');
       return;
     }
+    const priceCents = Math.round(pkr * 100);
     setSubmitting(true);
     try {
       await onSubmit({
@@ -88,7 +89,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         slug: slug || slugFromName(name),
         description: description || undefined,
         categoryIds: categoryIds.length ? categoryIds : undefined,
-        priceCents: cents,
+        priceCents,
         currency: FIXED_CURRENCY,
         featured,
         mediaIds: mediaIds.length ? mediaIds : undefined,
@@ -146,17 +147,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="priceCents" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Price (cents)
+          <label htmlFor="pricePkr" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Price (PKR)
           </label>
           <input
-            id="priceCents"
+            id="pricePkr"
             type="number"
             min={0}
-            step={1}
+            step={0.01}
             required
-            value={priceCents}
-            onChange={(e) => setPriceCents(e.target.value)}
+            value={pricePkr}
+            onChange={(e) => setPricePkr(e.target.value)}
+            placeholder="e.g. 50"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
