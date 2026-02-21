@@ -25,7 +25,7 @@ Values are loaded from `.env` files (e.g. `.env.local`, `.env`) or from the proc
 | URLs      | `APP_URL`, `ADMIN_URL`, `ADMIN_LOGIN_URL`                | Public URLs for emails and links    |
 | Mail      | `MAIL_PROVIDER`, `BREVO_API_KEY`, `SENDGRID_API_KEY`     | Email sending                       |
 | Storage   | `STORAGE_PROVIDER`, `CLOUDINARY_CLOUD_NAME`, etc.        | File uploads (Cloudinary, etc.)     |
-| Seed      | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`                | First admin user for seeding        |
+| Seed      | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | First admin user and site defaults; see [Database migrations](/admin/docs/database-migrations#database-seeder) |
 
 The backend validates on startup: `DATABASE_URL` is required, and `JWT_SECRET` must be changed in production (default `change-me-in-production` is rejected).
 

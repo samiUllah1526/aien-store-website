@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, getApiBaseUrl, uploadFile } from '../lib/api';
+import { uploadMedia } from '../lib/media-upload';
 import { RichTextEditor } from './RichTextEditor';
 
 interface GeneralValue {
@@ -111,6 +112,7 @@ export function SettingsManager() {
       setSeo((data['seo'] as SeoValue) ?? {});
       setMarketing((data['marketing'] as MarketingValue) ?? {});
     } catch (err) {
+      console.log("settingserror=>>>>", err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setSettings(null);
       setPublicSettings(null);
@@ -123,7 +125,7 @@ export function SettingsManager() {
     fetchSettings();
   }, [fetchSettings]);
 
-  const saveKey = async (key: string, value: Record<string, unknown>) => {
+  const saveKey = async (key: string, value: object) => {
     setSaving(key);
     setMessage(null);
     try {
@@ -142,7 +144,14 @@ export function SettingsManager() {
     if (!file) return;
     setError(null);
     try {
-      const { id } = await uploadFile(file);
+      let id: string;
+      try {
+        const result = await uploadMedia(file, 'products');
+        id = result.id;
+      } catch {
+        const res = await uploadFile(file);
+        id = res.id;
+      }
       const next = { ...general, logoMediaId: id };
       setGeneral(next);
       await saveKey('general', next);
@@ -228,6 +237,9 @@ export function SettingsManager() {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-800">
         <p className="text-slate-500 dark:text-slate-400">Loading settings…</p>
+        <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">
+          If this takes more than a few seconds, ensure the backend is running and PUBLIC_API_URL is correct.
+        </p>
       </div>
     );
   }
@@ -238,7 +250,17 @@ export function SettingsManager() {
     <div className="space-y-8">
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
-          {error}
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              fetchSettings();
+            }}
+            className="mt-2 rounded bg-red-100 px-3 py-1 text-sm font-medium text-red-800 hover:bg-red-200 dark:bg-red-800/30 dark:text-red-200 dark:hover:bg-red-800/50"
+          >
+            Retry
+          </button>
         </div>
       )}
       {message && (

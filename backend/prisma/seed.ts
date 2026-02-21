@@ -144,6 +144,26 @@ async function main() {
         instructions: 'After transferring, upload a screenshot of your payment as proof.',
       },
     },
+    {
+      key: 'seo',
+      value: {
+        siteTitle: 'Adab',
+        defaultDescription: 'Urdu poetry & adab on streetwear. Wear the words.',
+        siteUrl: '',
+        ogImageDefault: '',
+        twitterHandle: '',
+        googleSiteVerification: '',
+      },
+    },
+    {
+      key: 'marketing',
+      value: {
+        metaPixelId: '',
+        googleAnalyticsId: '',
+        googleTagManagerId: '',
+        enabled: false,
+      },
+    },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -152,7 +172,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing).');
 }
 
 main()

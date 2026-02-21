@@ -30,8 +30,54 @@ How to write, manage, and deploy database migrations for production. The backend
 |---------|---------|
 | `npm run db:migrate:deploy` | Apply pending migrations (use in production and CI) |
 | `npx prisma migrate dev --name <name>` | Create and apply a new migration (development only) |
-| `npm run db:seed` | Seed the database (e.g. admin user) |
+| `npm run db:seed` | Seed the database (admin, roles, categories, settings) |
+| `npm run db:restore-settings` | Restore default site settings (overwrites existing) |
 | `npx prisma migrate status` | Show migration status |
+
+---
+
+## Database seeder
+
+The seed script (`prisma/seed.ts`) populates a new or empty database with essential data. Run it after migrations on a fresh database.
+
+### What the seed creates
+
+| Data | Details |
+|------|---------|
+| **Permissions** | `users:read`, `users:write`, `orders:read`, `orders:write`, `products:read`, `products:write`, `categories:read`, `categories:write`, `vouchers:read`, `vouchers:write`, `settings:read`, `settings:write`, `emaillogs:read`, `emaillogs:resend` |
+| **Roles** | Admin (with all permissions), Customer |
+| **Admin user** | First admin; credentials from env vars (see below) |
+| **Categories** | Shirts, Accessories, Footwear (example categories) |
+| **Site settings** | general, about, footer, social, delivery, banking, seo, marketing |
+
+### Environment variables
+
+Set these before running the seed (optional — defaults are used if unset):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SEED_ADMIN_EMAIL` | `admin@example.com` | Admin user email |
+| `SEED_ADMIN_PASSWORD` | `Admin123!` | Admin user password (change in production) |
+| `SEED_ADMIN_NAME` | `Admin` | Admin display name |
+
+### When to run
+
+- **New database** — After `npm run db:migrate:deploy`, run `npm run db:seed`
+- **Re-run safe** — The seed uses upsert: it creates missing items and does **not** overwrite existing (admin, categories, settings). Safe to run multiple times.
+
+### Seed vs restore-settings
+
+| Command | Behavior |
+|---------|----------|
+| `npm run db:seed` | Creates admin, roles, categories, settings if missing. Does **not** overwrite existing values. |
+| `npm run db:restore-settings` | Restores **only** site settings. **Overwrites** all existing settings with defaults. Use when settings were lost. |
+
+### Command
+
+```bash
+cd backend
+npm run db:seed
+```
 
 ---
 
@@ -117,6 +163,17 @@ The `0_init` migration (or any pending migrations) will create all tables from s
 npm run db:seed
 ```
 
+### Restoring site settings after data loss
+
+If you lost site settings (e.g. after a migration reset or database restore):
+
+```bash
+cd backend
+npm run db:restore-settings
+```
+
+This overwrites all site settings (general, about, footer, social, delivery, banking, seo, marketing) with defaults. Customize them again in the admin under **Settings**.
+
 ---
 
 ## Baselining an existing database
@@ -190,6 +247,7 @@ Include `npm run db:migrate:deploy` in your deployment pipeline so every deploy 
 | Local schema change | `npx prisma migrate dev --name <name>` |
 | Deploy to production | `npm run db:migrate:deploy` (before starting app) |
 | New empty database | `npm run db:migrate:deploy` then `npm run db:seed` |
+| Lost site settings | `npm run db:restore-settings` |
 | Existing DB without migration history | Baseline with `prisma migrate resolve --applied 0_init` |
 
 ---
