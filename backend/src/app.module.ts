@@ -13,6 +13,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
+import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
 
@@ -36,6 +37,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     SettingsModule,
     InventoryModule,
     EmailLogsModule,
+    VouchersModule,
     FavoritesModule,
     ProfileModule,
   ],

@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SettingsModule } from '../settings/settings.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { VouchersModule } from '../vouchers/vouchers.module';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 
@@ -10,6 +11,7 @@ import { OrdersService } from './orders.service';
   imports: [
     SettingsModule,
     InventoryModule,
+    VouchersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

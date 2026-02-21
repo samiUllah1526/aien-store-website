@@ -25,8 +25,10 @@ export interface Quote {
   items: QuoteLineItem[];
   subtotalCents: number;
   shippingCents: number;
+  discountCents?: number;
   totalCents: number;
   currency: string;
+  voucherCode?: string;
 }
 
 export default function CheckoutForm() {
@@ -39,6 +41,10 @@ export default function CheckoutForm() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | null>(null);
+  const [voucherInput, setVoucherInput] = useState('');
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [voucherApplying, setVoucherApplying] = useState(false);
   const [banking, setBanking] = useState<{
     bankName?: string;
     accountTitle?: string;
@@ -108,6 +114,7 @@ export default function CheckoutForm() {
     api
       .post<Quote>('/orders/quote', {
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        voucherCode: appliedVoucherCode || undefined,
       })
       .then((res) => {
         if (res.data) setQuote(res.data);
@@ -118,7 +125,7 @@ export default function CheckoutForm() {
         setQuoteError(err instanceof Error ? err.message : 'Could not load order summary');
       })
       .finally(() => setQuoteLoading(false));
-  }, [hasHydrated, items]);
+  }, [hasHydrated, items, appliedVoucherCode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -133,7 +140,44 @@ export default function CheckoutForm() {
   const currency = quote?.currency ?? cartCurrency ?? 'PKR';
   const subtotal = quote?.subtotalCents ?? totalAmount;
   const shippingCents = quote?.shippingCents ?? 0;
+  const discountCents = quote?.discountCents ?? 0;
   const total = quote ? quote.totalCents : totalAmount + 299;
+
+  const handleApplyVoucher = async () => {
+    const code = voucherInput.trim().toUpperCase();
+    if (!code) return;
+    setVoucherError(null);
+    setVoucherApplying(true);
+    try {
+      const res = await api.post<{
+        success?: boolean;
+        data?: { valid?: boolean };
+        errorCode?: string;
+        message?: string;
+      }>('/vouchers/validate', {
+        code,
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        customerEmail: useAuthStore.getState().email || undefined,
+      });
+      const data = (res as { data?: { valid?: boolean } }).data;
+      if (res.success && data?.valid) {
+        setAppliedVoucherCode(code);
+        setVoucherInput('');
+        setVoucherError(null);
+      } else {
+        setVoucherError((res as { message?: string }).message ?? 'Invalid voucher');
+      }
+    } catch (err) {
+      setVoucherError(err instanceof Error ? err.message : 'Could not validate voucher');
+    } finally {
+      setVoucherApplying(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucherCode(null);
+    setVoucherError(null);
+  };
   const pricesUpdated =
     quote != null && totalAmount > 0 && quote.subtotalCents !== totalAmount;
 
@@ -179,6 +223,7 @@ export default function CheckoutForm() {
           paymentMethod: data.paymentMethod === 'bank' ? 'BANK_DEPOSIT' : 'COD',
           paymentProofMediaId: paymentProofMediaId || undefined,
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          voucherCode: appliedVoucherCode || undefined,
         },
         { headers: { 'Idempotency-Key': idempotencyKeyRef.current } },
       );
@@ -498,11 +543,72 @@ export default function CheckoutForm() {
                       </li>
                     ))}
               </ul>
-              <div className="space-y-2 border-t border-sand dark:border-charcoal-light pt-4">
+              <div className="border-t border-sand dark:border-charcoal-light pt-4 space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-charcoal dark:text-cream">
+                    Voucher code
+                  </label>
+                  {appliedVoucherCode ? (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald/30 bg-emerald/5 dark:bg-emerald/10 px-3 py-2.5">
+                      <span className="font-mono text-sm font-medium text-emerald dark:text-emerald-300">
+                        {appliedVoucherCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveVoucher}
+                        className="text-xs font-medium text-charcoal/70 hover:text-charcoal dark:text-cream/70 dark:hover:text-cream"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={voucherInput}
+                        onChange={(e) => {
+                          setVoucherInput(e.target.value.toUpperCase());
+                          setVoucherError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyVoucher();
+                          }
+                        }}
+                        placeholder="e.g. SUMMER20"
+                        disabled={voucherApplying}
+                        className={`flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 ${
+                          voucherError
+                            ? 'border-red-500 bg-red-50/50 dark:border-red-400 dark:bg-red-900/10'
+                            : 'border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyVoucher}
+                        disabled={voucherApplying || !voucherInput.trim()}
+                        className="rounded border border-sand dark:border-charcoal-light bg-ink dark:bg-cream px-3 py-2 text-sm font-medium text-cream dark:text-ink hover:opacity-90 disabled:opacity-50"
+                      >
+                        {voucherApplying ? '…' : 'Apply'}
+                      </button>
+                    </div>
+                  )}
+                  {voucherError && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{voucherError}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
                 <p className="flex justify-between text-sm text-charcoal dark:text-cream">
                   <span>Subtotal</span>
                   <span>{formatMoney(subtotal, currency)}</span>
                 </p>
+                {discountCents > 0 && (
+                  <p className="flex justify-between text-sm text-emerald dark:text-emerald-300">
+                    <span>Discount ({appliedVoucherCode})</span>
+                    <span>-{formatMoney(discountCents, currency)}</span>
+                  </p>
+                )}
                 <p className="flex justify-between text-sm text-charcoal dark:text-cream">
                   <span>Shipping</span>
                   {shippingCents === 0 ? (
@@ -520,6 +626,7 @@ export default function CheckoutForm() {
                   <span>Total</span>
                   <span>{formatMoney(total, currency)}</span>
                 </p>
+                </div>
               </div>
               {pricesUpdated && quote && (
                 <p className="mt-4 text-amber-700 dark:text-amber-400 text-sm">

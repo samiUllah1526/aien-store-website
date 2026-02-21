@@ -40,6 +40,13 @@ enum PaymentMethod {
   @@map("payment_method")
 }
 
+enum VoucherType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+  @@map("voucher_type")
+}
+
 // -----------------------------------------------------------------------------
 // RBAC: User ↔ Role (M:N), User ↔ Permission (M:N overrides), Role ↔ Permission (M:N)
 // -----------------------------------------------------------------------------
@@ -301,13 +308,71 @@ model Order {
   createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  voucherId       String?   @map("voucher_id") @db.Uuid
+  voucherCode     String?   @map("voucher_code")
+  discountCents   Int       @default(0) @map("discount_cents")
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
   assignedTo      User?    @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   customer        User?    @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
   paymentProof    Media?   @relation("OrderPaymentProof", fields: [paymentProofMediaId], references: [id], onDelete: SetNull)
+  voucher         Voucher? @relation("OrderVoucher", fields: [voucherId], references: [id], onDelete: SetNull)
+  voucherRedemptions VoucherRedemption[]
 
   @@map("orders")
+}
+
+// -----------------------------------------------------------------------------
+// Vouchers (coupons): percentage, fixed amount, free shipping
+// -----------------------------------------------------------------------------
+
+model Voucher {
+  id                    String      @id @default(uuid()) @db.Uuid
+  code                  String      @unique @map("code")
+  type                  VoucherType @map("type")
+  /** For PERCENTAGE: 1-100. For FIXED_AMOUNT: cents. For FREE_SHIPPING: ignored. */
+  value                 Int         @map("value")
+  /** Minimum order subtotal (cents) to apply. */
+  minOrderValueCents    Int         @default(0) @map("min_order_value_cents")
+  /** Max discount (cents). Only for PERCENTAGE; caps the discount. */
+  maxDiscountCents      Int?        @map("max_discount_cents")
+  startDate             DateTime    @map("start_date") @db.Timestamptz(6)
+  expiryDate            DateTime    @map("expiry_date") @db.Timestamptz(6)
+  usageLimitGlobal      Int?        @map("usage_limit_global")
+  usageLimitPerUser     Int?        @map("usage_limit_per_user")
+  usedCount             Int         @default(0) @map("used_count")
+  /** JSON array of product UUIDs. Empty = all products. */
+  applicableProductIds  Json?       @map("applicable_product_ids")
+  /** JSON array of category UUIDs. Empty = all categories. */
+  applicableCategoryIds Json?       @map("applicable_category_ids")
+  isActive              Boolean     @default(true) @map("is_active")
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  orders            Order[]            @relation("OrderVoucher")
+  redemptions       VoucherRedemption[]
+
+  @@index([code])
+  @@index([isActive, expiryDate])
+  @@index([deletedAt])
+  @@map("vouchers")
+}
+
+model VoucherRedemption {
+  id        String   @id @default(uuid()) @db.Uuid
+  voucherId String   @map("voucher_id") @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([voucherId, orderId])
+  @@index([voucherId])
+  @@index([userId])
+  @@map("voucher_redemptions")
 }
 
 model OrderItem {

@@ -1,0 +1,129 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Vouchers & Coupons
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Vouchers & Coupons
+
+Guide for creating and managing discount vouchers (coupon codes) that customers can use at checkout.
+
+---
+
+## Overview
+
+Vouchers let you offer discounts to customers. They enter a code at checkout and the discount is applied automatically. You can create vouchers with different discount types, set usage limits, and restrict them to certain products or categories.
+
+**Where to manage vouchers:** [Admin → Vouchers](/admin/vouchers)
+
+---
+
+## Voucher types
+
+| Type | How it works |
+|------|--------------|
+| **Percentage off** | Reduces the order subtotal by a percentage (e.g. 20% off). You can optionally cap the maximum discount amount. |
+| **Fixed amount off** | Reduces the order subtotal by a fixed amount in PKR (e.g. 500 PKR off). |
+| **Free shipping** | Waives the delivery fee. Useful when your settings charge for shipping. |
+
+---
+
+## Creating a voucher
+
+1. Go to **Vouchers** in the sidebar.
+2. Click **Create voucher**.
+3. Fill in the form:
+
+### Code
+- A unique code customers will type at checkout (e.g. `SUMMER20`, `WELCOME100`).
+- Codes are case-insensitive (SUMMER20 = summer20).
+- Use **Generate** to create a random 8-character code.
+
+### Type & value
+- **Percentage off** — Value is 1–100 (e.g. 20 = 20% off).
+- **Fixed amount off** — Value is in PKR (e.g. 500 = 500 PKR off).
+- **Free shipping** — No value needed.
+
+### Min order value (PKR)
+- Minimum cart subtotal required for the voucher to apply.
+- Leave 0 for no minimum.
+
+### Max discount cap (Percentage only)
+- Limits how much the percentage discount can be (in PKR).
+- Example: 20% off with a 1000 PKR cap — a 10,000 PKR order gets 1000 PKR off, not 2000 PKR.
+- Leave empty for no cap.
+
+### Start & expiry dates
+- When the voucher becomes valid and when it stops working.
+- Use date and time for precise control.
+
+### Usage limits
+- **Usage limit (global)** — Maximum number of times the voucher can be used in total.
+- **Usage limit (per user)** — Maximum times each customer can use it (requires customer to be logged in at checkout).
+- Leave empty for unlimited.
+
+### Eligible products & categories
+- **Empty** — Voucher applies to all products.
+- **Select specific products** — Only those products count toward the discount.
+- **Select specific categories** — Only products in those categories count.
+
+Use this to run targeted promotions (e.g. “20% off accessories only”).
+
+---
+
+## Status & lifecycle
+
+| Status | Meaning |
+|--------|---------|
+| **Active** | Voucher can be used (within date range and usage limits). |
+| **Upcoming** | Start date has not been reached yet. |
+| **Expired** | Expiry date has passed or usage limit reached. |
+| **Deactivated** | Manually turned off. Won’t work even if dates are valid. |
+
+Use **Activate** / **Deactivate** to turn vouchers on or off without changing dates.
+
+---
+
+## Filters & search
+
+On the Vouchers list you can:
+
+- **Search by code** — Find a voucher by typing part of its code.
+- **Filter by status** — All, Active, Expired, or Upcoming.
+- **Sort** — By date created, code, expiry, or number of uses.
+
+---
+
+## Analytics (Stats)
+
+Click **Stats** on a voucher to see:
+
+- **Total redemptions** — How many orders used this voucher.
+- **Revenue impact** — Total discount amount given (in PKR).
+- **Remaining uses** — How many times it can still be used (if there’s a limit).
+
+---
+
+## Tips
+
+1. **Short, memorable codes** — `SUMMER20` is easier for customers than `XK9Q2P7M`.
+2. **Set a minimum order** — Helps avoid abuse and increases average order value.
+3. **Use per-user limits** — For “first order” or “once per customer” promos.
+4. **Test before launch** — Create a test voucher, apply it at checkout, then deactivate it.
+5. **Deactivate instead of delete** — Keeps history; you can reactivate later if needed.
+
+---
+
+## Customer experience
+
+At checkout, customers:
+
+1. See a **Voucher code** field in the order summary.
+2. Enter the code and click **Apply**.
+3. See the discount reflected immediately.
+4. Can click **Remove** to clear it.
+
+If the voucher is invalid, expired, or doesn’t apply to their cart, they see a clear error message (e.g. “This voucher has expired” or “Minimum order value of 1000 PKR required”).

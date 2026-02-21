@@ -23,6 +23,8 @@ const PERMISSION_NAMES = [
   'products:write',
   'categories:read',
   'categories:write',
+  'vouchers:read',
+  'vouchers:write',
   'settings:read',
   'settings:write',
   'emaillogs:read',

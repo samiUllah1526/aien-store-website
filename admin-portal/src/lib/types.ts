@@ -149,3 +149,51 @@ export interface Category {
   updatedAt: string;
   productCount?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Vouchers (GET /vouchers, POST /vouchers, etc.)
+// ---------------------------------------------------------------------------
+
+export type VoucherType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+
+export interface Voucher {
+  id: string;
+  code: string;
+  type: VoucherType;
+  value: number;
+  minOrderValueCents: number;
+  maxDiscountCents: number | null;
+  startDate: string;
+  expiryDate: string;
+  usageLimitGlobal: number | null;
+  usageLimitPerUser: number | null;
+  usedCount: number;
+  applicableProductIds: string[];
+  applicableCategoryIds: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoucherFormData {
+  code: string;
+  type: VoucherType;
+  value: number;
+  minOrderValueCents?: number;
+  maxDiscountCents?: number;
+  startDate: string;
+  expiryDate: string;
+  usageLimitGlobal?: number;
+  usageLimitPerUser?: number;
+  applicableProductIds?: string[];
+  applicableCategoryIds?: string[];
+  isActive?: boolean;
+}
+
+export interface VoucherStats {
+  totalRedemptions: number;
+  revenueImpactCents: number;
+  remainingUses: number | null;
+  usedCount: number;
+  usageLimitGlobal: number | null;
+}

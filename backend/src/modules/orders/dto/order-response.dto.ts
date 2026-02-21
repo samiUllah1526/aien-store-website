@@ -18,6 +18,8 @@ export interface OrderResponseDto {
   status: string;
   totalCents: number;
   currency: string;
+  voucherCode?: string | null;
+  discountCents?: number;
   customerEmail: string;
   customerFirstName: string | null;
   customerLastName: string | null;

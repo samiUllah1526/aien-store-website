@@ -1,7 +1,8 @@
 import type { FormEvent } from 'react';
-import { useState, useCallback, useEffect } from 'react';
-import type { Product, ProductFormData, Category } from '../lib/types';
+import { useState, useCallback } from 'react';
+import type { Product, ProductFormData } from '../lib/types';
 import { api, uploadFile } from '../lib/api';
+import { SearchableMultiSelect } from './SearchableMultiSelect';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -30,24 +31,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setCategoriesLoading(true);
-      try {
-        const res = await api.get<Category[]>('/categories');
-        if (!cancelled) setCategories(res.data ?? []);
-      } catch {
-        if (!cancelled) setCategories([]);
-      } finally {
-        if (!cancelled) setCategoriesLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const fetchCategories = async ({ search }: { search: string; page: number }) => {
+    const res = await api.get<Array<{ id: string; name: string }>>('/categories', search ? { search } : undefined);
+    const items = (res.data ?? []).map((c) => ({ id: c.id, label: c.name }));
+    return { items, hasMore: false };
+  };
 
   const slugFromName = (value: string) =>
     value
@@ -172,37 +161,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
       </div>
-      <div>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Categories (optional)
-        </span>
-        <div className="flex flex-wrap gap-3 rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800">
-          {categoriesLoading ? (
-            <span className="text-slate-500 dark:text-slate-400 text-sm">Loading…</span>
-          ) : (
-            categories.map((c) => (
-              <label
-                key={c.id}
-                className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
-              >
-                <input
-                  type="checkbox"
-                  checked={categoryIds.includes(c.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setCategoryIds((prev) => [...prev, c.id]);
-                    } else {
-                      setCategoryIds((prev) => prev.filter((id) => id !== c.id));
-                    }
-                  }}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-slate-500"
-                />
-                {c.name} ({c.slug})
-              </label>
-            ))
-          )}
-        </div>
-      </div>
+      <SearchableMultiSelect
+        label="Categories (optional)"
+        placeholder="Search categories…"
+        emptyMessage="No categories"
+        selectedIds={categoryIds}
+        onSelectedIdsChange={setCategoryIds}
+        fetchItems={fetchCategories}
+      />
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           Images

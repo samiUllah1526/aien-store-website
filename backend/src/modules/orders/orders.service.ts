@@ -23,6 +23,7 @@ import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CURRENCIES } from '../../common/constants/currency';
 import { SettingsService } from '../settings/settings.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 
 @Injectable()
 export class OrdersService {
@@ -31,6 +32,7 @@ export class OrdersService {
     private readonly mail: MailService,
     private readonly settingsService: SettingsService,
     private readonly inventory: InventoryService,
+    private readonly vouchersService: VouchersService,
   ) {}
 
   /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
@@ -106,16 +108,35 @@ export class OrdersService {
   }
 
   /** Returns server-computed quote (no order created). All amounts from DB. */
-  async quote(items: Array<{ productId: string; quantity: number }>): Promise<QuoteResponseDto> {
+  async quote(
+    items: Array<{ productId: string; quantity: number }>,
+    voucherCode?: string,
+  ): Promise<QuoteResponseDto> {
     const { quoteItems, subtotalCents, currency } = await this.computeOrderFromItems(items);
     const shippingCents = await this.getDeliveryChargesCents();
-    const totalCents = subtotalCents + shippingCents;
+    let discountCents = 0;
+    let appliedVoucherCode: string | undefined;
+
+    if (voucherCode?.trim()) {
+      const voucherResult = await this.vouchersService.computeDiscountForOrder(
+        voucherCode,
+        items,
+      );
+      if (voucherResult) {
+        discountCents = voucherResult.discountCents;
+        appliedVoucherCode = voucherResult.voucherCode;
+      }
+    }
+
+    const totalCents = Math.max(0, subtotalCents - discountCents + shippingCents);
     return {
       items: quoteItems,
       subtotalCents,
       shippingCents,
+      discountCents,
       totalCents,
       currency,
+      voucherCode: appliedVoucherCode,
     };
   }
 
@@ -126,7 +147,14 @@ export class OrdersService {
   ): Promise<OrderResponseDto> {
     const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
     const deliveryCents = await this.getDeliveryChargesCents();
-    const totalCents = subtotalCents + deliveryCents;
+
+    const voucherResult = await this.vouchersService.computeDiscountForOrder(
+      dto.voucherCode,
+      dto.items,
+      customerUserId,
+    );
+    const discountCents = voucherResult?.discountCents ?? 0;
+    const totalCents = Math.max(0, subtotalCents - discountCents + deliveryCents);
 
     const paymentMethod =
       dto.paymentMethod === CreateOrderPaymentMethod.BANK_DEPOSIT
@@ -161,6 +189,9 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           totalCents,
           currency,
+          discountCents,
+          voucherId: voucherResult?.voucherId ?? undefined,
+          voucherCode: voucherResult?.voucherCode ?? undefined,
           customerEmail: dto.customerEmail,
           customerFirstName,
           customerLastName,
@@ -177,6 +208,20 @@ export class OrdersService {
         },
         include,
       });
+
+      if (voucherResult) {
+        await tx.voucherRedemption.create({
+          data: {
+            voucherId: voucherResult.voucherId,
+            orderId: newOrder.id,
+            userId: customerUserId ?? undefined,
+          },
+        });
+        await tx.voucher.update({
+          where: { id: voucherResult.voucherId },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
 
       await this.inventory.deductForOrder(newOrder.id, orderItemsData, tx);
       if (key) {
@@ -470,6 +515,8 @@ export class OrdersService {
     status: OrderStatus;
     totalCents: number;
     currency: string;
+    voucherCode?: string | null;
+    discountCents?: number;
     customerEmail: string;
     customerFirstName: string | null;
     customerLastName: string | null;
@@ -519,6 +566,8 @@ export class OrdersService {
       status: order.status,
       totalCents: order.totalCents,
       currency: order.currency,
+      voucherCode: order.voucherCode ?? null,
+      discountCents: order.discountCents ?? 0,
       customerEmail: order.customerEmail,
       customerFirstName: order.customerFirstName ?? null,
       customerLastName: order.customerLastName ?? null,

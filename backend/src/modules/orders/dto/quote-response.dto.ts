@@ -13,6 +13,8 @@ export interface QuoteResponseDto {
   items: QuoteLineItemDto[];
   subtotalCents: number;
   shippingCents: number;
+  discountCents: number;
   totalCents: number;
   currency: string;
+  voucherCode?: string;
 }

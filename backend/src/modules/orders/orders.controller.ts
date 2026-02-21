@@ -40,7 +40,7 @@ export class OrdersController {
   @Public()
   @Post('quote')
   async quote(@Body() dto: QuoteOrderDto) {
-    const data = await this.ordersService.quote(dto.items);
+    const data = await this.ordersService.quote(dto.items, dto.voucherCode);
     return ApiResponseDto.ok(data);
   }
 
