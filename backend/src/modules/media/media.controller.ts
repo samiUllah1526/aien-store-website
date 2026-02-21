@@ -106,6 +106,16 @@ export class MediaController {
         `Media register failed: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err.stack : undefined,
       );
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'product',
+          error: err,
+          filename: dto.filename,
+          productId: dto.productId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       throw err;
     }
   }
@@ -172,6 +182,16 @@ export class MediaController {
         `Payment proof register failed: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err.stack : undefined,
       );
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'payment_proof',
+          error: err,
+          filename: dto.filename,
+          orderId: dto.orderId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       throw err;
     }
   }
@@ -191,9 +211,21 @@ export class MediaController {
       },
     }),
   )
-  async upload(@UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined) {
+  async upload(
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @Body('productId') productId?: string,
+  ) {
     if (!file) {
       this.logger.warn('File upload failed: no file provided');
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'product',
+          error: new Error('No file provided'),
+          productId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       return ApiResponseDto.fail('No file provided');
     }
     try {
@@ -209,6 +241,16 @@ export class MediaController {
         `File upload failed: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err.stack : undefined,
       );
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'product',
+          error: err,
+          filename: file.originalname,
+          productId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       throw err;
     }
   }
@@ -230,9 +272,19 @@ export class MediaController {
   )
   async uploadPaymentProof(
     @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @Body('orderId') orderId?: string,
   ) {
     if (!file) {
       this.logger.warn('Payment proof upload failed: no file provided');
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'payment_proof',
+          error: new Error('No file provided'),
+          orderId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       return ApiResponseDto.fail('No file provided');
     }
     try {
@@ -248,6 +300,16 @@ export class MediaController {
         `Payment proof upload failed: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err.stack : undefined,
       );
+      try {
+        await this.mediaService.createFailedUpload({
+          source: 'payment_proof',
+          error: err,
+          filename: file.originalname,
+          orderId,
+        });
+      } catch (logErr) {
+        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+      }
       throw err;
     }
   }
