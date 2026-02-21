@@ -1,9 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import LoginForm from '../components/auth/LoginForm';
+import { brandName, loginMetaDescription } from '../config';
 ---
 
-<BaseLayout title="Sign in — Aien" description="Sign in to your account.">
+<BaseLayout title={`Sign in — ${brandName}`} description={loginMetaDescription}>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
     <h1 class="font-display text-2xl text-ink dark:text-cream mb-8 text-center">Sign in</h1>
     <LoginForm client:load />

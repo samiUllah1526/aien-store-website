@@ -4,9 +4,9 @@
  * Tailwind uses darkMode: 'class'.
  */
 
-export type Theme = 'light' | 'dark' | 'system';
+import { themeStorageKey } from '../config';
 
-const STORAGE_KEY = 'aien-theme';
+export type Theme = 'light' | 'dark' | 'system';
 
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
@@ -31,14 +31,14 @@ function applyTheme(resolved: 'light' | 'dark') {
 export const themeStore = {
   getStored(): Theme {
     if (typeof window === 'undefined') return 'system';
-    const v = localStorage.getItem(STORAGE_KEY);
+    const v = localStorage.getItem(themeStorageKey);
     if (v === 'light' || v === 'dark' || v === 'system') return v;
     return 'system';
   },
   setStored(theme: Theme) {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_KEY, theme);
+      localStorage.setItem(themeStorageKey, theme);
       applyTheme(resolveTheme(theme));
     } catch (_) {}
   },

@@ -3,14 +3,13 @@
  * About: content from site settings (admin-editable). Falls back to defaults if API unavailable.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-
-const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').toString().replace(/\/$/, '');
-let aboutTitle = 'Aien';
+import { aboutMetaDescription, apiBaseUrl, brandName } from '../config';
+let aboutTitle = brandName;
 let aboutSubtitle = 'Cultural-art collective. Poetry on fabric.';
 let aboutContent = '';
 
 try {
-  const res = await fetch(`${baseUrl}/settings/public`);
+  const res = await fetch(`${apiBaseUrl}/settings/public`);
   const json = await res.json();
   if (json?.success && json?.data?.about) {
     const a = json.data.about;
@@ -36,7 +35,7 @@ const fallbackContent = `
 const displayContent = aboutContent.trim() || fallbackContent;
 ---
 
-<BaseLayout title="About — Aien" description="Cultural-art streetwear. Poetry on fabric. Pakistan.">
+<BaseLayout title={`About — ${brandName}`} description={aboutMetaDescription}>
   <article class="max-w-prose mx-auto px-4 sm:px-6 py-16 md:py-24">
     <header class="mb-14">
       <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">

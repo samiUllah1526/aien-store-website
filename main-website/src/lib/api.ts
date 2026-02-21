@@ -1,18 +1,13 @@
 /**
  * API client for the storefront (main website).
- * Base URL: PUBLIC_API_URL (e.g. http://localhost:3000) or fallback.
- * Auth: access token from localStorage.
+ * Uses apiBaseUrl from config (single source of truth).
  */
 
+import { apiBaseUrl } from '../config';
 import { useAuthStore } from '../store/authStore';
 
-const defaultBaseUrl =
-  typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env?.PUBLIC_API_URL
-    ? (import.meta as unknown as { env: Record<string, string> }).env.PUBLIC_API_URL
-    : 'http://localhost:3000';
-
 export function getApiBaseUrl(): string {
-  return defaultBaseUrl?.trim() || 'http://localhost:3000';
+  return apiBaseUrl;
 }
 
 export function getStoreToken(): string | null {
@@ -38,7 +33,7 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, string | number | undefined> } = {},
 ): Promise<T> {
   const { params, ...init } = options;
-  const base = getApiBaseUrl().replace(/\/$/, '');
+  const base = getApiBaseUrl();
   const url = new URL(path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
@@ -127,7 +122,7 @@ export const favoritesApi = {
 
 /** Upload payment proof image for Bank Deposit (public). Returns media id to send in checkout. */
 export async function uploadPaymentProof(file: File): Promise<string> {
-  const base = getApiBaseUrl().replace(/\/$/, '');
+  const base = getApiBaseUrl();
   const url = `${base}/media/upload-payment-proof`;
   const form = new FormData();
   form.append('file', file);

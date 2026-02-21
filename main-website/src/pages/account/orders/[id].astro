@@ -4,13 +4,14 @@
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import OrderDetailPage from '../../../components/account/OrderDetailPage';
+import { brandName, orderDetailMetaDescription } from '../../../config';
 
 export const prerender = false;
 
 const { id } = Astro.params;
 ---
 
-<BaseLayout title="Order — Aien" description="Order details.">
+<BaseLayout title={`Order — ${brandName}`} description={orderDetailMetaDescription}>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10 md:py-14">
     <OrderDetailPage client:load orderId={id ?? ''} />
   </div>

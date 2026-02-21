@@ -1,98 +1,12 @@
 ---
 /**
- * Home: cinematic video hero, manifesto, product carousel, poetry, collection carousel.
- * Fashion film translated into a website. Motion > static.
+ * Home: static shell. Data fetched client-side (no build-time API dependency).
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import CinematicVideoHero from '../components/home/CinematicVideoHero';
-import BrandManifesto from '../components/home/BrandManifesto';
-import ProductCarousel from '../components/home/ProductCarousel';
-import AnimatedPoetrySection from '../components/home/AnimatedPoetrySection';
-
-const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
-const videoSrc = import.meta.env.PUBLIC_HERO_VIDEO_URL || '/videos/hero.mp4';
-const videoPoster = import.meta.env.PUBLIC_HERO_VIDEO_POSTER || '';
-
-let featured: Array<{
-  id: string;
-  slug: string;
-  name: string;
-  price: number;
-  currency: string;
-  image: string;
-  urduVerse?: string | null;
-  urduVerseTransliteration?: string | null;
-  description?: string | null;
-  sizes?: string[];
-}> = [];
-try {
-  const res = await fetch(`${baseUrl}/products?featured=true&limit=20`);
-  const json = await res.json();
-  if (res.ok && json.success && Array.isArray(json.data)) {
-    featured = json.data.map((p: {
-      id: string;
-      slug: string;
-      name: string;
-      price: number;
-      currency: string;
-      image: string;
-      urduVerse?: string | null;
-      urduVerseTransliteration?: string | null;
-      description?: string | null;
-      sizes?: string[];
-    }) => ({
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      price: p.price,
-      currency: p.currency,
-      image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
-      urduVerse: p.urduVerse ?? null,
-      urduVerseTransliteration: p.urduVerseTransliteration ?? null,
-      description: p.description ?? null,
-      sizes: p.sizes,
-    }));
-  }
-} catch {
-  featured = [];
-}
-
-// Fallback: if no featured, use first products
-let collectionProducts = featured;
-if (collectionProducts.length === 0) {
-  try {
-    const res = await fetch(`${baseUrl}/products?limit=12`);
-    const json = await res.json();
-    if (res.ok && json.success && Array.isArray(json.data)) {
-      const mapped = json.data.map((p: { id: string; slug: string; name: string; price: number; currency: string; image: string; urduVerse?: string | null; urduVerseTransliteration?: string | null; description?: string | null; sizes?: string[] }) => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.name,
-        price: p.price,
-        currency: p.currency,
-        image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
-        urduVerse: p.urduVerse ?? null,
-        urduVerseTransliteration: p.urduVerseTransliteration ?? null,
-        description: p.description ?? null,
-        sizes: p.sizes,
-      }));
-      featured = mapped;
-      collectionProducts = mapped;
-    }
-  } catch {
-    collectionProducts = [];
-  }
-}
+import HomePage from '../components/home/HomePage';
+import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster } from '../config';
 ---
 
-<BaseLayout title="Aien" description="Cultural-art streetwear. Poetry on fabric. Pakistan.">
-  <CinematicVideoHero client:load src={videoSrc} poster={videoPoster} />
-
-  <BrandManifesto client:load />
-
-  <ProductCarousel client:load products={featured} title="Featured" />
-
-  <AnimatedPoetrySection client:load />
-
-  <ProductCarousel client:load products={collectionProducts} title="Collection" />
+<BaseLayout title={brandName} description={defaultMetaDescription}>
+  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} />
 </BaseLayout>

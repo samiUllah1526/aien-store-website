@@ -4,6 +4,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { brandName } from '../config';
 import { getApiBaseUrl } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import CartIcon from './cart/CartIcon';
@@ -34,8 +35,6 @@ function logoUrl(logoPath: string | null): string {
   return logoPath.startsWith('http') ? logoPath : `${base}/media/file/${logoPath}`;
 }
 
-const DEFAULT_BRAND = 'Aien';
-
 function ShellContent({
   children,
   siteSettings,
@@ -45,9 +44,8 @@ function ShellContent({
 }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
   const clearAuth = useAuthStore((s) => s.clearAuth);
-  const brand = DEFAULT_BRAND;
   const copyrightText =
-    siteSettings?.footer?.copyright ?? `© ${new Date().getFullYear()} Aien`;
+    siteSettings?.footer?.copyright ?? `© ${new Date().getFullYear()} ${brandName}`;
   const logoSrc = siteSettings?.logoPath ? logoUrl(siteSettings.logoPath) : '';
   const social = siteSettings?.social ?? {};
 
@@ -63,9 +61,9 @@ function ShellContent({
             className="font-display text-lg text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 focus-ring rounded"
           >
             {logoSrc ? (
-              <img src={logoSrc} alt={brand} className="h-7 w-auto object-contain" />
+              <img src={logoSrc} alt={brandName} className="h-7 w-auto object-contain" />
             ) : (
-              brand
+              brandName
             )}
           </a>
           <ul className="flex items-center gap-6">

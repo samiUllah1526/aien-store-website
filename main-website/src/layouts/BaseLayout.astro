@@ -2,32 +2,20 @@
 /**
  * Base layout: poetic, minimal, premium.
  * Single React shell (LayoutShell) wraps nav, main slot, footer, and cart for shared state.
- * Fetches site settings (logo, footer, social) for the shell.
  */
 import '../styles/global.css';
 import LayoutShell from '../components/LayoutShell';
+import { brandName, defaultMetaDescription, faviconPath, themeStorageKey } from '../config';
 
 interface Props {
   title?: string;
   description?: string;
 }
 
-const { title = 'Aien', description = 'Cultural-art streetwear. Poetry on fabric. Pakistan.' } = Astro.props;
+const { title = brandName, description = defaultMetaDescription } = Astro.props;
 
-const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').toString().replace(/\/$/, '');
-let siteSettings: {
-  logoPath: string | null;
-  about: { title?: string; subtitle?: string; content?: string };
-  footer: { tagline?: string; copyright?: string };
-  social: { facebook?: string; instagram?: string; twitter?: string; youtube?: string };
-} | null = null;
-try {
-  const res = await fetch(`${baseUrl}/settings/public`);
-  const json = await res.json();
-  if (json?.success && json?.data) siteSettings = json.data;
-} catch {
-  // use defaults (null) so shell falls back to hardcoded
-}
+// Site settings: not fetched at build (static deploy). LayoutShell uses defaults.
+const siteSettings = null;
 ---
 <!doctype html>
 <html lang="en">
@@ -35,11 +23,11 @@ try {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Theme: set dark class on <html> before any paint (Tailwind darkMode: 'class') -->
-    <script is:inline>
-      (function(){var el=document.documentElement;try{var s=localStorage.getItem('aien-theme');var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
+    <script is:inline define:vars={{ themeStorageKey }}>
+      (function(){var el=document.documentElement;try{var s=localStorage.getItem(themeStorageKey);var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
     </script>
     <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={faviconPath} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
