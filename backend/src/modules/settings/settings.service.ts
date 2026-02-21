@@ -1,0 +1,175 @@
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { SettingsKey } from './dto/update-setting.dto';
+
+export interface GeneralValue {
+  logoMediaId?: string | null;
+}
+
+export interface AboutValue {
+  title?: string;
+  subtitle?: string;
+  content?: string;
+}
+
+export interface FooterValue {
+  tagline?: string;
+  copyright?: string;
+}
+
+export interface SocialValue {
+  facebook?: string;
+  facebookVisible?: boolean;
+  instagram?: string;
+  instagramVisible?: boolean;
+  twitter?: string;
+  twitterVisible?: boolean;
+  youtube?: string;
+  youtubeVisible?: boolean;
+}
+
+export interface DeliveryValue {
+  deliveryChargesCents?: number;
+}
+
+export interface BankingValue {
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
+  iban?: string;
+  instructions?: string;
+}
+
+export interface SeoValue {
+  siteTitle?: string;
+  defaultDescription?: string;
+  siteUrl?: string;
+  ogImageDefault?: string;
+  twitterHandle?: string;
+  googleSiteVerification?: string;
+}
+
+export interface MarketingValue {
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  googleTagManagerId?: string;
+  enabled?: boolean;
+}
+
+export interface PublicSettingsDto {
+  logoPath: string | null;
+  about: AboutValue;
+  footer: FooterValue;
+  social: SocialValue;
+  /** Delivery charges in cents. 0 = free delivery. */
+  deliveryChargesCents: number;
+  /** Bank account details shown at checkout for Bank Deposit. */
+  banking: BankingValue;
+  /** SEO meta defaults (site title, description, canonical base, etc.) */
+  seo: SeoValue;
+  /** Marketing pixels and tracking (Meta Pixel, GA, GTM) */
+  marketing: MarketingValue;
+}
+
+@Injectable()
+export class SettingsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getByKey(key: string): Promise<Record<string, unknown> | null> {
+    const row = await this.prisma.siteSetting.findUnique({
+      where: { key },
+    });
+    return row ? (row.value as Record<string, unknown>) : null;
+  }
+
+  async getAll(): Promise<Record<string, Record<string, unknown>>> {
+    const rows = await this.prisma.siteSetting.findMany();
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const row of rows) {
+      out[row.key] = row.value as Record<string, unknown>;
+    }
+    return out;
+  }
+
+  async set(key: SettingsKey, value: Record<string, unknown>): Promise<void> {
+    await this.prisma.siteSetting.upsert({
+      where: { key },
+      create: { key, value: value as object },
+      update: { value: value as object },
+    });
+  }
+
+  /** Resolve logo media ID to file path for public API. */
+  private async resolveLogoPath(logoMediaId: string | null | undefined): Promise<string | null> {
+    if (!logoMediaId) return null;
+    const media = await this.prisma.media.findUnique({
+      where: { id: logoMediaId },
+      select: { path: true },
+    });
+    return media?.path ?? null;
+  }
+
+  async getPublic(): Promise<PublicSettingsDto> {
+    const [general, about, footer, social, delivery, banking, seo, marketing] = await Promise.all([
+      this.getByKey('general'),
+      this.getByKey('about'),
+      this.getByKey('footer'),
+      this.getByKey('social'),
+      this.getByKey('delivery'),
+      this.getByKey('banking'),
+      this.getByKey('seo'),
+      this.getByKey('marketing'),
+    ]);
+
+    const generalVal = general as GeneralValue | null;
+    const logoPath = await this.resolveLogoPath(generalVal?.logoMediaId ?? null);
+    const deliveryVal = delivery as DeliveryValue | null;
+    const deliveryChargesCents =
+      typeof deliveryVal?.deliveryChargesCents === 'number' && deliveryVal.deliveryChargesCents >= 0
+        ? deliveryVal.deliveryChargesCents
+        : 0;
+    const bankingVal = banking as BankingValue | null;
+    const seoVal = seo as SeoValue | null;
+    const marketingVal = marketing as MarketingValue | null;
+
+    return {
+      logoPath,
+      about: (about as AboutValue) ?? {},
+      footer: (footer as FooterValue) ?? {},
+      social: (social as SocialValue) ?? {},
+      deliveryChargesCents,
+      banking: bankingVal
+        ? {
+            bankName: bankingVal.bankName ?? '',
+            accountTitle: bankingVal.accountTitle ?? '',
+            accountNumber: bankingVal.accountNumber ?? '',
+            iban: bankingVal.iban ?? '',
+            instructions: bankingVal.instructions ?? '',
+          }
+        : {},
+      seo: seoVal
+        ? {
+            siteTitle: seoVal.siteTitle?.trim() ?? '',
+            defaultDescription: seoVal.defaultDescription?.trim() ?? '',
+            siteUrl: (seoVal.siteUrl?.trim() ?? '').replace(/\/+$/, ''),
+            ogImageDefault: seoVal.ogImageDefault?.trim() ?? '',
+            twitterHandle: (seoVal.twitterHandle?.trim() ?? '').replace(/^@/, ''),
+            googleSiteVerification: seoVal.googleSiteVerification?.trim() ?? '',
+          }
+        : {},
+      marketing: marketingVal
+        ? {
+            metaPixelId: (marketingVal.metaPixelId?.trim() ?? '').replace(/\D/g, '').slice(0, 20) || undefined,
+            googleAnalyticsId: marketingVal.googleAnalyticsId?.trim() ?? '',
+            googleTagManagerId: (() => {
+              const raw = (marketingVal.googleTagManagerId?.trim() ?? '').toUpperCase();
+              if (raw.startsWith('GTM')) return raw;
+              const digits = raw.replace(/\D/g, '');
+              return digits ? `GTM-${digits}` : undefined;
+            })(),
+            enabled: marketingVal.enabled !== false,
+          }
+        : { enabled: true },
+    };
+  }
+}

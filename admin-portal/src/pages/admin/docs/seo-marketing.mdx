@@ -1,0 +1,135 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: SEO & Marketing
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# SEO & Marketing Settings
+
+A step-by-step guide for non-technical admins. These settings control how your store appears in Google and on social media, and how you track visitors for ads and analytics.
+
+---
+
+## Where to find it
+
+Go to **Settings** in the sidebar. Scroll down to:
+
+1. **SEO & meta tags** — How your site looks in search and when shared
+2. **Marketing & tracking pixels** — Facebook ads, Google Analytics, and Tag Manager
+
+---
+
+## SEO & Meta Tags
+
+These settings control what people see when your store appears in Google or when someone shares a link on WhatsApp, Facebook, or Twitter.
+
+### Site title (brand name)
+
+- **What it is:** Your store or brand name.
+- **Where it shows:** Browser tab, Google search results, social share previews.
+- **Example:** `Aien`
+
+### Default meta description
+
+- **What it is:** A short summary of your store (1–2 sentences).
+- **Where it shows:** Under the title in Google search results, and when a link is shared on social media.
+- **Tip:** Keep it under 160 characters. Describe what you sell and who it's for.
+- **Example:** `Cultural-art streetwear. Poetry on fabric. Pakistan.`
+
+### Site URL
+
+- **What it is:** Your live website address.
+- **Format:** Start with `https://`, no slash at the end.
+- **Example:** `https://aien.com`
+- **Why it matters:** Helps search engines and social platforms create correct links to your site.
+
+### Default share image URL
+
+- **What it is:** The image shown when someone shares your store on Facebook, WhatsApp, Twitter, etc.
+- **Format:** Full URL to an image, e.g. `https://yoursite.com/images/share-image.jpg`
+- **Recommended size:** 1200×630 pixels.
+- **Tip:** Use a logo or product shot that represents your brand well.
+
+### Twitter handle (optional)
+
+- **What it is:** Your Twitter/X username, without the @ symbol.
+- **Example:** `aien`
+- **Why:** Improves how links look when shared on Twitter.
+
+### Google Search Console verification (optional)
+
+- **What it is:** A code that proves you own the site to Google Search Console.
+- **When to use:** If you use [Google Search Console](https://search.google.com/search-console) to see how your site performs in search.
+- **How to get it:** In Search Console, add your property → choose “HTML tag” verification → copy only the long code from `content="..."`
+- **Where to paste:** Paste only that code (the part inside the quotes). Leave blank if you don’t use Search Console.
+
+---
+
+## Marketing & Tracking Pixels
+
+These settings connect your store to Facebook ads and Google tools so you can see how visitors find you and what they do on your site.
+
+### Enable tracking pixels
+
+- **What it does:** Turn all tracking on or off.
+- **Use case:** Uncheck to disable tracking (e.g. during testing) without deleting your IDs.
+
+### Meta (Facebook) Pixel ID
+
+- **What it is:** A code from Meta (Facebook) for tracking visitors and measuring ad performance.
+- **Where to find it:** Meta Business Suite → Events Manager → Data Sources → Your Pixel → Pixel ID.
+- **Format:** A long number, e.g. `1234567890123456`
+- **When to use:** Add it here if you run Facebook/Instagram ads and are not using Google Tag Manager (GTM). If you use GTM, you can add the pixel inside GTM instead and leave this blank.
+
+### Google Analytics ID
+
+- **What it is:** A code from Google Analytics 4 (GA4) for measuring traffic and behavior.
+- **Where to find it:** Google Analytics → Admin → Data Streams → Your web stream → Measurement ID.
+- **Format:** Starts with `G-`, e.g. `G-XXXXXXXXXX`
+- **When to use:** Add it here if you use Google Analytics and are not using GTM. If you use GTM, add GA inside GTM and leave this blank.
+
+### Google Tag Manager container ID
+
+- **What it is:** A container that can hold many tracking tags (Meta Pixel, GA, etc.) in one place.
+- **Where to find it:** [Google Tag Manager](https://tagmanager.google.com) → Create container → Copy the Container ID.
+- **Format:** Starts with `GTM-`, e.g. `GTM-XXXXXXX`
+- **When to use:** If you use GTM, enter the ID here. You can add Meta Pixel, Google Analytics, and other tools inside GTM’s dashboard — then you only need this one ID in the admin.
+
+---
+
+## Important: Rebuild required
+
+Changes in **SEO** and **Marketing** are applied when the main website is built. They do not update automatically.
+
+**What you need to do:**
+
+1. Save your changes in Settings.
+2. Tell your technical team (or whoever deploys the site) to **rebuild and redeploy** the main website.
+3. After the new build is live, your changes will appear.
+
+---
+
+## Quick reference
+
+| Setting | Required? | Purpose |
+|---------|-----------|---------|
+| Site title | Recommended | Brand name in search and tabs |
+| Default description | Recommended | Summary in search and social |
+| Site URL | Yes (for production) | Correct links and canonicals |
+| Share image | Optional | Image when links are shared |
+| Twitter handle | Optional | Better Twitter share previews |
+| Google verification | Optional | Search Console ownership |
+| Meta Pixel | If running FB/IG ads | Ad tracking and optimization |
+| Google Analytics | If using GA | Traffic and behavior data |
+| GTM | If using GTM | Manages multiple tracking tags |
+
+---
+
+## Need help?
+
+- **SEO:** Focus on Site title, Default description, and Site URL. These have the biggest impact.
+- **Marketing:** Start with one tool. If you use GTM, add GTM ID only and manage the rest inside GTM.
+- **Technical issues:** Ask your developer or hosting provider to rebuild and redeploy the main website after you save changes.

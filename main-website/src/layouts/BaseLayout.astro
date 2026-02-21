@@ -1,0 +1,99 @@
+---
+/**
+ * Base layout: poetic, minimal, premium.
+ * Fetches public settings at build time for SEO and marketing (fallback to config when API unavailable).
+ */
+import '../styles/global.css';
+import LayoutShell from '../components/LayoutShell';
+import { getPublicSettings } from '../lib/settings';
+import { faviconPath, themeStorageKey } from '../config';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Product/social image URL for og:image */
+  image?: string;
+  /** Canonical URL (absolute preferred) */
+  canonical?: string;
+  /** JSON-LD structured data (Product, etc.) */
+  jsonLd?: object;
+}
+
+const settings = await getPublicSettings();
+const seo = settings.seo;
+const marketing = settings.marketing;
+
+const { title: titleProp, description: descProp, image: imageProp, canonical: canonicalProp, jsonLd } = Astro.props;
+const title = titleProp ?? seo.siteTitle;
+const description = descProp ?? seo.defaultDescription;
+const image = imageProp ?? (seo.ogImageDefault || undefined);
+const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pathname}` : undefined);
+
+// Site settings for LayoutShell (logo, footer, social). Fetched separately by about page; layout uses minimal.
+const siteSettings = null;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Theme: set dark class on <html> before any paint (Tailwind darkMode: 'class') -->
+    <script is:inline define:vars={{ themeStorageKey }}>
+      (function(){var el=document.documentElement;try{var s=localStorage.getItem(themeStorageKey);var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
+    </script>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {image && (
+      <>
+        <meta property="og:image" content={image} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content={image} />
+      </>
+    )}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {seo.googleSiteVerification && (
+      <meta name="google-site-verification" content={seo.googleSiteVerification} />
+    )}
+    {seo.twitterHandle && <meta name="twitter:site" content={`@${seo.twitterHandle}`} />}
+    {jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    )}
+    <link rel="icon" type="image/svg+xml" href={faviconPath} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400..900&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title}</title>
+    {/* Marketing pixels (build-time from admin settings) */}
+    {marketing.enabled && marketing.metaPixelId && (
+      <>
+        <script is:inline define:vars={{ pixelId: marketing.metaPixelId }}>
+          !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',pixelId);fbq('track','PageView');
+        </script>
+        <noscript><img height="1" width="1" style="display:none" alt="" src={`https://www.facebook.com/tr?id=${marketing.metaPixelId}&ev=PageView&noscript=1`} /></noscript>
+      </>
+    )}
+    {marketing.enabled && marketing.googleAnalyticsId && (
+      <>
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${marketing.googleAnalyticsId}`} />
+        <script is:inline define:vars={{ gaId: marketing.googleAnalyticsId }}>
+          window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',gaId);
+        </script>
+      </>
+    )}
+    {marketing.enabled && marketing.googleTagManagerId && (
+      <script is:inline define:vars={{ gtmId: marketing.googleTagManagerId }}>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer',gtmId);
+      </script>
+    )}
+  </head>
+  <body class="min-h-screen flex flex-col bg-bone dark:bg-charcoal text-soft-charcoal dark:text-off-white antialiased transition-colors duration-400">
+    <LayoutShell client:load siteSettings={siteSettings}>
+      <slot />
+    </LayoutShell>
+  </body>
+</html>

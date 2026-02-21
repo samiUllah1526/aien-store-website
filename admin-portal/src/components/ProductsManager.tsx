@@ -1,0 +1,597 @@
+import { useState, useEffect, useCallback } from 'react';
+import { api, getApiBaseUrl } from '../lib/api';
+import { formatMoney } from '../lib/formatMoney';
+import { useDebounce } from '../hooks/useDebounce';
+import type { ProductListItem, Product, ProductFormData, Category } from '../lib/types';
+import { ProductForm } from './ProductForm';
+import { AdjustStockModal } from './AdjustStockModal';
+
+const PAGE_SIZE = 10;
+const SORT_OPTIONS = [
+  { value: 'createdAt', label: 'Date created' },
+  { value: 'name', label: 'Name' },
+  { value: 'price', label: 'Price' },
+  { value: 'stockQuantity', label: 'Stock' },
+] as const;
+
+function imageUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const base = getApiBaseUrl().replace(/\/$/, '');
+  return path.startsWith('/') ? `${base}${path}` : `${base}/${path}`;
+}
+
+export function ProductsManager() {
+  const [items, setItems] = useState<ProductListItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [minPriceInput, setMinPriceInput] = useState('');
+  const [maxPriceInput, setMaxPriceInput] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState('');
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  const [featuredFilter, setFeaturedFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [adjustStockProduct, setAdjustStockProduct] = useState<ProductListItem | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const debouncedSearch = useDebounce(searchInput.trim(), 400);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await api.get<Category[]>('/categories');
+      setCategories(res.data ?? []);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, string | number | undefined> = {
+        page,
+        limit: PAGE_SIZE,
+        sortBy,
+        sortOrder,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (categoryFilter) params.categoryId = categoryFilter;
+      const min = parseInt(appliedMinPrice, 10);
+      if (!Number.isNaN(min) && min >= 0) params.minPriceCents = min * 100;
+      const max = parseInt(appliedMaxPrice, 10);
+      if (!Number.isNaN(max) && max >= 0) params.maxPriceCents = max * 100;
+      if (featuredFilter === 'true') params.featured = 'true';
+      if (featuredFilter === 'false') params.featured = 'false';
+      if (stockFilter) params.stockFilter = stockFilter;
+
+      const res = await api.getList<ProductListItem>('/products', params);
+      setItems(res.data ?? []);
+      setTotal(res.meta?.total ?? 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load products');
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch, categoryFilter, appliedMinPrice, appliedMaxPrice, featuredFilter, stockFilter, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAppliedMinPrice(minPriceInput);
+    setAppliedMaxPrice(maxPriceInput);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setCategoryFilter('');
+    setMinPriceInput('');
+    setMaxPriceInput('');
+    setAppliedMinPrice('');
+    setAppliedMaxPrice('');
+    setFeaturedFilter('');
+    setStockFilter('');
+    setPage(1);
+    setError(null);
+  };
+
+  const handleCreate = async (data: ProductFormData) => {
+    await api.post<Product>('/products', {
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      categoryIds: data.categoryIds,
+      priceCents: data.priceCents,
+      currency: data.currency,
+      featured: data.featured,
+      mediaIds: data.mediaIds,
+    });
+    setFormOpen(null);
+    fetchList();
+  };
+
+  const handleUpdate = async (data: ProductFormData) => {
+    if (!editingProduct) return;
+    await api.put<Product>(`/products/${editingProduct.id}`, {
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      categoryIds: data.categoryIds,
+      priceCents: data.priceCents,
+      currency: data.currency,
+      featured: data.featured,
+      mediaIds: data.mediaIds,
+    });
+    setFormOpen(null);
+    setEditingProduct(null);
+    fetchList();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this product?')) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      await api.delete(`/products/${id}`);
+      fetchList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const openEdit = async (item: ProductListItem) => {
+    setError(null);
+    try {
+      const res = await api.get<Product>(`/products/${item.id}`);
+      if (res.data) {
+        setEditingProduct(res.data);
+        setFormOpen('edit');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load product');
+    }
+  };
+
+  const handleStockAdjusted = (productId: string, newStockQuantity: number) => {
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              stockQuantity: newStockQuantity,
+              inStock: newStockQuantity > 0,
+            }
+          : p
+      )
+    );
+    setSuccessMessage('Stock updated successfully.');
+    setTimeout(() => setSuccessMessage(null), 4000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Products</h1>
+        <button
+          type="button"
+          onClick={() => {
+            setEditingProduct(null);
+            setFormOpen('add');
+          }}
+          className="inline-flex items-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500"
+        >
+          Add product
+        </button>
+      </div>
+
+      <form
+        onSubmit={handleApplyFilters}
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="sm:col-span-2">
+            <label htmlFor="product-search" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Search
+            </label>
+            <input
+              id="product-search"
+              type="search"
+              placeholder="Name, slug, description…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-category" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Category
+            </label>
+            <select
+              id="product-category"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-min-price" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Min price
+            </label>
+            <input
+              id="product-min-price"
+              type="number"
+              min={0}
+              placeholder="0"
+              value={minPriceInput}
+              onChange={(e) => setMinPriceInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-max-price" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Max price
+            </label>
+            <input
+              id="product-max-price"
+              type="number"
+              min={0}
+              placeholder="—"
+              value={maxPriceInput}
+              onChange={(e) => setMaxPriceInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-featured" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Featured
+            </label>
+            <select
+              id="product-featured"
+              value={featuredFilter}
+              onChange={(e) => setFeaturedFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-stock" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Stock
+            </label>
+            <select
+              id="product-stock"
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All</option>
+              <option value="low_stock">Low (1–5)</option>
+              <option value="out_of_stock">Out of stock</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-sort" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Sort by
+            </label>
+            <select
+              id="product-sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-order" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Order
+            </label>
+            <select
+              id="product-order"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Clear
+          </button>
+        </div>
+      </form>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300" role="alert">
+          {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+          role="status"
+          aria-live="polite"
+        >
+          {successMessage}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+            <thead className="bg-slate-50 dark:bg-slate-700/50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Image</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Stock</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3">
+                    <div className="h-12 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="h-8 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          {(debouncedSearch || categoryFilter || appliedMinPrice || appliedMaxPrice || featuredFilter || stockFilter) ? 'No products match your filters.' : 'No products yet. Add one to get started.'}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Image</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Category</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Price</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Stock</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Featured</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
+                {items.map((item) => {
+                  const categoryNames = item.categories ?? [];
+                  const stockQty = item.stockQuantity ?? 0;
+                  const isOutOfStock = !(item.inStock ?? (stockQty > 0));
+                  return (
+                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+                    <td className="px-4 py-3">
+                      {item.image ? (
+                        <img
+                          src={imageUrl(item.image)}
+                          alt=""
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 text-xs">
+                          —
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{item.name}</span>
+                      <span className="ml-1 text-slate-500 dark:text-slate-400 text-xs">/{item.slug}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {categoryNames.length > 0 ? (
+                          categoryNames.map((name) => (
+                            <span
+                              key={name}
+                              className="inline-flex rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200"
+                            >
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                      {formatMoney(item.price, item.currency)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`tabular-nums font-medium ${
+                          isOutOfStock
+                            ? 'rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            : stockQty <= 5
+                              ? 'rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                              : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                        title={isOutOfStock ? 'Out of stock' : stockQty <= 5 ? 'Low stock' : undefined}
+                      >
+                        {stockQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAdjustStockProduct(item)}
+                        className="ml-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-medium underline focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 rounded"
+                      >
+                        Adjust
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.featured ? (
+                        <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        className="mr-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 text-sm font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50 text-sm font-medium"
+                      >
+                        {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Page {page} of {totalPages} ({total} total)
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add / Edit form */}
+      {formOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/60"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="form-title"
+        >
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700">
+            <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+              <h2 id="form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {formOpen === 'add' ? 'Add product' : 'Edit product'}
+              </h2>
+            </div>
+            <div className="p-6">
+              <ProductForm
+                product={formOpen === 'edit' ? editingProduct : null}
+                onSubmit={formOpen === 'add' ? handleCreate : handleUpdate}
+                onCancel={() => {
+                  setFormOpen(null);
+                  setEditingProduct(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Adjust stock */}
+      {adjustStockProduct && (
+        <AdjustStockModal
+          product={{
+            id: adjustStockProduct.id,
+            name: adjustStockProduct.name,
+            stockQuantity: adjustStockProduct.stockQuantity ?? 0,
+          }}
+          onClose={() => setAdjustStockProduct(null)}
+          onSuccess={(newStockQuantity) => {
+            handleStockAdjusted(adjustStockProduct.id, newStockQuantity);
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,57 @@
+---
+/**
+ * About: content from site settings (admin-editable). Falls back to defaults if API unavailable.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { aboutMetaDescription, apiBaseUrl, brandName } from '../config';
+let aboutTitle = brandName;
+let aboutSubtitle = 'Cultural-art collective. Poetry on fabric.';
+let aboutContent = '';
+
+try {
+  const res = await fetch(`${apiBaseUrl}/settings/public`);
+  const json = await res.json();
+  if (json?.success && json?.data?.about) {
+    const a = json.data.about;
+    if (a.title) aboutTitle = a.title;
+    if (a.subtitle) aboutSubtitle = a.subtitle;
+    if (a.content) aboutContent = a.content;
+  }
+} catch {
+  // use defaults above
+}
+
+// Fallback static content if no HTML from settings
+const fallbackContent = `
+  <p>We make garments that hold silence. Where poetry meets fabric, and loss meets wear.</p>
+  <p>Each piece carries a verse — in Nastaliq script, like breath on paper. We are not a hype streetwear brand.
+  We are a cultural-art collective. The words come first. The wear follows.</p>
+  <p>Hoodies and oversized shirts for those who carry the weight of a single word. Streetwear that
+  doesn't shout — it speaks quietly, in the space between longing and letting go.</p>
+  <p class="urdu-text font-urdu text-2xl md:text-3xl text-soft-charcoal dark:text-off-white text-right leading-loose mt-16 py-10 border-t border-b border-ash/20">خاموشی میں واپس آؤ</p>
+  <p class="text-ash text-sm italic">Return to silence.</p>
+  <p>Thank you for wearing the verse with us.</p>
+`;
+const displayContent = aboutContent.trim() || fallbackContent;
+---
+
+<BaseLayout title={`About — ${brandName}`} description={aboutMetaDescription}>
+  <article class="max-w-prose mx-auto px-4 sm:px-6 py-16 md:py-24">
+    <header class="mb-14">
+      <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">
+        {aboutTitle}
+      </h1>
+      <p class="mt-4 text-lg text-ash font-display">
+        {aboutSubtitle}
+      </p>
+    </header>
+
+    <div class="space-y-10 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed about-content" set:html={displayContent} />
+
+    <div class="mt-14">
+      <a href="/shop" class="inline-block text-ash hover:text-soft-charcoal dark:hover:text-off-white font-medium transition-colors text-sm">
+        Continue reading →
+      </a>
+    </div>
+  </article>
+</BaseLayout>

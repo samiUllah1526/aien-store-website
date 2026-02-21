@@ -1,0 +1,156 @@
+---
+/**
+ * Product detail: poem-first. Large garment image, animated Urdu verse,
+ * philosophical English description, quiet details, subtle Add to Cart.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AddToCart from '../../components/product/AddToCart';
+import ProductImageCarousel from '../../components/product/ProductImageCarousel';
+import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
+import { formatMoney } from '../../lib/formatMoney';
+import { apiBaseUrl, brandName, siteUrl } from '../../config';
+
+export async function getStaticPaths() {
+  const limit = 100;
+  const slugs: string[] = [];
+  try {
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const url = `${apiBaseUrl}/products?page=${page}&limit=${limit}&sortBy=slug&sortOrder=asc`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (!res.ok || !json.success || !Array.isArray(json.data)) break;
+      const pageSlugs = json.data.map((p: { slug: string }) => p.slug).filter(Boolean);
+      slugs.push(...pageSlugs);
+      const total = json.meta?.total ?? 0;
+      hasMore = slugs.length < total && pageSlugs.length === limit;
+      page += 1;
+    }
+    return slugs.map((slug: string) => ({ params: { slug } }));
+  } catch (err) {
+    console.error('[getStaticPaths] error:', err);
+    return [];
+  }
+}
+
+const slug = Astro.params.slug;
+if (!slug) {
+  return Astro.redirect('/shop');
+}
+
+function toFullImageUrl(url: string): string {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+try {
+  const productUrl = `${apiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
+  const res = await fetch(productUrl);
+  const json = await res.json();
+  if (res.ok && json.success && json.data) {
+    const p = json.data;
+    const image = toFullImageUrl(p.image ?? '');
+    const images = Array.isArray(p.images) ? p.images.map((img: string) => toFullImageUrl(img)).filter(Boolean) : (image ? [image] : []);
+    product = {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      description: p.description ?? null,
+      price: p.price,
+      currency: p.currency,
+      image,
+      images: images.length > 0 ? images : (image ? [image] : []),
+      sizes: p.sizes,
+      urduVerse: p.urduVerse ?? null,
+      urduVerseTransliteration: p.urduVerseTransliteration ?? null,
+      categories: p.categories ?? [],
+    };
+  }
+} catch (err) {
+  console.error('[product page] fetch error:', err);
+}
+
+if (!product) {
+  return Astro.redirect('/shop');
+}
+
+const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
+const ogImage = product.images?.[0] ?? product.image;
+const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || apiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
+
+const productImages = (product.images ?? (product.image ? [product.image] : [])).map((img: string) =>
+  img.startsWith('http') ? img : `${siteUrl || apiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
+);
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description ?? undefined,
+  image: productImages.length ? productImages : undefined,
+  offers: {
+    '@type': 'Offer',
+    price: product.price / 100,
+    priceCurrency: product.currency,
+    availability: 'https://schema.org/InStock',
+  },
+  ...(canonicalUrl && { url: canonicalUrl }),
+};
+---
+
+<BaseLayout
+  title={`${product.name} — ${brandName}`}
+  description={product.description ?? undefined}
+  image={ogImageAbs}
+  canonical={canonicalUrl}
+  jsonLd={productJsonLd}
+>
+  <article class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+      <div class="w-full">
+        <ProductImageCarousel client:load images={product.images} alt={product.name} />
+      </div>
+      <div class="flex flex-col">
+        {product.urduVerse && (
+          <AnimatedUrduVerse
+            client:load
+            verse={product.urduVerse}
+            transliteration={product.urduVerseTransliteration}
+          />
+        )}
+
+        <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">
+          {product.name}
+        </h1>
+
+        {product.description && (
+          <p class="mt-6 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed max-w-prose">
+            {product.description}
+          </p>
+        )}
+
+        <p class="mt-8 text-ash text-sm">
+          {formatMoney(product.price, product.currency)}
+        </p>
+
+        {product.categories?.length ? (
+          <p class="mt-1 text-ash text-sm">
+            {product.categories.map((c) => c.name).join(', ')}
+          </p>
+        ) : null}
+
+        <AddToCart
+          client:load
+          productId={product.id}
+          name={product.name}
+          slug={product.slug}
+          price={product.price}
+          currency={product.currency}
+          image={product.image}
+          sizes={product.sizes ?? []}
+        />
+      </div>
+    </div>
+  </article>
+</BaseLayout>

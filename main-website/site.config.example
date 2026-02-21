@@ -1,0 +1,52 @@
+# Site Configuration
+# Copy these to your .env file and fill in the values.
+# This is the single source of truth for all configurable values.
+
+# ─── Required ───────────────────────────────────────────────────────────────
+
+# Backend API URL (no trailing slash). Required for cart, checkout, products.
+PUBLIC_API_URL=http://localhost:3000
+
+# Site URL (no trailing slash). Required for product page SEO (canonical, og:url, JSON-LD).
+# Set in production, e.g. https://aien.com
+# PUBLIC_SITE_URL=https://yoursite.com
+
+# ─── Hero Section ────────────────────────────────────────────────────────────
+
+# Hero video: YouTube, Vimeo, or direct mp4/webm URL
+# Examples:
+#   YouTube:  https://youtu.be/VIDEO_ID
+#   Vimeo:    https://vimeo.com/123456
+#   Direct:   /videos/hero.mp4  or  https://cdn.example.com/hero.mp4
+PUBLIC_HERO_VIDEO_URL=
+
+# Hero poster image (optional). Any public image URL.
+# For YouTube, a thumbnail is used automatically if not provided.
+PUBLIC_HERO_VIDEO_POSTER=
+
+# ─── Branding (optional) ─────────────────────────────────────────────────────
+
+# Brand name (default: Aien)
+# PUBLIC_BRAND_NAME=Aien
+
+# Default meta description for SEO
+# PUBLIC_META_DESCRIPTION=Cultural-art streetwear. Poetry on fabric. Pakistan.
+
+# Page-specific meta descriptions (optional)
+# PUBLIC_SHOP_META_DESCRIPTION=Cultural-art streetwear. Hoodies and oversized shirts. Pakistan.
+# PUBLIC_ABOUT_META_DESCRIPTION=Cultural-art streetwear. Poetry on fabric. Pakistan.
+# PUBLIC_CART_META_DESCRIPTION=Your cart.
+# PUBLIC_CHECKOUT_META_DESCRIPTION=Complete your order.
+# PUBLIC_LOGIN_META_DESCRIPTION=Sign in to your account.
+# PUBLIC_REGISTER_META_DESCRIPTION=Create an account.
+# PUBLIC_FORGOT_PASSWORD_META_DESCRIPTION=Request a password reset link.
+# PUBLIC_RESET_PASSWORD_META_DESCRIPTION=Set a new password.
+# PUBLIC_FAVORITES_META_DESCRIPTION=Your favorite products.
+# PUBLIC_ORDERS_META_DESCRIPTION=Your order history.
+# PUBLIC_ORDER_DETAIL_META_DESCRIPTION=Order details.
+
+# Favicon path (default: /favicon.svg)
+# PUBLIC_FAVICON=/favicon.svg
+
+# Theme localStorage key (default: aien-theme)
+# PUBLIC_THEME_STORAGE_KEY=aien-theme

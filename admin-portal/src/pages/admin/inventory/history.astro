@@ -1,0 +1,10 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { InventoryHistoryPage } from '../../../components/InventoryHistoryPage';
+
+const productId = Astro.url.searchParams.get('productId') ?? '';
+---
+
+<AdminLayout title="Inventory history">
+  <InventoryHistoryPage client:load productId={productId} />
+</AdminLayout>

@@ -1,0 +1,43 @@
+import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
+  const configService = app.get(ConfigService);
+  const port = configService.get<number>('PORT', 3000);
+
+  const corsOrigin = configService.get<string>('CORS_ORIGIN');
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://localhost:4321',
+    'http://localhost:4322',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4321',
+    'http://127.0.0.1:4322',
+    'http://127.0.0.1:5173',
+  ];
+  app.enableCors({
+    origin: corsOrigin
+      ? corsOrigin.split(',').map((o) => o.trim())
+      : defaultOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+  });
+
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+}
+bootstrap();

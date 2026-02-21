@@ -1,0 +1,23 @@
+---
+import '../../styles/global.css';
+import { LoginForm } from '../../components/LoginForm';
+import { appName, themeStorageKey } from '../../lib/config';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in | {appName}</title>
+    <script is:inline define:vars={{ themeStorageKey }}>
+      (function(){var d=document.documentElement;var s=localStorage.getItem(themeStorageKey);if(s==='true')d.classList.add('dark');else if(s==='false')d.classList.remove('dark');})();
+    </script>
+  </head>
+  <body class="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-4 text-slate-900 dark:text-slate-100">
+    <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 text-center">{appName}</h1>
+      <LoginForm client:load />
+    </div>
+  </body>
+</html>

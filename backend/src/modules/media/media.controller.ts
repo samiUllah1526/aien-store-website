@@ -1,0 +1,106 @@
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { createReadStream, existsSync } from 'fs';
+import { join } from 'path';
+import { ApiResponseDto } from '../../common/dto/api-response.dto';
+import { MediaService } from './media.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+@Controller('media')
+export class MediaController {
+  constructor(private readonly mediaService: MediaService) {}
+
+  @Post('upload')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('products:write')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_SIZE },
+      fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIMES.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Invalid file type'), false);
+        }
+      },
+    }),
+  )
+  async upload(@UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined) {
+    if (!file) {
+      return ApiResponseDto.fail('No file provided');
+    }
+    const { id } = await this.mediaService.createFromFile({
+      buffer: file.buffer,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+    return ApiResponseDto.ok({ id }, 'File uploaded');
+  }
+
+  /** Public: upload payment proof screenshot for checkout (Bank Deposit). Returns media id to send in checkout. */
+  @Public()
+  @Post('upload-payment-proof')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_SIZE },
+      fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIMES.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'), false);
+        }
+      },
+    }),
+  )
+  async uploadPaymentProof(
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+  ) {
+    if (!file) {
+      return ApiResponseDto.fail('No file provided');
+    }
+    const { id } = await this.mediaService.createFromFileForPaymentProof({
+      buffer: file.buffer,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+    return ApiResponseDto.ok({ id }, 'Payment proof uploaded');
+  }
+
+  @Public()
+  @Get('file/:folder/:filename')
+  async serveFile(
+    @Param('folder') folder: string,
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    const relativePath = `${folder}/${filename}`;
+    const fullPath = this.mediaService.getFilePath(relativePath);
+    if (!existsSync(fullPath)) {
+      return res.status(404).send('Not found');
+    }
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    const stream = createReadStream(fullPath);
+    stream.pipe(res);
+  }
+}
