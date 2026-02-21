@@ -40,6 +40,22 @@ export interface BankingValue {
   instructions?: string;
 }
 
+export interface SeoValue {
+  siteTitle?: string;
+  defaultDescription?: string;
+  siteUrl?: string;
+  ogImageDefault?: string;
+  twitterHandle?: string;
+  googleSiteVerification?: string;
+}
+
+export interface MarketingValue {
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  googleTagManagerId?: string;
+  enabled?: boolean;
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
@@ -49,6 +65,10 @@ export interface PublicSettingsDto {
   deliveryChargesCents: number;
   /** Bank account details shown at checkout for Bank Deposit. */
   banking: BankingValue;
+  /** SEO meta defaults (site title, description, canonical base, etc.) */
+  seo: SeoValue;
+  /** Marketing pixels and tracking (Meta Pixel, GA, GTM) */
+  marketing: MarketingValue;
 }
 
 @Injectable()
@@ -90,13 +110,15 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery, banking] = await Promise.all([
+    const [general, about, footer, social, delivery, banking, seo, marketing] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
       this.getByKey('social'),
       this.getByKey('delivery'),
       this.getByKey('banking'),
+      this.getByKey('seo'),
+      this.getByKey('marketing'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -107,6 +129,8 @@ export class SettingsService {
         ? deliveryVal.deliveryChargesCents
         : 0;
     const bankingVal = banking as BankingValue | null;
+    const seoVal = seo as SeoValue | null;
+    const marketingVal = marketing as MarketingValue | null;
 
     return {
       logoPath,
@@ -123,6 +147,29 @@ export class SettingsService {
             instructions: bankingVal.instructions ?? '',
           }
         : {},
+      seo: seoVal
+        ? {
+            siteTitle: seoVal.siteTitle?.trim() ?? '',
+            defaultDescription: seoVal.defaultDescription?.trim() ?? '',
+            siteUrl: (seoVal.siteUrl?.trim() ?? '').replace(/\/+$/, ''),
+            ogImageDefault: seoVal.ogImageDefault?.trim() ?? '',
+            twitterHandle: (seoVal.twitterHandle?.trim() ?? '').replace(/^@/, ''),
+            googleSiteVerification: seoVal.googleSiteVerification?.trim() ?? '',
+          }
+        : {},
+      marketing: marketingVal
+        ? {
+            metaPixelId: (marketingVal.metaPixelId?.trim() ?? '').replace(/\D/g, '').slice(0, 20) || undefined,
+            googleAnalyticsId: marketingVal.googleAnalyticsId?.trim() ?? '',
+            googleTagManagerId: (() => {
+              const raw = (marketingVal.googleTagManagerId?.trim() ?? '').toUpperCase();
+              if (raw.startsWith('GTM')) return raw;
+              const digits = raw.replace(/\D/g, '');
+              return digits ? `GTM-${digits}` : undefined;
+            })(),
+            enabled: marketingVal.enabled !== false,
+          }
+        : { enabled: true },
     };
   }
 }

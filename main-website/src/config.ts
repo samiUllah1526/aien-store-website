@@ -55,6 +55,9 @@ export const favoritesMetaDescription = envStr('PUBLIC_FAVORITES_META_DESCRIPTIO
 export const ordersMetaDescription = envStr('PUBLIC_ORDERS_META_DESCRIPTION', 'Your order history.');
 export const orderDetailMetaDescription = envStr('PUBLIC_ORDER_DETAIL_META_DESCRIPTION', 'Order details.');
 
+/** Site URL for canonical/og (no trailing slash). Set in production. */
+export const siteUrl = envStr('PUBLIC_SITE_URL', '').replace(/\/$/, '');
+
 /** Favicon path (from public folder) */
 export const faviconPath = envStr('PUBLIC_FAVICON', '/favicon.svg');
 

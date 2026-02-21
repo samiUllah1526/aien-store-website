@@ -37,6 +37,22 @@ interface BankingValue {
   instructions?: string;
 }
 
+interface SeoValue {
+  siteTitle?: string;
+  defaultDescription?: string;
+  siteUrl?: string;
+  ogImageDefault?: string;
+  twitterHandle?: string;
+  googleSiteVerification?: string;
+}
+
+interface MarketingValue {
+  metaPixelId?: string;
+  googleAnalyticsId?: string;
+  googleTagManagerId?: string;
+  enabled?: boolean;
+}
+
 interface PublicSettings {
   logoPath: string | null;
   about: AboutValue;
@@ -69,6 +85,8 @@ export function SettingsManager() {
   const [freeDelivery, setFreeDelivery] = useState(true);
   const [deliveryChargesPkr, setDeliveryChargesPkr] = useState('');
   const [banking, setBanking] = useState<BankingValue>({});
+  const [seo, setSeo] = useState<SeoValue>({});
+  const [marketing, setMarketing] = useState<MarketingValue>({});
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -90,6 +108,8 @@ export function SettingsManager() {
       setFreeDelivery(cents === 0);
       setDeliveryChargesPkr(cents === 0 ? '' : (cents / 100).toString());
       setBanking((data['banking'] as BankingValue) ?? {});
+      setSeo((data['seo'] as SeoValue) ?? {});
+      setMarketing((data['marketing'] as MarketingValue) ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setSettings(null);
@@ -175,6 +195,31 @@ export function SettingsManager() {
       accountNumber: banking.accountNumber?.trim() ?? '',
       iban: banking.iban?.trim() ?? '',
       instructions: banking.instructions?.trim() ?? '',
+    });
+    fetchSettings();
+  };
+
+  const handleSaveSeo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveKey('seo', {
+      siteTitle: seo.siteTitle?.trim() ?? '',
+      defaultDescription: seo.defaultDescription?.trim() ?? '',
+      siteUrl: (seo.siteUrl?.trim() ?? '').replace(/\/+$/, ''),
+      ogImageDefault: seo.ogImageDefault?.trim() ?? '',
+      twitterHandle: (seo.twitterHandle?.trim() ?? '').replace(/^@/, ''),
+      googleSiteVerification: seo.googleSiteVerification?.trim() ?? '',
+    });
+    fetchSettings();
+  };
+
+  const handleSaveMarketing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const gtmRaw = (marketing.googleTagManagerId?.trim() ?? '').toUpperCase().replace(/^GTM-?/, '');
+    await saveKey('marketing', {
+      metaPixelId: marketing.metaPixelId?.trim() ?? '',
+      googleAnalyticsId: marketing.googleAnalyticsId?.trim() ?? '',
+      googleTagManagerId: gtmRaw ? `GTM-${gtmRaw}` : '',
+      enabled: marketing.enabled !== false,
     });
     fetchSettings();
   };
@@ -497,6 +542,195 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'social' ? 'Saving…' : 'Save social links'}
+          </button>
+        </form>
+      </section>
+
+      {/* SEO */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">SEO & meta tags</h2>
+        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            <strong>What this does:</strong> These settings control how your store appears in Google search results and when someone shares a link on Facebook, Twitter, or WhatsApp. Search engines and social apps read this information to show titles, descriptions, and images.
+          </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <strong>Important:</strong> After you save changes here, your technical team must rebuild and redeploy the main website for changes to go live. Changes do not appear instantly.
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+            See <a href="/admin/docs/seo-marketing" className="underline hover:no-underline">Documentation → SEO & Marketing</a> for a step-by-step guide.
+          </p>
+        </div>
+        <form onSubmit={handleSaveSeo} className="space-y-4">
+          <div>
+            <label htmlFor="seo-site-title" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Site title (brand name)
+            </label>
+            <input
+              id="seo-site-title"
+              type="text"
+              value={seo.siteTitle ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, siteTitle: e.target.value }))}
+              placeholder="e.g. Aien"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your brand or store name. Shown in browser tabs and search results.</p>
+          </div>
+          <div>
+            <label htmlFor="seo-default-description" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Default meta description
+            </label>
+            <textarea
+              id="seo-default-description"
+              rows={2}
+              value={seo.defaultDescription ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, defaultDescription: e.target.value }))}
+              placeholder="e.g. Cultural-art streetwear. Poetry on fabric. Pakistan."
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">A short summary of your store (1–2 sentences). Shown under the title in Google and when links are shared. Keep it under 160 characters for best display.</p>
+          </div>
+          <div>
+            <label htmlFor="seo-site-url" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Site URL
+            </label>
+            <input
+              id="seo-site-url"
+              type="url"
+              value={seo.siteUrl ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, siteUrl: e.target.value }))}
+              placeholder="https://aien.com"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your live website address, e.g. https://yoursite.com — no slash at the end. Used for proper links in search and social.</p>
+          </div>
+          <div>
+            <label htmlFor="seo-og-image" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Default share image URL
+            </label>
+            <input
+              id="seo-og-image"
+              type="url"
+              value={seo.ogImageDefault ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, ogImageDefault: e.target.value }))}
+              placeholder="https://aien.com/og-image.jpg"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Image shown when someone shares your site on Facebook, WhatsApp, Twitter, etc. Use a full URL (e.g. https://yoursite.com/images/og.jpg). Recommended size: 1200×630 px.</p>
+          </div>
+          <div>
+            <label htmlFor="seo-twitter" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Twitter handle (optional)
+            </label>
+            <input
+              id="seo-twitter"
+              type="text"
+              value={seo.twitterHandle ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, twitterHandle: e.target.value.replace(/^@/, '') }))}
+              placeholder="aien"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your Twitter/X username without the @ symbol. Improves how links appear when shared on Twitter.</p>
+          </div>
+          <div>
+            <label htmlFor="seo-google-verification" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Google Search Console verification (optional)
+            </label>
+            <input
+              id="seo-google-verification"
+              type="text"
+              value={seo.googleSiteVerification ?? ''}
+              onChange={(e) => setSeo((s) => ({ ...s, googleSiteVerification: e.target.value }))}
+              placeholder="Meta tag content value"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">If you use Google Search Console, paste only the content value from the meta tag (the long code between the quotes). Leave blank if you don&apos;t use it.</p>
+          </div>
+          <button
+            type="submit"
+            disabled={saving === 'seo'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'seo' ? 'Saving…' : 'Save SEO'}
+          </button>
+        </form>
+      </section>
+
+      {/* Marketing */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Marketing & tracking pixels</h2>
+        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            <strong>What this does:</strong> Connect Facebook ads (Meta Pixel), Google Analytics, or Google Tag Manager to track visitors and measure ad performance. These codes help you see how people find your store and what they do on it.
+          </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <strong>Tip:</strong> If you use Google Tag Manager, you can add Meta Pixel and Google Analytics inside GTM — then you only need to enter your GTM container ID here. Otherwise, add each ID separately.
+          </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <strong>Important:</strong> Save here, then ask your technical team to rebuild and redeploy the main website. Uncheck &quot;Enable tracking&quot; to turn off all pixels without removing the IDs.
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+            See <a href="/admin/docs/seo-marketing" className="underline hover:no-underline">Documentation → SEO & Marketing</a> for a step-by-step guide.
+          </p>
+        </div>
+        <form onSubmit={handleSaveMarketing} className="space-y-4">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={marketing.enabled !== false}
+              onChange={(e) => setMarketing((m) => ({ ...m, enabled: e.target.checked }))}
+              className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
+            />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Enable tracking pixels</span>
+          </label>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Uncheck to turn off all tracking. Your IDs stay saved but won&apos;t run on the site.</p>
+          <div>
+            <label htmlFor="marketing-pixel" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Meta (Facebook) Pixel ID
+            </label>
+            <input
+              id="marketing-pixel"
+              type="text"
+              value={marketing.metaPixelId ?? ''}
+              onChange={(e) => setMarketing((m) => ({ ...m, metaPixelId: e.target.value }))}
+              placeholder="e.g. 1234567890123456"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Found in Events Manager → Data Sources → Your Pixel → Pixel ID. Only needed if you&apos;re not using GTM for Facebook ads.</p>
+          </div>
+          <div>
+            <label htmlFor="marketing-ga" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Google Analytics ID
+            </label>
+            <input
+              id="marketing-ga"
+              type="text"
+              value={marketing.googleAnalyticsId ?? ''}
+              onChange={(e) => setMarketing((m) => ({ ...m, googleAnalyticsId: e.target.value }))}
+              placeholder="e.g. G-XXXXXXXXXX"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Starts with G-. Found in GA4 → Admin → Data Streams → Your web stream. Only needed if you&apos;re not using GTM.</p>
+          </div>
+          <div>
+            <label htmlFor="marketing-gtm" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Google Tag Manager container ID
+            </label>
+            <input
+              id="marketing-gtm"
+              type="text"
+              value={marketing.googleTagManagerId ?? ''}
+              onChange={(e) => setMarketing((m) => ({ ...m, googleTagManagerId: e.target.value }))}
+              placeholder="e.g. GTM-XXXXXXX"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Starts with GTM-. One container can manage Facebook Pixel, Google Analytics, and more — add those inside GTM. If you use GTM, you can leave Meta Pixel and GA fields above empty.</p>
+          </div>
+          <button
+            type="submit"
+            disabled={saving === 'marketing'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'marketing' ? 'Saving…' : 'Save marketing'}
           </button>
         </form>
       </section>

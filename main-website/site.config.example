@@ -7,6 +7,10 @@
 # Backend API URL (no trailing slash). Required for cart, checkout, products.
 PUBLIC_API_URL=http://localhost:3000
 
+# Site URL (no trailing slash). Required for product page SEO (canonical, og:url, JSON-LD).
+# Set in production, e.g. https://aien.com
+# PUBLIC_SITE_URL=https://yoursite.com
+
 # ─── Hero Section ────────────────────────────────────────────────────────────
 
 # Hero video: YouTube, Vimeo, or direct mp4/webm URL

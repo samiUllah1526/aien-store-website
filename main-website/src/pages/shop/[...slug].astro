@@ -8,7 +8,7 @@ import AddToCart from '../../components/product/AddToCart';
 import ProductImageCarousel from '../../components/product/ProductImageCarousel';
 import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
 import { formatMoney } from '../../lib/formatMoney';
-import { apiBaseUrl, brandName } from '../../config';
+import { apiBaseUrl, brandName, siteUrl } from '../../config';
 
 export async function getStaticPaths() {
   const limit = 100;
@@ -75,9 +75,37 @@ try {
 if (!product) {
   return Astro.redirect('/shop');
 }
+
+const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
+const ogImage = product.images?.[0] ?? product.image;
+const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || apiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
+
+const productImages = (product.images ?? (product.image ? [product.image] : [])).map((img: string) =>
+  img.startsWith('http') ? img : `${siteUrl || apiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
+);
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description ?? undefined,
+  image: productImages.length ? productImages : undefined,
+  offers: {
+    '@type': 'Offer',
+    price: product.price / 100,
+    priceCurrency: product.currency,
+    availability: 'https://schema.org/InStock',
+  },
+  ...(canonicalUrl && { url: canonicalUrl }),
+};
 ---
 
-<BaseLayout title={`${product.name} — ${brandName}`} description={product.description ?? undefined}>
+<BaseLayout
+  title={`${product.name} — ${brandName}`}
+  description={product.description ?? undefined}
+  image={ogImageAbs}
+  canonical={canonicalUrl}
+  jsonLd={productJsonLd}
+>
   <article class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
       <div class="w-full">
