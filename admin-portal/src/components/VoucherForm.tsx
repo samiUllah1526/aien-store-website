@@ -187,7 +187,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
               onChange={(e) => setValue(e.target.value)}
               placeholder={type === 'PERCENTAGE' ? 'e.g. 20' : 'e.g. 500'}
               className={inputClass}
-              required={type !== 'FREE_SHIPPING'}
+              required
             />
             <span className="text-sm text-slate-600 dark:text-slate-400">
               {type === 'PERCENTAGE' ? '%' : 'PKR'}

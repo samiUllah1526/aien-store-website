@@ -186,7 +186,7 @@ export function Dashboard() {
                         ? formatDateTime(payload[0].payload.date)
                         : ''
                     }
-                    formatter={(value: number) => [value, 'Orders']}
+                    formatter={(value: number | undefined) => [value ?? 0, 'Orders']}
                   />
                   <Legend />
                   <Line
@@ -233,7 +233,7 @@ export function Dashboard() {
                       backgroundColor: isDark ? '#1e293b' : '#fff',
                       color: isDark ? '#e2e8f0' : '#0f172a',
                     }}
-                    formatter={(value: number) => [formatMoney((value as number) * 100, 'PKR'), 'Sales']}
+                    formatter={(value: number | undefined) => [formatMoney((value ?? 0) * 100, 'PKR'), 'Sales']}
                     labelFormatter={(label) => label}
                   />
                   <Bar
