@@ -513,28 +513,30 @@ export class OrdersService {
     return {
       items: {
         include: {
-          product: {
-            include: {
-              productMedia: {
-                take: 1,
-                orderBy: { sortOrder: 'asc' as const },
-                include: { media: { select: { path: true } } },
-              },
-            },
+      product: {
+        include: {
+          productMedia: {
+            take: 1,
+            orderBy: { sortOrder: 'asc' as const },
+            include: { media: { select: { path: true, deliveryUrl: true } } },
           },
+        },
+      },
         },
       },
       statusHistory: { orderBy: { createdAt: 'asc' as const } },
       assignedTo: { select: { id: true, name: true } },
-      paymentProof: { select: { path: true } },
+      paymentProof: { select: { path: true, deliveryUrl: true } },
     };
   }
 
   private productImagePath(
-    product: { productMedia?: Array<{ media: { path: string } }> },
+    product: { productMedia?: Array<{ media: { path: string; deliveryUrl: string | null } }> },
   ): string | null {
-    const first = product.productMedia?.[0]?.media?.path;
-    return first ? `/media/file/${first}` : null;
+    const media = product.productMedia?.[0]?.media;
+    if (!media) return null;
+    if (media.deliveryUrl) return media.deliveryUrl;
+    return `/media/file/${media.path}`;
   }
 
   private toResponseDto(order: {
@@ -558,7 +560,7 @@ export class OrdersService {
     shippingCity: string | null;
     shippingPostalCode: string | null;
     paymentMethod: PaymentMethod;
-    paymentProof: { path: string } | null;
+    paymentProof: { path: string; deliveryUrl: string | null } | null;
     courierServiceName: string | null;
     trackingId: string | null;
     assignedToUserId: string | null;
@@ -569,10 +571,10 @@ export class OrdersService {
       productId: string;
       quantity: number;
       unitCents: number;
-      product: {
+        product: {
         id: string;
         name: string;
-        productMedia?: Array<{ media: { path: string } }>;
+        productMedia?: Array<{ media: { path: string; deliveryUrl: string | null } }>;
       };
     }>;
     statusHistory: Array<{ status: OrderStatus; createdAt: Date }>;
@@ -615,7 +617,7 @@ export class OrdersService {
       shippingCity: order.shippingCity ?? null,
       shippingPostalCode: order.shippingPostalCode ?? null,
       paymentMethod: order.paymentMethod,
-      paymentProofPath: order.paymentProof?.path ?? null,
+      paymentProofPath: order.paymentProof?.deliveryUrl ?? order.paymentProof?.path ?? null,
       courierServiceName: order.courierServiceName ?? null,
       trackingId: order.trackingId ?? null,
       assignedToUserId: order.assignedToUserId,

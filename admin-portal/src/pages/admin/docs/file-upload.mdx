@@ -1,0 +1,84 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: File Upload System
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# File Upload System
+
+How product images and payment proof uploads work. The system is **provider-agnostic**: it uses Cloudinary by default but can be switched to AWS S3 or another provider without code changes.
+
+---
+
+## Overview
+
+| Use case | Where | Who uploads |
+|----------|-------|-------------|
+| **Product images** | [Products](/admin/products) → Create/Edit product | Admin |
+| **Payment proof** | Checkout (Bank Deposit) | Customer |
+
+Files are uploaded **directly to the storage provider** (e.g. Cloudinary). The application server never receives the file bytes—only metadata after upload.
+
+---
+
+## Product Images
+
+1. Go to **Products** → Create or edit a product.
+2. In the **Images** section, click **Add images**.
+3. Select one or more files (JPEG, PNG, WebP, GIF).
+4. Files upload with progress; thumbnails appear when done.
+5. Remove an image with the × button.
+6. Save the product to attach images.
+
+**Limits:** 5MB per file. Max dimensions 4096×4096 (Cloudinary).
+
+---
+
+## Payment Proof (Checkout)
+
+When customers choose **Bank Deposit** at checkout, they must upload a screenshot of their payment. The same upload system handles this: files go directly to the storage provider and are linked to the order.
+
+Admins view payment proofs in [Orders](/admin/orders) → **View proof** on Bank Deposit orders.
+
+---
+
+## Environment Setup
+
+The backend must be configured for remote uploads. Set these in the **backend** `.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `STORAGE_PROVIDER` | `cloudinary` (default) or `s3` |
+| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
+
+Get Cloudinary credentials: [Cloudinary Console → API Keys](https://console.cloudinary.com/settings/api-keys)
+
+**If these are not set:** Uploads fall back to the legacy server upload (files stored on disk). Product images and payment proofs still work, but files go through your backend instead of directly to a CDN.
+
+---
+
+## Provider-Agnostic Design
+
+The system stores metadata in a provider-agnostic way:
+
+- **storageProvider** — Which backend (`cloudinary`, `s3`, `local`)
+- **storageKey** — Provider’s asset ID
+- **deliveryUrl** — Full HTTPS URL for display
+
+To switch to S3 later, the backend implements `S3StorageProvider`, sets `STORAGE_PROVIDER=s3`, and adds S3 env vars. **No database migration or frontend changes** are required.
+
+---
+
+## Supported Formats
+
+| Format | Allowed |
+|--------|---------|
+| JPEG | ✓ |
+| PNG | ✓ |
+| WebP | ✓ |
+| GIF | ✓ |

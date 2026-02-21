@@ -17,6 +17,7 @@ export interface ProductCardProduct {
   currency: string;
   image: string;
   sizes?: string[];
+  inStock?: boolean;
 }
 
 const defaultSizes = ['S', 'M', 'L', 'XL'];
@@ -42,8 +43,14 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
 
   const sizes = product.sizes?.length ? product.sizes : defaultSizes;
   const defaultSize = sizes[0] ?? 'M';
+  const inStock = product.inStock !== false;
 
   const handleAddToCart = (e: React.MouseEvent) => {
+    if (!inStock) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     addItem({
@@ -65,6 +72,11 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
       <div className="group relative">
         <a href={`/shop/${product.slug}`} className="block">
           <div className="aspect-[3/4] overflow-hidden rounded-xl bg-ash/10 mb-3 relative">
+            {!inStock && (
+              <span className="absolute left-3 top-3 z-10 rounded-md bg-charcoal/90 dark:bg-charcoal px-2.5 py-1 text-xs font-medium text-off-white">
+                Out of stock
+              </span>
+            )}
             <img
               src={product.image}
               alt=""
@@ -140,8 +152,9 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="w-10 h-10 rounded-full bg-bone/95 dark:bg-charcoal/95 shadow-sm flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors focus-ring"
-                aria-label="Add to cart"
+                disabled={!inStock}
+                className="w-10 h-10 rounded-full bg-bone/95 dark:bg-charcoal/95 shadow-sm flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-soft-charcoal dark:disabled:hover:text-off-white"
+                aria-label={inStock ? 'Add to cart' : 'Out of stock'}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -204,9 +217,10 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="flex-1 py-2 rounded-lg bg-soft-charcoal dark:bg-off-white text-bone dark:text-charcoal hover:opacity-90 transition-opacity"
+                disabled={!inStock}
+                className="flex-1 py-2 rounded-lg bg-soft-charcoal dark:bg-off-white text-bone dark:text-charcoal hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add to cart
+                {inStock ? 'Add to cart' : 'Out of stock'}
               </button>
             </div>
           </div>

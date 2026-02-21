@@ -44,7 +44,7 @@ function toFullImageUrl(url: string): string {
   return url.startsWith('http') ? url : `${apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
 try {
   const productUrl = `${apiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
   const res = await fetch(productUrl);
@@ -63,6 +63,7 @@ try {
       image,
       images: images.length > 0 ? images : (image ? [image] : []),
       sizes: p.sizes,
+      inStock: p.inStock !== false,
       urduVerse: p.urduVerse ?? null,
       urduVerseTransliteration: p.urduVerseTransliteration ?? null,
       categories: p.categories ?? [],
@@ -93,7 +94,7 @@ const productJsonLd = {
     '@type': 'Offer',
     price: product.price / 100,
     priceCurrency: product.currency,
-    availability: 'https://schema.org/InStock',
+    availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
   },
   ...(canonicalUrl && { url: canonicalUrl }),
 };
@@ -149,6 +150,7 @@ const productJsonLd = {
           currency={product.currency}
           image={product.image}
           sizes={product.sizes ?? []}
+          inStock={product.inStock}
         />
       </div>
     </div>
