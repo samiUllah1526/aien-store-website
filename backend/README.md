@@ -25,6 +25,21 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Configuration
+
+Configuration is centralized in `src/config/`. Values are read from environment variables (see `.env.example`). Validation runs at startup and the app fails fast if required vars are missing or invalid.
+
+To use a secrets manager (AWS Secrets Manager, Vault, etc.) later: add an async loader in `app.module.ts` that fetches secrets and returns an env-like object. Later loaders override earlier ones:
+
+```ts
+load: [
+  configuration,  // reads process.env
+  () => loadFromSecretsManager(),  // overrides from your secrets manager
+],
+```
+
+No changes to app code are needed; the config factory accepts any `EnvSource`.
+
 ## Project setup
 
 ```bash

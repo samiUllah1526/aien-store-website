@@ -55,6 +55,7 @@ export default function CheckoutForm() {
   const hasPrefilledShipping = useRef(false);
   /** One key per checkout attempt; reused on retry so server returns same order (no duplicate). */
   const idempotencyKeyRef = useRef<string | null>(null);
+  const errorRef = useRef<HTMLDivElement | null>(null);
 
   const {
     register,
@@ -259,10 +260,19 @@ export default function CheckoutForm() {
       }
       items.forEach((item) => useCartStore.getState().removeItem(item.productId, item.size));
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
-      const text = Array.isArray(msg) ? msg[0] : msg;
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const isStockError = /insufficient stock|out of stock|available:\s*0/i.test(rawMsg);
+      const userMessage = isStockError
+        ? 'Some items in your cart are no longer in stock. Please update your cart and try again.'
+        : rawMsg || 'Order failed. Please try again.';
       setError('root', {
-        message: text ?? (err instanceof Error ? err.message : 'Order failed. Please try again.'),
+        message: userMessage,
+        type: isStockError ? 'stock' : 'general',
+      });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       });
     }
   };
@@ -309,8 +319,32 @@ export default function CheckoutForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="lg:grid lg:grid-cols-[1fr,380px] lg:gap-12 xl:gap-16">
       {errors.root && (
-        <div className="col-span-full rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-red-800 dark:text-red-300 text-sm">
-          {errors.root.message}
+        <div
+          ref={errorRef}
+          role="alert"
+          className="col-span-full rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/30 p-4 text-red-800 dark:text-red-200 scroll-mt-24"
+        >
+          <div className="flex gap-3">
+            <span className="shrink-0 mt-0.5 text-red-500 dark:text-red-400" aria-hidden>
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">{errors.root.message}</p>
+              {errors.root.type === 'stock' && (
+                <a
+                  href="/cart"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
+                >
+                  Update your cart
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       )}
       <div className="space-y-10">

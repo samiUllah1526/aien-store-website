@@ -38,11 +38,11 @@ export class ProductQueryDto {
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
 
-  /** Inventory page: filter by stock level. */
+  /** Inventory page: filter by stock level. Storefront: use 'in_stock' to hide out-of-stock. */
   @IsOptional()
   @IsString()
-  @IsIn(['all', 'low_stock', 'out_of_stock'])
-  stockFilter?: 'all' | 'low_stock' | 'out_of_stock' = 'all';
+  @IsIn(['all', 'in_stock', 'low_stock', 'out_of_stock'])
+  stockFilter?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' = 'all';
 
   /** When stockFilter=low_stock, max stock to consider "low" (default 5). */
   @IsOptional()

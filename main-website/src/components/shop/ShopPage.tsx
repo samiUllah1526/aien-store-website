@@ -23,6 +23,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
     sizes: (p.sizes as string[] | undefined) ?? undefined,
+    inStock: p.inStock !== false,
   };
 }
 

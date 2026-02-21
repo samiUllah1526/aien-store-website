@@ -1,0 +1,68 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Configuration & Secrets
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Configuration & Secrets
+
+The backend API uses a central config module that reads from environment variables. It validates configuration at startup and fails fast if required values are missing or invalid.
+
+---
+
+## Environment Variables
+
+Values are loaded from `.env` files (e.g. `.env.local`, `.env`) or from the process environment. See `backend/.env.example` for the full list of supported variables:
+
+| Category  | Key examples                                             | Purpose                             |
+|-----------|----------------------------------------------------------|-------------------------------------|
+| Server    | `PORT`, `NODE_ENV`, `CORS_ORIGIN`                        | HTTP server and CORS                |
+| Database  | `DATABASE_URL`, `DATABASE_URL_TEST`                      | PostgreSQL connection strings       |
+| JWT       | `JWT_SECRET`, `JWT_ACCESS_EXPIRES_SEC`                   | Auth tokens                         |
+| URLs      | `APP_URL`, `ADMIN_URL`, `ADMIN_LOGIN_URL`                | Public URLs for emails and links    |
+| Mail      | `MAIL_PROVIDER`, `BREVO_API_KEY`, `SENDGRID_API_KEY`     | Email sending                       |
+| Storage   | `STORAGE_PROVIDER`, `CLOUDINARY_CLOUD_NAME`, etc.        | File uploads (Cloudinary, etc.)     |
+| Seed      | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`                | First admin user for seeding        |
+
+The backend validates on startup: `DATABASE_URL` is required, and `JWT_SECRET` must be changed in production (default `change-me-in-production` is rejected).
+
+---
+
+## Using a Secrets Manager Later
+
+The config module is designed so you can switch to a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) without changing application code.
+
+### How It Works
+
+Configuration is built from an env-like object. By default, it uses `process.env`. You can add an async loader that fetches secrets and returns overrides. **Later loaders override earlier ones.**
+
+### Example: Adding a Secrets Manager
+
+In `backend/src/app.module.ts`, update the `ConfigModule.forRoot`:
+
+```ts
+load: [
+  configuration,                    // 1. Reads process.env
+  () => loadFromSecretsManager(),   // 2. Returns overrides; these win
+],
+validate: validateConfig,
+```
+
+`loadFromSecretsManager()` would:
+
+1. Fetch secrets from your provider (e.g. AWS Secrets Manager)
+2. Return a plain object with the same keys as env vars (e.g. `{ DATABASE_URL: '...', JWT_SECRET: '...' }`)
+3. The config factory merges these over `process.env`
+
+The `configuration()` function accepts any `EnvSource` (a record of string keys and values). No changes are needed in services—they continue using `ConfigService` as they do today.
+
+---
+
+## Summary
+
+- Configuration lives in `backend/src/config/` with validation at startup
+- All values come from env vars (see `.env.example`)
+- To use a secrets manager: add an async loader that returns env-like overrides; later loaders override earlier ones
