@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useState, useCallback } from 'react';
 import type { Product, ProductFormData } from '../lib/types';
 import { api, uploadFile } from '../lib/api';
+import { uploadMedia } from '../lib/media-upload';
 import { SearchableMultiSelect } from './SearchableMultiSelect';
 
 interface ProductFormProps {
@@ -28,6 +29,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     if (product?.images?.length) return []; // existing product has images by URL; we don't have IDs for existing
     return [];
   });
+  const [mediaPreviews, setMediaPreviews] = useState<Record<string, string>>({}); // id -> preview URL
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,28 +52,50 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     if (!product) setSlug(slugFromName(value));
   };
 
+  const doUpload = useCallback(async (file: File): Promise<{ id: string; preview?: string }> => {
+    try {
+      const result = await uploadMedia(file, 'products', {
+        onProgress: (p) => setUploadProgress((prev) => ({ ...prev, [file.name]: p })),
+      });
+      return { id: result.id, preview: result.deliveryUrl };
+    } catch {
+      const { id } = await uploadFile(file);
+      return { id };
+    }
+  }, []);
+
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
     setError(null);
     setUploading(true);
     try {
-      const ids: string[] = [];
+      const results: { id: string; preview?: string }[] = [];
       for (let i = 0; i < files.length; i++) {
-        const { id } = await uploadFile(files[i]);
-        ids.push(id);
+        const r = await doUpload(files[i]);
+        results.push(r);
       }
-      setMediaIds((prev) => [...prev, ...ids]);
+      setMediaIds((prev) => [...prev, ...results.map((r) => r.id)]);
+      setMediaPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r.preview) next[r.id] = r.preview;
+        });
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
+      setUploadProgress({});
       e.target.value = '';
     }
-  }, []);
+  }, [doUpload]);
 
   const removeImage = (index: number) => {
+    const id = mediaIds[index];
     setMediaIds((prev) => prev.filter((_, i) => i !== index));
+    if (id) setMediaPreviews((prev) => { const n = { ...prev }; delete n[id]; return n; });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -177,20 +202,30 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         </label>
         <div className="flex flex-wrap gap-2">
           {mediaIds.map((id, index) => (
-            <span
+            <div
               key={id}
-              className="inline-flex items-center gap-1 rounded bg-slate-200 px-2 py-1 text-xs text-slate-700 dark:bg-slate-600 dark:text-slate-200"
+              className="relative flex items-center gap-1 rounded border border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800 overflow-hidden"
             >
-              {id.slice(0, 8)}…
+              {mediaPreviews[id] ? (
+                <img
+                  src={mediaPreviews[id]}
+                  alt=""
+                  className="h-14 w-14 object-cover shrink-0"
+                />
+              ) : (
+                <span className="h-14 w-14 flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-xs text-slate-500 shrink-0">
+                  {id.slice(0, 8)}…
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
-                className="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                className="absolute top-0.5 right-0.5 rounded bg-black/50 text-white p-0.5 hover:bg-red-600 text-xs leading-none"
                 aria-label="Remove"
               >
                 ×
               </button>
-            </span>
+            </div>
           ))}
         </div>
         <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">

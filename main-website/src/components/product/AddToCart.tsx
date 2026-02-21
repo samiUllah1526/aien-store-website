@@ -14,6 +14,7 @@ interface Props {
   currency: string;
   image: string;
   sizes: string[];
+  inStock?: boolean;
 }
 
 export default function AddToCart({
@@ -24,12 +25,14 @@ export default function AddToCart({
   currency,
   image,
   sizes,
+  inStock = true,
 }: Props) {
   const { addItem, openCart } = useCart();
   const [size, setSize] = useState(sizes[0] ?? 'M');
   const [added, setAdded] = useState(false);
 
   const handleAdd = () => {
+    if (!inStock) return;
     addItem({
       productId,
       name,
@@ -69,9 +72,10 @@ export default function AddToCart({
       <button
         type="button"
         onClick={handleAdd}
-        className="w-full py-3 rounded-lg border border-soft-charcoal dark:border-off-white text-soft-charcoal dark:text-off-white font-medium hover:bg-ash/10 transition-colors duration-300 focus-ring"
+        disabled={!inStock}
+        className="w-full py-3 rounded-lg border border-soft-charcoal dark:border-off-white text-soft-charcoal dark:text-off-white font-medium hover:bg-ash/10 transition-colors duration-300 focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
-        {added ? 'Added — view cart' : 'Wear the verse'}
+        {added ? 'Added — view cart' : inStock ? 'Wear the verse' : 'Out of stock'}
       </button>
     </div>
   );

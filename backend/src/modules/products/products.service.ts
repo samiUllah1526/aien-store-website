@@ -210,7 +210,10 @@ export class ProductsService {
   private productInclude() {
     return {
       productCategories: { include: { category: true } },
-      productMedia: { include: { media: true }, orderBy: { sortOrder: Prisma.SortOrder.asc } },
+      productMedia: {
+        include: { media: { select: { path: true, deliveryUrl: true } } },
+        orderBy: { sortOrder: Prisma.SortOrder.asc },
+      },
     };
   }
 
@@ -235,6 +238,7 @@ export class ProductsService {
     }
     if (query.featured === 'true') where.featured = true;
     if (query.featured === 'false') where.featured = false;
+    if (query.stockFilter === 'in_stock') where.stockQuantity = { gt: 0 };
     if (query.stockFilter === 'out_of_stock') where.stockQuantity = 0;
     if (query.stockFilter === 'low_stock') {
       const max = query.lowStockMax ?? 5;
@@ -266,10 +270,11 @@ export class ProductsService {
     });
   }
 
-  private imageUrl(mediaPath: string | null): string {
-    if (!mediaPath) return '';
-    if (mediaPath.startsWith('http')) return mediaPath;
-    return `/media/file/${mediaPath}`;
+  private imageUrl(media: { path: string; deliveryUrl: string | null } | null): string {
+    if (!media) return '';
+    if (media.deliveryUrl) return media.deliveryUrl;
+    if (media.path.startsWith('http')) return media.path;
+    return `/media/file/${media.path}`;
   }
 
   private toResponseDto(p: {
@@ -287,10 +292,10 @@ export class ProductsService {
     createdAt: Date;
     updatedAt: Date;
     productCategories: Array<{ category: { id: string; name: string; slug: string } }>;
-    productMedia: Array<{ media: { path: string } }>;
+    productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
   }): ProductResponseDto {
     const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
-    const images = p.productMedia.map((pm) => this.imageUrl(pm.media.path));
+    const images = p.productMedia.map((pm) => this.imageUrl(pm.media));
     const image = images[0] ?? '';
     const categories = p.productCategories.map((pc) => pc.category);
     const first = categories[0];
@@ -327,11 +332,11 @@ export class ProductsService {
     featured: boolean;
     stockQuantity: number;
     productCategories: Array<{ category: { name: string } }>;
-    productMedia: Array<{ media: { path: string } }>;
+    productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
   }): ProductListResponseDto {
     const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
-    const image = p.productMedia[0]?.media?.path
-      ? this.imageUrl(p.productMedia[0].media.path)
+    const image = p.productMedia[0]?.media
+      ? this.imageUrl(p.productMedia[0].media)
       : '';
     const categories = p.productCategories.map((pc) => pc.category.name);
     return {

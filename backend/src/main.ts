@@ -15,9 +15,8 @@ async function bootstrap() {
     }),
   );
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
-
-  const corsOrigin = configService.get<string>('CORS_ORIGIN');
+  const port = configService.get<number>('port', 3000);
+  const corsOrigin = configService.get<string>('corsOrigin');
   const defaultOrigins = [
     'http://localhost:3000',
     'http://localhost:4321',

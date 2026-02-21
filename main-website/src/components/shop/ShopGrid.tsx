@@ -18,9 +18,10 @@ export interface Product {
   image: string;
   urduVerse?: string;
   sizes?: string[];
+  inStock?: boolean;
 }
 
-function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; sizes?: string[] }): Product {
+function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; sizes?: string[]; inStock?: boolean }): Product {
   const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const firstCategory = p.categories?.[0] ?? p.category ?? '';
   return {
@@ -32,6 +33,7 @@ function mapApiProductToProduct(p: { id: string; slug: string; name: string; cat
     currency: p.currency,
     image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
     sizes: p.sizes,
+    inStock: p.inStock,
   };
 }
 

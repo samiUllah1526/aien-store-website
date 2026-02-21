@@ -120,24 +120,30 @@ export const favoritesApi = {
   remove: (productId: string) => api.delete<{ removed: boolean }>('/favorites/' + productId),
 };
 
-/** Upload payment proof image for Bank Deposit (public). Returns media id to send in checkout. */
+/** Upload payment proof image for Bank Deposit. Tries remote storage first, falls back to legacy. */
 export async function uploadPaymentProof(file: File): Promise<string> {
-  const base = getApiBaseUrl();
-  const url = `${base}/media/upload-payment-proof`;
-  const form = new FormData();
-  form.append('file', file);
-  const token = getStoreToken();
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(url, { method: 'POST', body: form, headers });
-  const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: { id: string }; message?: string };
-  if (res.status === 401) {
-    useAuthStore.getState().clearAuth();
-    throw new Error(json.message || 'Unauthorized');
+  try {
+    const { uploadPaymentProofRemote } = await import('./media-upload');
+    return await uploadPaymentProofRemote(file);
+  } catch {
+    // Fallback to legacy server upload
+    const base = getApiBaseUrl();
+    const url = `${base}/media/upload-payment-proof`;
+    const form = new FormData();
+    form.append('file', file);
+    const token = getStoreToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', body: form, headers });
+    const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: { id: string }; message?: string };
+    if (res.status === 401) {
+      useAuthStore.getState().clearAuth();
+      throw new Error(json.message || 'Unauthorized');
+    }
+    if (!res.ok) throw new Error(json.message || `Upload failed (${res.status})`);
+    if (!json.data?.id) throw new Error('No media id returned');
+    return json.data.id;
   }
-  if (!res.ok) throw new Error(json.message || `Upload failed (${res.status})`);
-  if (!json.data?.id) throw new Error('No media id returned');
-  return json.data.id;
 }
 
 /** Customer order history (requires auth). */

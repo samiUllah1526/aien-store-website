@@ -187,13 +187,25 @@ model Media {
   filename  String   @map("filename")
   mimeType  String   @map("mime_type")
   sizeBytes Int      @map("size_bytes")
+  /** Local path (products/uuid.jpg) or storage key for remote providers. */
   path      String   @map("path")
+  /** Provider: 'local' | 'cloudinary' | 's3' | etc. Enables easy migration. */
+  storageProvider String?  @default("local") @map("storage_provider")
+  /** Provider's key (Cloudinary public_id, S3 object key, etc.). Null for local. */
+  storageKey       String? @map("storage_key")
+  /** Full delivery URL. When set, use directly; otherwise build from path via /media/file/ */
+  deliveryUrl      String? @map("delivery_url")
+  /** Entity association: product, payment_proof, etc. For cleanup/orphan detection. */
+  source    String?  @default("product") @map("source")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   productMedia     ProductMedia[]
   orderPaymentProof Order[]      @relation("OrderPaymentProof")
 
+  @@index([source])
+  @@index([storageProvider])
+  @@index([storageKey])
   @@map("media")
 }
 
