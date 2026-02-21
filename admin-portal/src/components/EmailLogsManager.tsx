@@ -25,6 +25,10 @@ export function EmailLogsManager() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [emailSearch, setEmailSearch] = useState('');
+  const [orderIdSearch, setOrderIdSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
@@ -40,6 +44,10 @@ export function EmailLogsManager() {
       };
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.type = typeFilter;
+      if (emailSearch.trim()) params.email = emailSearch.trim();
+      if (orderIdSearch.trim()) params.orderId = orderIdSearch.trim();
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
 
       const res = await api.getList<EmailLog>('/email-logs', params);
       setLogs(res.data ?? []);
@@ -51,7 +59,7 @@ export function EmailLogsManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, typeFilter]);
+  }, [page, statusFilter, typeFilter, emailSearch, orderIdSearch, fromDate, toDate]);
 
   useEffect(() => {
     fetchLogs();
@@ -81,6 +89,10 @@ export function EmailLogsManager() {
   const handleClearFilters = () => {
     setStatusFilter('');
     setTypeFilter('');
+    setEmailSearch('');
+    setOrderIdSearch('');
+    setFromDate('');
+    setToDate('');
     setPage(1);
     setError(null);
   };
@@ -119,7 +131,57 @@ export function EmailLogsManager() {
         onSubmit={handleApplyFilters}
         className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <div>
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Email
+            </label>
+            <input
+              id="email"
+              type="text"
+              value={emailSearch}
+              onChange={(e) => setEmailSearch(e.target.value)}
+              placeholder="Recipient email"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="orderId" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Order ID
+            </label>
+            <input
+              id="orderId"
+              type="text"
+              value={orderIdSearch}
+              onChange={(e) => setOrderIdSearch(e.target.value)}
+              placeholder="Order ID"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="fromDate" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              From date
+            </label>
+            <input
+              id="fromDate"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="toDate" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              To date
+            </label>
+            <input
+              id="toDate"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
           <div>
             <label htmlFor="type" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Type
@@ -156,21 +218,21 @@ export function EmailLogsManager() {
               ))}
             </select>
           </div>
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              Clear
-            </button>
-          </div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Clear
+          </button>
         </div>
       </form>
 

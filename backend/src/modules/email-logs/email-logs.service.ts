@@ -42,12 +42,37 @@ export class EmailLogsService {
   }
 
   async findAll(query: EmailLogQueryDto): Promise<{ data: unknown[]; total: number }> {
-    const { page = 1, limit = 20, status, type } = query;
+    const { page = 1, limit = 20, status, type, email, orderId, fromDate, toDate } = query;
     const skip = (page - 1) * limit;
+
+    let orderLogIds: string[] | null = null;
+    if (orderId?.trim()) {
+      const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM email_logs WHERE metadata->>'orderId' = ${orderId.trim()}
+      `;
+      orderLogIds = rows.map((r) => r.id);
+      if (orderLogIds.length === 0) {
+        return { data: [], total: 0 };
+      }
+    }
 
     const where: Prisma.EmailLogWhereInput = {};
     if (status) where.status = status;
     if (type) where.type = type;
+    if (orderLogIds) where.id = { in: orderLogIds };
+    if (email?.trim()) {
+      where.to = { contains: email.trim(), mode: 'insensitive' };
+    }
+    const createdAtFilter: { gte?: Date; lte?: Date } = {};
+    if (fromDate) {
+      const from = new Date(fromDate);
+      if (!Number.isNaN(from.getTime())) createdAtFilter.gte = from;
+    }
+    if (toDate) {
+      const to = new Date(toDate.endsWith('Z') || toDate.includes('T') ? toDate : `${toDate}T23:59:59.999Z`);
+      if (!Number.isNaN(new Date(to).getTime())) createdAtFilter.lte = new Date(to);
+    }
+    if (Object.keys(createdAtFilter).length > 0) where.createdAt = createdAtFilter;
 
     const [logs, total] = await Promise.all([
       this.prisma.emailLog.findMany({
