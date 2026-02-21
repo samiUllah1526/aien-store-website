@@ -128,12 +128,15 @@ export class OrdersService {
       }
     }
 
-    const totalCents = Math.max(0, subtotalCents - discountCents + shippingCents);
+    // Safeguard: discount must never exceed subtotal + shipping (avoids negative totals)
+    const maxAllowedDiscount = subtotalCents + shippingCents;
+    const safeDiscountCents = Math.min(discountCents, maxAllowedDiscount);
+    const totalCents = Math.max(0, subtotalCents - safeDiscountCents + shippingCents);
     return {
       items: quoteItems,
       subtotalCents,
       shippingCents,
-      discountCents,
+      discountCents: safeDiscountCents,
       totalCents,
       currency,
       voucherCode: appliedVoucherCode,
@@ -152,9 +155,13 @@ export class OrdersService {
       dto.voucherCode,
       dto.items,
       customerUserId,
+      true, // throw if voucher invalid at checkout (data integrity)
     );
     const discountCents = voucherResult?.discountCents ?? 0;
-    const totalCents = Math.max(0, subtotalCents - discountCents + deliveryCents);
+    // Safeguard: discount must never exceed subtotal + shipping (avoids negative totals)
+    const maxAllowedDiscount = subtotalCents + deliveryCents;
+    const safeDiscountCents = Math.min(discountCents, maxAllowedDiscount);
+    const totalCents = Math.max(0, subtotalCents - safeDiscountCents + deliveryCents);
 
     const paymentMethod =
       dto.paymentMethod === CreateOrderPaymentMethod.BANK_DEPOSIT
@@ -189,7 +196,7 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           totalCents,
           currency,
-          discountCents,
+          discountCents: safeDiscountCents,
           voucherId: voucherResult?.voucherId ?? undefined,
           voucherCode: voucherResult?.voucherCode ?? undefined,
           customerEmail: dto.customerEmail,

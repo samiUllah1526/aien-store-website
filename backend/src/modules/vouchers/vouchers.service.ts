@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVoucherDto, VoucherTypeDto } from './dto/create-voucher.dto';
@@ -44,6 +45,8 @@ export interface ValidateVoucherError {
 
 @Injectable()
 export class VouchersService {
+  private readonly logger = new Logger(VouchersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private toVoucherType(dto: VoucherTypeDto): VoucherType {
@@ -100,17 +103,22 @@ export class VouchersService {
     voucher: { type: VoucherType; value: number; maxDiscountCents: number | null },
     eligibleSubtotalCents: number,
     shippingCents: number,
+    /** Order total (subtotal + shipping) - discount must never exceed this. */
+    orderTotalCents: number,
   ): number {
     switch (voucher.type) {
       case 'PERCENTAGE': {
         const raw = Math.floor((eligibleSubtotalCents * voucher.value) / 100);
         const cap = voucher.maxDiscountCents ?? raw;
-        return Math.min(raw, cap);
+        const byCap = Math.min(raw, cap);
+        return Math.min(byCap, orderTotalCents);
       }
       case 'FIXED_AMOUNT':
-        return Math.min(voucher.value, eligibleSubtotalCents);
+        return Math.min(voucher.value, eligibleSubtotalCents, orderTotalCents);
       case 'FREE_SHIPPING':
-        return Math.min(shippingCents, eligibleSubtotalCents + shippingCents);
+        // When shipping is already free, discount is 0
+        if (shippingCents <= 0) return 0;
+        return Math.min(shippingCents, orderTotalCents);
       default:
         return 0;
     }
@@ -131,11 +139,13 @@ export class VouchersService {
     });
 
     if (!voucher) {
+      this.logger.warn(`Voucher validation failed: code=${code} error=NOT_FOUND`);
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_FOUND, message: 'Invalid voucher code.' };
     }
 
     const now = new Date();
     if (voucher.expiryDate < now) {
+      this.logger.warn(`Voucher validation failed: code=${code} error=EXPIRED`);
       return { valid: false, errorCode: VOUCHER_ERROR_CODES.EXPIRED, message: 'This voucher has expired.' };
     }
     if (voucher.startDate > now) {
@@ -204,6 +214,7 @@ export class VouchersService {
     }
 
     const shippingCents = await this.getDeliveryChargesCents();
+    const orderTotalCents = subtotalCents + shippingCents;
     const discountCents = this.computeDiscountCents(
       {
         type: voucher.type,
@@ -212,9 +223,12 @@ export class VouchersService {
       },
       eligibleSubtotalCents,
       shippingCents,
+      orderTotalCents,
     );
 
-    const totalCents = subtotalCents - discountCents + shippingCents;
+    const totalCents = Math.max(0, orderTotalCents - discountCents);
+
+    this.logger.log(`Voucher validated: code=${code} valid=true discountCents=${discountCents}`);
 
     return {
       valid: true,
@@ -229,11 +243,12 @@ export class VouchersService {
     };
   }
 
-  /** Compute discount for order creation (internal). */
+  /** Compute discount for order/quote (internal). Set throwOnInvalid=true for checkout to reject invalid vouchers. */
   async computeDiscountForOrder(
     voucherCode: string | undefined,
     items: Array<{ productId: string; quantity: number }>,
     customerUserId?: string | null,
+    throwOnInvalid = false,
   ): Promise<{ voucherId: string; voucherCode: string; discountCents: number } | null> {
     if (!voucherCode?.trim()) return null;
     const result = await this.validate({
@@ -241,7 +256,14 @@ export class VouchersService {
       items,
       customerUserId: customerUserId ?? undefined,
     });
-    if (!result.valid) return null;
+    if (!result.valid) {
+      if (throwOnInvalid) {
+        throw new BadRequestException(
+          result.message || 'Voucher is no longer valid. Please remove it and try again.',
+        );
+      }
+      return null;
+    }
     return {
       voucherId: result.voucherId,
       voucherCode: result.code,

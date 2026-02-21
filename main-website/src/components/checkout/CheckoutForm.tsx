@@ -109,22 +109,36 @@ export default function CheckoutForm() {
       setQuoteError(null);
       return;
     }
+    const controller = new AbortController();
     setQuoteLoading(true);
     setQuoteError(null);
     api
       .post<Quote>('/orders/quote', {
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
         voucherCode: appliedVoucherCode || undefined,
-      })
+      }, { signal: controller.signal })
       .then((res) => {
-        if (res.data) setQuote(res.data);
-        else setQuoteError('Could not load order summary');
+        if (controller.signal.aborted) return;
+        if (res.data) {
+          setQuote(res.data);
+          // If we had a voucher applied but quote returns none, it became invalid (expired/limit)
+          if (appliedVoucherCode && !res.data.voucherCode) {
+            setAppliedVoucherCode(null);
+            setVoucherError('Voucher is no longer valid');
+          }
+        } else {
+          setQuoteError('Could not load order summary');
+        }
       })
       .catch((err) => {
+        if (controller.signal.aborted || err?.name === 'AbortError') return;
         setQuote(null);
         setQuoteError(err instanceof Error ? err.message : 'Could not load order summary');
       })
-      .finally(() => setQuoteLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setQuoteLoading(false);
+      });
+    return () => controller.abort();
   }, [hasHydrated, items, appliedVoucherCode]);
 
   useEffect(() => {

@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Req,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { VouchersService, ValidateVoucherResult } from './vouchers.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
@@ -39,6 +40,8 @@ export class VouchersController {
   /** Public: validate voucher for checkout (optional JWT for per-user limit check). */
   @Public()
   @Post('validate')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   async validate(
     @Body() dto: ValidateVoucherDto,
     @Req() req: RequestWithUser,

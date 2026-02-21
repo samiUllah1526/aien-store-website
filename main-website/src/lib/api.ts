@@ -61,8 +61,9 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const msg = json.message || res.statusText || `Request failed (${res.status})`;
-    throw new Error(msg);
+    const raw = json.message ?? res.statusText ?? `Request failed (${res.status})`;
+    const msg = Array.isArray(raw) ? raw[0] : raw;
+    throw new Error(String(msg));
   }
   return json as T;
 }
@@ -74,11 +75,12 @@ export const api = {
   getList<T>(path: string, params?: Record<string, string | number | undefined>) {
     return request<ApiListResponse<T>>(path, { method: 'GET', params });
   },
-  post<T>(path: string, body: unknown, options?: { headers?: Record<string, string> }) {
+  post<T>(path: string, body: unknown, options?: { headers?: Record<string, string>; signal?: AbortSignal }) {
     return request<ApiSingleResponse<T>>(path, {
       method: 'POST',
       body: JSON.stringify(body),
       ...(options?.headers && { headers: options.headers }),
+      ...(options?.signal && { signal: options.signal }),
     });
   },
   put<T>(path: string, body: unknown) {
