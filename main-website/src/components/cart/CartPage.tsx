@@ -92,9 +92,8 @@ export default function CartPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <a
           href="/checkout"
-          className={hasMixedCurrencies ? 'pointer-events-none opacity-60' : ''}
+          className={`flex-1 py-3 text-center bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity uppercase tracking-wide text-sm ${hasMixedCurrencies ? 'pointer-events-none opacity-60' : ''}`}
           aria-disabled={hasMixedCurrencies}
-          className="flex-1 py-3 text-center bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity uppercase tracking-wide text-sm"
         >
           Checkout
         </a>

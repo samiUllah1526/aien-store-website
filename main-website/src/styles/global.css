@@ -2,15 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base styles – minimal, premium feel. Dark mode via Tailwind class on html. */
 @layer base {
   html {
     @apply scroll-smooth;
   }
   body {
-    @apply font-sans text-charcoal dark:text-cream bg-cream dark:bg-ink antialiased;
+    @apply font-sans text-soft-charcoal dark:text-off-white bg-bone dark:bg-charcoal antialiased;
   }
-  /* Urdu / RTL text – readable in light and dark */
   .urdu-text {
     @apply font-urdu text-right;
     direction: rtl;
@@ -18,14 +16,20 @@
   }
 }
 
-/* Smooth theme transition (Apple-like) */
 html {
-  @apply transition-colors duration-300;
+  @apply transition-colors duration-400;
 }
 
-/* Soft focus states – work in both themes */
+/* Soft focus – accessibility without loud accent */
 @layer utilities {
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 focus:ring-offset-cream dark:focus:ring-offset-ink;
+    @apply focus:outline-none focus:ring-2 focus:ring-ash/40 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

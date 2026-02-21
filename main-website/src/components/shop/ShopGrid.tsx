@@ -221,11 +221,11 @@ export default function ShopGrid({
       <aside className="lg:w-56 shrink-0">
         <div className="space-y-6">
           <div>
-            <label className="block font-display text-sm text-ink dark:text-cream mb-2">Category</label>
+            <label className="block text-sm text-ash mb-2">Category</label>
             <select
               value={category}
               onChange={onCategoryChange}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+              className="w-full rounded-lg border border-ash/30 bg-transparent text-soft-charcoal dark:text-off-white px-3 py-2 text-sm focus-ring"
               aria-label="Filter by category"
             >
               {categories.map((c) => (
@@ -236,11 +236,11 @@ export default function ShopGrid({
             </select>
           </div>
           <div>
-            <label className="block font-display text-sm text-ink dark:text-cream mb-2">Price</label>
+            <label className="block text-sm text-ash mb-2">Price</label>
             <select
               value={priceRange}
               onChange={onPriceChange}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+              className="w-full rounded-lg border border-ash/30 bg-transparent text-soft-charcoal dark:text-off-white px-3 py-2 text-sm focus-ring"
               aria-label="Filter by price"
             >
               {PRICE_OPTIONS.map((p) => (
@@ -251,11 +251,11 @@ export default function ShopGrid({
             </select>
           </div>
           <div>
-            <label className="block font-display text-sm text-ink dark:text-cream mb-2">Sort by</label>
+            <label className="block text-sm text-ash mb-2">Sort by</label>
             <select
               value={sort}
               onChange={onSortChange}
-              className="w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50"
+              className="w-full rounded-lg border border-ash/30 bg-transparent text-soft-charcoal dark:text-off-white px-3 py-2 text-sm focus-ring"
               aria-label="Sort order"
             >
               {SORT_OPTIONS.map((o) => (
@@ -268,15 +268,15 @@ export default function ShopGrid({
         </div>
       </aside>
       <div className="flex-1">
-        <p className="text-sm text-charcoal/70 dark:text-cream/70 mb-6">
+        <p className="text-sm text-ash mb-6">
           {loading ? '…' : `${products.length} ${products.length === 1 ? 'product' : 'products'}`}
           {total > products.length && ` of ${total}`}
         </p>
         {loading ? (
-          <p className="text-charcoal/70 dark:text-cream/70 py-12 text-center">Loading…</p>
+          <p className="text-ash py-12 text-center">Loading…</p>
         ) : (
           <>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-12 md:gap-16">
               {products.map((product) => (
                 <li key={product.id}>
                   <ProductCard product={product} />
@@ -284,7 +284,7 @@ export default function ShopGrid({
               ))}
             </ul>
             {products.length === 0 && (
-              <p className="text-charcoal/70 dark:text-cream/70 py-12 text-center">No products match the filters.</p>
+              <p className="text-ash py-12 text-center">No products match the filters.</p>
             )}
             {hasMore && !loading && (
               <div className="mt-10 flex justify-center">
@@ -292,9 +292,9 @@ export default function ShopGrid({
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-6 py-2.5 text-sm font-medium text-charcoal dark:text-cream hover:bg-sand/50 dark:hover:bg-charcoal-light/50 disabled:opacity-60 transition-colors"
+                  className="rounded-lg border border-ash/40 px-6 py-2.5 text-sm font-medium text-soft-charcoal dark:text-off-white hover:bg-ash/10 disabled:opacity-60 transition-colors focus-ring"
                 >
-                  {loadingMore ? 'Loading…' : `Load more (${products.length} of ${total})`}
+                  {loadingMore ? 'Loading…' : 'Continue reading'}
                 </button>
               </div>
             )}

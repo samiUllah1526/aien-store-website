@@ -6,7 +6,7 @@
 
 export type Theme = 'light' | 'dark' | 'system';
 
-const STORAGE_KEY = 'adab-theme';
+const STORAGE_KEY = 'aien-theme';
 
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';

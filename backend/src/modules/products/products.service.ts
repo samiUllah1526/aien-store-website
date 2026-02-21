@@ -91,12 +91,14 @@ export class ProductsService {
       resolvedCategoryId = await this.resolveCategoryId(query.category.trim()) ?? undefined;
     }
     const where = this.buildWhere(query, resolvedCategoryId);
+    // Prisma uses priceCents, not price
+    const orderByField = sortBy === 'price' ? 'priceCents' : sortBy;
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         include: this.productInclude(),
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [orderByField]: sortOrder },
         skip,
         take: limit,
       }),

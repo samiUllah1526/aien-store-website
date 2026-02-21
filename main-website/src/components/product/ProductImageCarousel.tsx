@@ -34,7 +34,7 @@ export default function ProductImageCarousel({
   if (list.length === 0) {
     return (
       <div
-        className={`aspect-[3/4] w-full rounded-xl bg-sand dark:bg-charcoal-light flex items-center justify-center text-charcoal/50 dark:text-cream/50 ${className}`}
+        className={`aspect-[3/4] w-full flex items-center justify-center rounded-xl bg-ash/10 text-ash ${className}`}
         role="img"
         aria-label={alt}
       >
@@ -46,7 +46,7 @@ export default function ProductImageCarousel({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       {/* Main image + arrows */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-sand dark:bg-charcoal-light shadow-soft">
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-ash/10">
         <img
           key={selectedIndex}
           src={mainSrc}
@@ -58,7 +58,7 @@ export default function ProductImageCarousel({
             <button
               type="button"
               onClick={goPrev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 dark:bg-charcoal/90 text-charcoal dark:text-cream shadow-md hover:bg-white dark:hover:bg-charcoal focus:outline-none focus:ring-2 focus:ring-emerald/50 transition-colors"
+              className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
               aria-label="Previous image"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@ export default function ProductImageCarousel({
             <button
               type="button"
               onClick={goNext}
-              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 dark:bg-charcoal/90 text-charcoal dark:text-cream shadow-md hover:bg-white dark:hover:bg-charcoal focus:outline-none focus:ring-2 focus:ring-emerald/50 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
               aria-label="Next image"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,8 +79,8 @@ export default function ProductImageCarousel({
         )}
       </div>
 
-      {/* Thumbnails */}
-      {list.length > 1 && (
+      {/* Thumbnails — always show when we have images */}
+      {list.length >= 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin" role="tablist" aria-label="Product images">
           {list.map((src, i) => (
             <button
@@ -90,10 +90,10 @@ export default function ProductImageCarousel({
               role="tab"
               aria-selected={i === selectedIndex}
               aria-label={`View image ${i + 1}`}
-              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-charcoal ${
+              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 focus-ring ${
                 i === selectedIndex
-                  ? 'border-ink dark:border-cream ring-1 ring-ink/20 dark:ring-cream/20'
-                  : 'border-transparent hover:border-charcoal/30 dark:hover:border-cream/30'
+                  ? 'border-soft-charcoal dark:border-off-white'
+                  : 'border-transparent hover:border-ash/40'
               }`}
             >
               <img

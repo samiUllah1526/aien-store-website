@@ -11,7 +11,7 @@ export default function CartIcon() {
     <button
       type="button"
       onClick={toggleCart}
-      className="relative p-2 text-charcoal dark:text-cream hover:text-emerald transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 focus:ring-offset-cream dark:focus:ring-offset-ink rounded"
+      className="relative p-2 text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 focus-ring rounded"
       aria-label={`Cart, ${totalItems} items`}
     >
       <svg
@@ -30,7 +30,7 @@ export default function CartIcon() {
       </svg>
       {totalItems > 0 && (
         <span
-          className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald text-cream text-xs font-medium"
+          className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-soft-charcoal dark:bg-off-white text-bone dark:text-charcoal text-xs font-medium"
           aria-hidden
         >
           {totalItems > 99 ? '99+' : totalItems}

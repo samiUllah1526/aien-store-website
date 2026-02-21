@@ -5,8 +5,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 
 const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').toString().replace(/\/$/, '');
-let aboutTitle = 'Wear the words';
-let aboutSubtitle = 'Where adab meets the street.';
+let aboutTitle = 'Aien';
+let aboutSubtitle = 'Cultural-art collective. Poetry on fabric.';
 let aboutContent = '';
 
 try {
@@ -24,38 +24,34 @@ try {
 
 // Fallback static content if no HTML from settings
 const fallbackContent = `
-  <p>Adab is more than etiquette — it's the art of how we speak, how we listen, and how we carry ourselves.
-  In Urdu literature, adab runs through every line of verse, every gathering at a mushaira, every moment
-  when a poet picks up the pen. We wanted to bring that soul into what you wear.</p>
-  <p>Our pieces are inspired by classical Urdu poetry: the ghazal, the nazm, the couplets that have moved
-  generations. Each design carries a verse — sometimes loud on the chest, sometimes tucked in like a
-  secret. The words are in Nastaliq, in script that feels like breath on paper.</p>
-  <p>We're not a fashion label that uses Urdu as a trend. We're a label that starts from the verse.
-  From the culture of mehfils and mushairas, from the weight of a single word. Streetwear that
-  doesn't shout — it speaks.</p>
-  <p class="urdu-text font-urdu text-2xl md:text-3xl text-ink dark:text-cream text-right leading-loose mt-16 py-10 border-t border-b border-sand dark:border-charcoal-light">الفاظ سے پہلے آداب سیکھو</p>
-  <p class="text-charcoal/70 dark:text-cream/70 text-sm italic">Alfaaz se pehle adaab seekho — Before words, learn adab.</p>
-  <p>Thank you for wearing the words with us. For carrying a little bit of adab into your day.</p>
+  <p>We make garments that hold silence. Where poetry meets fabric, and loss meets wear.</p>
+  <p>Each piece carries a verse — in Nastaliq script, like breath on paper. We are not a hype streetwear brand.
+  We are a cultural-art collective. The words come first. The wear follows.</p>
+  <p>Hoodies and oversized shirts for those who carry the weight of a single word. Streetwear that
+  doesn't shout — it speaks quietly, in the space between longing and letting go.</p>
+  <p class="urdu-text font-urdu text-2xl md:text-3xl text-soft-charcoal dark:text-off-white text-right leading-loose mt-16 py-10 border-t border-b border-ash/20">خاموشی میں واپس آؤ</p>
+  <p class="text-ash text-sm italic">Return to silence.</p>
+  <p>Thank you for wearing the verse with us.</p>
 `;
 const displayContent = aboutContent.trim() || fallbackContent;
 ---
 
-<BaseLayout title="About — Adab" description="The story behind Adab — Urdu poetry and adab on streetwear.">
-  <article class="max-w-3xl mx-auto px-4 sm:px-6 py-14 md:py-22">
+<BaseLayout title="About — Aien" description="Cultural-art streetwear. Poetry on fabric. Pakistan.">
+  <article class="max-w-prose mx-auto px-4 sm:px-6 py-16 md:py-24">
     <header class="mb-14">
-      <h1 class="font-display text-4xl md:text-5xl text-ink dark:text-cream leading-tight">
+      <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">
         {aboutTitle}
       </h1>
-      <p class="mt-4 text-xl text-charcoal/80 dark:text-cream/80 font-display">
+      <p class="mt-4 text-lg text-ash font-display">
         {aboutSubtitle}
       </p>
     </header>
 
-    <div class="space-y-10 text-charcoal/90 dark:text-cream/90 leading-relaxed about-content" set:html={displayContent} />
+    <div class="space-y-10 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed about-content" set:html={displayContent} />
 
     <div class="mt-14">
-      <a href="/shop" class="inline-block text-emerald hover:text-emerald-light font-medium transition-colors">
-        Explore the collection →
+      <a href="/shop" class="inline-block text-ash hover:text-soft-charcoal dark:hover:text-off-white font-medium transition-colors text-sm">
+        Continue reading →
       </a>
     </div>
   </article>

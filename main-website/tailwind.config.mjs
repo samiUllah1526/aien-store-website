@@ -4,48 +4,41 @@ export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
   theme: {
     extend: {
-      // Brand palette: poetic, soulful, premium
-      // Light: cream/sand/charcoal/ink. Dark: inverted with same accent (emerald, gold).
       colors: {
-        charcoal: {
-          DEFAULT: '#2d2d2d',
-          light: '#3d3d3d',
-          dark: '#1a1a1a',
-        },
-        ink: '#0d0d0d',
-        cream: '#f5f2eb',     // off-white (light bg)
-        sand: '#e8e4dc',     // beige (light borders/surfaces)
-        emerald: {
-          DEFAULT: '#0d6b5c',
-          light: '#117a6a',
-          dark: '#0a5548',
-        },
-        gold: {
-          DEFAULT: '#b8860b',
-          light: '#c9a227',
-          muted: '#9a7b2e',
-        },
-      },
-      // Apple-like soft shadows (use sparingly)
-      boxShadow: {
-        'soft': '0 2px 15px -3px rgb(0 0 0 / 0.04), 0 10px 20px -2px rgb(0 0 0 / 0.03)',
-        'soft-lg': '0 10px 40px -10px rgb(0 0 0 / 0.08)',
+        // Aien design system: melancholic, editorial
+        charcoal: '#0E0E0E',
+        bone: '#F3F1ED',
+        ash: '#8A8A8A',
+        mehndi: '#2F3A32',
+        ink: '#3A2E28',
+        // Soft text (never pure white/black)
+        'off-white': '#F8F6F2',
+        'soft-charcoal': '#1A1A1A',
+        // Backward compatibility (map old names)
+        cream: '#F3F1ED',
+        sand: '#E8E6E2',
+        emerald: { DEFAULT: '#2F3A32', light: '#3d4a3f' },
+        gold: '#8A8A8A',
+        'charcoal-light': '#1e1e1e',
       },
       fontFamily: {
-        // Elegant serif / Nastaliq-inspired for headings and Urdu
         display: ['"Playfair Display"', 'Georgia', 'serif'],
-        // Clean modern sans for body
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-        // Urdu / Nastaliq style – use a font that supports Urdu if available
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         urdu: ['"Noto Nastaliq Urdu"', 'serif'],
+      },
+      fontSize: {
+        'urdu-hero': ['clamp(2rem, 6vw, 4.5rem)', { lineHeight: '1.6' }],
+        'urdu-large': ['clamp(1.75rem, 4vw, 3rem)', { lineHeight: '1.7' }],
       },
       spacing: {
         '18': '4.5rem',
         '22': '5.5rem',
         '30': '7.5rem',
+        'prose': '65ch',
       },
-      transitionDuration: {
-        '400': '400ms',
+      animation: {
+        'fade-in': 'fadeIn 1.2s ease-out forwards',
+        'fade-up': 'fadeUp 0.8s ease-out forwards',
       },
       keyframes: {
         fadeIn: {
@@ -53,18 +46,13 @@ export default {
           '100%': { opacity: '1' },
         },
         fadeUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        fadeInSlide: {
-          '0%': { opacity: '0', transform: 'translateX(8px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
-        },
       },
-      animation: {
-        'fade-in': 'fadeIn 0.8s ease-out forwards',
-        'fade-up': 'fadeUp 0.6s ease-out forwards',
-        'fade-in-slide': 'fadeInSlide 0.5s ease-out forwards',
+      transitionDuration: {
+        '400': '400ms',
+        '600': '600ms',
       },
     },
   },

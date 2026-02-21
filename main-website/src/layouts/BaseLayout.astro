@@ -12,7 +12,7 @@ interface Props {
   description?: string;
 }
 
-const { title = 'Adab — Wear the Words', description = 'Urdu & Adabi inspired streetwear. Poetry on fabric.' } = Astro.props;
+const { title = 'Aien', description = 'Cultural-art streetwear. Poetry on fabric. Pakistan.' } = Astro.props;
 
 const baseUrl = (import.meta.env.PUBLIC_API_URL || 'http://localhost:3000').toString().replace(/\/$/, '');
 let siteSettings: {
@@ -36,19 +36,19 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Theme: set dark class on <html> before any paint (Tailwind darkMode: 'class') -->
     <script is:inline>
-      (function(){var el=document.documentElement;try{var s=localStorage.getItem('adab-theme');var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
+      (function(){var el=document.documentElement;try{var s=localStorage.getItem('aien-theme');var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
     </script>
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400..900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400..900&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen flex flex-col bg-cream dark:bg-ink text-charcoal dark:text-cream antialiased transition-colors duration-300">
+  <body class="min-h-screen flex flex-col bg-bone dark:bg-charcoal text-soft-charcoal dark:text-off-white antialiased transition-colors duration-400">
     <LayoutShell client:load siteSettings={siteSettings}>
       <slot />
     </LayoutShell>

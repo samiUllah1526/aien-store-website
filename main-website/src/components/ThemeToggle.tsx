@@ -72,7 +72,7 @@ export default function ThemeToggle() {
       type="button"
       onClick={cycle}
       aria-label={`Theme: ${label}. Click to change.`}
-      className="p-2 text-charcoal dark:text-cream hover:text-emerald dark:hover:text-emerald transition-colors duration-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 focus:ring-offset-cream dark:focus:ring-offset-ink"
+      className="p-2 text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 rounded focus-ring"
     >
       {theme === 'system' ? (
         resolved === 'dark' ? <IconMoon /> : <IconSun />

@@ -46,19 +46,19 @@ export default function AddToCart({
   };
 
   return (
-    <div className="mt-8 space-y-4">
+    <div className="mt-10 space-y-6">
       <div>
-        <label className="block font-display text-sm text-ink dark:text-cream mb-2">Size</label>
+        <label className="block text-sm text-ash mb-2">Size</label>
         <div className="flex flex-wrap gap-2">
           {sizes.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setSize(s)}
-              className={`w-12 h-12 rounded border text-sm font-medium transition-colors ${
+              className={`w-12 h-12 rounded-lg border text-sm font-medium transition-colors focus-ring ${
                 size === s
-                  ? 'border-ink dark:border-cream bg-ink dark:bg-cream text-cream dark:text-ink'
-                  : 'border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream hover:border-charcoal dark:hover:border-cream/70'
+                  ? 'border-soft-charcoal dark:border-off-white bg-soft-charcoal dark:bg-off-white text-bone dark:text-charcoal'
+                  : 'border-ash/40 bg-transparent text-soft-charcoal dark:text-off-white hover:border-ash'
               }`}
             >
               {s}
@@ -69,9 +69,9 @@ export default function AddToCart({
       <button
         type="button"
         onClick={handleAdd}
-        className="w-full py-3 bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded hover:opacity-90 transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink"
+        className="w-full py-3 rounded-lg border border-soft-charcoal dark:border-off-white text-soft-charcoal dark:text-off-white font-medium hover:bg-ash/10 transition-colors duration-300 focus-ring"
       >
-        {added ? 'Added — view cart' : 'Add to cart'}
+        {added ? 'Added — view cart' : 'Wear the verse'}
       </button>
     </div>
   );
