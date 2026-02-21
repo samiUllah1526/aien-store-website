@@ -2,6 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { SettingsService } from '../settings/settings.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { VouchersService } from '../vouchers/vouchers.service';
+import { VoucherAuditService } from '../vouchers/voucher-audit.service';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -15,8 +19,15 @@ const mockOrder = {
   id: orderId,
   status: OrderStatus.PENDING,
   totalCents: 5000,
+  subtotalCents: 5000,
+  shippingCents: 0,
+  discountCents: null as number | null,
+  discountType: null as string | null,
+  voucherCode: null as string | null,
   currency: 'PKR',
   customerEmail: 'customer@example.com',
+  customerFirstName: null as string | null,
+  customerLastName: null as string | null,
   customerName: null as string | null,
   customerPhone: null as string | null,
   shippingCountry: null as string | null,
@@ -24,6 +35,10 @@ const mockOrder = {
   shippingAddressLine2: null as string | null,
   shippingCity: null as string | null,
   shippingPostalCode: null as string | null,
+  paymentMethod: 'COD' as const,
+  paymentProof: null as { path: string; deliveryUrl: string | null } | null,
+  courierServiceName: null as string | null,
+  trackingId: null as string | null,
   assignedToUserId: null,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
@@ -33,7 +48,11 @@ const mockOrder = {
       productId,
       quantity: 2,
       unitCents: 2500,
-      product: { id: productId, name: 'Test Product' },
+      product: {
+        id: productId,
+        name: 'Test Product',
+        productMedia: [] as Array<{ media: { path: string; deliveryUrl: string | null } }>,
+      },
     },
   ],
   statusHistory: [
@@ -42,37 +61,88 @@ const mockOrder = {
   assignedTo: null,
 };
 
+type PrismaMock = {
+  order: { findUnique: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock; count: jest.Mock };
+  product: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+  user: { findUnique: jest.Mock };
+  orderItem: { findMany: jest.Mock };
+  voucherRedemption: { create: jest.Mock };
+  voucher: { update: jest.Mock };
+  inventoryMovement: { findFirst: jest.Mock; create: jest.Mock };
+  idempotencyKey: { findUnique: jest.Mock; create: jest.Mock };
+  $transaction: jest.Mock;
+  $executeRaw: jest.Mock;
+  $queryRaw: jest.Mock;
+};
+
 describe('OrdersService', () => {
   let service: OrdersService;
-  let prisma: {
-    order: { findUnique: jest.Mock; findMany: jest.Mock; create: jest.Mock; update: jest.Mock; count: jest.Mock };
-    product: { findMany: jest.Mock };
-    user: { findUnique: jest.Mock };
-  };
+  let prisma: PrismaMock;
   let mail: { sendOrderStatusChange: jest.Mock; sendOrderConfirmation: jest.Mock };
+  let settingsService: { getByKey: jest.Mock };
+  let inventoryService: {
+    deductForOrder: jest.Mock;
+    restoreForOrder: jest.Mock;
+    getIdempotentOrderId: jest.Mock;
+    setIdempotencyKey: jest.Mock;
+  };
+  let vouchersService: { computeDiscountForOrder: jest.Mock };
+  let voucherAuditService: { publish: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
       order: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         count: jest.fn(),
       },
-      product: { findMany: jest.fn() },
+      product: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       user: { findUnique: jest.fn() },
+      orderItem: { findMany: jest.fn().mockResolvedValue([]) },
+      voucherRedemption: { create: jest.fn().mockResolvedValue({}) },
+      voucher: { update: jest.fn().mockResolvedValue({}) },
+      inventoryMovement: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({}),
+      },
+      idempotencyKey: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({}),
+      },
+      $transaction: jest.fn((fn: (tx: PrismaMock) => Promise<unknown>) => fn(prisma)),
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      $queryRaw: jest.fn().mockResolvedValue([]),
     };
     mail = {
       sendOrderStatusChange: jest.fn().mockResolvedValue(undefined),
       sendOrderConfirmation: jest.fn().mockResolvedValue(undefined),
     };
+    settingsService = {
+      getByKey: jest.fn().mockResolvedValue({ deliveryChargesCents: 0 }),
+    };
+    inventoryService = {
+      deductForOrder: jest.fn().mockResolvedValue({ success: true }),
+      restoreForOrder: jest.fn().mockResolvedValue(undefined),
+      getIdempotentOrderId: jest.fn().mockResolvedValue(null),
+      setIdempotencyKey: jest.fn().mockResolvedValue(undefined),
+    };
+    vouchersService = {
+      computeDiscountForOrder: jest.fn().mockResolvedValue(null),
+    };
+    voucherAuditService = { publish: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
         { provide: PrismaService, useValue: prisma },
         { provide: MailService, useValue: mail },
+        { provide: SettingsService, useValue: settingsService },
+        { provide: InventoryService, useValue: inventoryService },
+        { provide: VouchersService, useValue: vouchersService },
+        { provide: VoucherAuditService, useValue: voucherAuditService },
       ],
     }).compile();
 
@@ -83,12 +153,14 @@ describe('OrdersService', () => {
     it('should create order with items and initial status history', async () => {
       const dto: CreateOrderDto = {
         customerEmail: 'customer@example.com',
+        customerPhone: '+1234567890',
         items: [{ productId, quantity: 2 }],
       };
       prisma.product.findMany.mockResolvedValue([
         { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
       ]);
-      prisma.order.create.mockResolvedValue(mockOrder);
+      const createdOrder = { ...mockOrder, totalCents: 5000, shippingCents: 0 };
+      prisma.order.create.mockResolvedValue(createdOrder);
 
       const result = await service.create(dto);
 
@@ -117,6 +189,7 @@ describe('OrdersService', () => {
           }),
         }),
       );
+      expect(inventoryService.deductForOrder).toHaveBeenCalled();
     });
 
     it('should throw BadRequestException when items have mixed currencies', async () => {
@@ -128,6 +201,7 @@ describe('OrdersService', () => {
       await expect(
         service.create({
           customerEmail: 'a@b.com',
+          customerPhone: '+123',
           items: [
             { productId, quantity: 1 },
             { productId: otherProductId, quantity: 1 },
@@ -141,6 +215,7 @@ describe('OrdersService', () => {
       await expect(
         service.create({
           customerEmail: 'a@b.com',
+          customerPhone: '+123',
           items: [],
         }),
       ).rejects.toThrow(BadRequestException);
@@ -152,6 +227,7 @@ describe('OrdersService', () => {
       await expect(
         service.create({
           customerEmail: 'a@b.com',
+          customerPhone: '+123',
           items: [{ productId: 'missing', quantity: 1 }],
         }),
       ).rejects.toThrow(BadRequestException);
@@ -161,6 +237,7 @@ describe('OrdersService', () => {
 
   describe('quote', () => {
     it('should return server-computed totals from DB (no order created)', async () => {
+      settingsService.getByKey.mockResolvedValue({ deliveryChargesCents: 299 });
       prisma.product.findMany.mockResolvedValue([
         { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
       ]);

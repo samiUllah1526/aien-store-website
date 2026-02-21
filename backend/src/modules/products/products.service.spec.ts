@@ -6,11 +6,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 
-const mockProductInclude = {
-  productCategories: { include: { category: true } },
-  productMedia: { include: { media: true }, orderBy: { sortOrder: 'asc' as const } },
-};
-
 const mockProduct = {
   id: '11111111-1111-1111-1111-111111111111',
   name: 'Test Product',
@@ -42,6 +37,8 @@ describe('ProductsService', () => {
     };
     media: { findMany: jest.Mock };
     productMedia: { createMany: jest.Mock; deleteMany: jest.Mock };
+    productCategory: { deleteMany: jest.Mock; createMany: jest.Mock };
+    category: { findUnique: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -72,7 +69,7 @@ describe('ProductsService', () => {
   });
 
   describe('create', () => {
-    it('should create a product and return DTO', async () => {
+    it('creates product and returns DTO', async () => {
       const dto: CreateProductDto = {
         name: 'Test Product',
         slug: 'test-product',
@@ -104,7 +101,7 @@ describe('ProductsService', () => {
       );
     });
 
-    it('should throw ConflictException when slug exists', async () => {
+    it('throws ConflictException when slug exists', async () => {
       prisma.product.findUnique.mockResolvedValue({ id: 'existing' });
       await expect(
         service.create({ name: 'A', slug: 'existing-slug', priceCents: 100 }),
@@ -112,7 +109,7 @@ describe('ProductsService', () => {
       expect(prisma.product.create).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException when mediaIds are invalid', async () => {
+    it('throws BadRequestException when mediaIds are invalid', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       prisma.media.findMany.mockResolvedValue([]);
       await expect(
@@ -127,7 +124,7 @@ describe('ProductsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return paginated list and total', async () => {
+    it('returns paginated list and total', async () => {
       prisma.product.findMany.mockResolvedValue([mockProduct]);
       prisma.product.count.mockResolvedValue(1);
       const query: ProductQueryDto = { page: 1, limit: 20 };
@@ -144,7 +141,7 @@ describe('ProductsService', () => {
       });
     });
 
-    it('should apply search, sort, and filters in where', async () => {
+    it('applies search, sort, and filters in where', async () => {
       prisma.product.findMany.mockResolvedValue([]);
       prisma.product.count.mockResolvedValue(0);
       await service.findAll({
@@ -172,7 +169,7 @@ describe('ProductsService', () => {
   });
 
   describe('findOne', () => {
-    it('should return product by id', async () => {
+    it('returns product by id', async () => {
       prisma.product.findUnique.mockResolvedValue(mockProduct);
       const result = await service.findOne(mockProduct.id);
       expect(result.id).toBe(mockProduct.id);
@@ -181,27 +178,45 @@ describe('ProductsService', () => {
       );
     });
 
-    it('should throw NotFoundException when not found', async () => {
+    it('throws NotFoundException when not found', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
+  describe('findByIds', () => {
+    it('returns empty array when ids empty', async () => {
+      const result = await service.findByIds([]);
+      expect(result).toEqual([]);
+      expect(prisma.product.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns products in input order and skips missing ids', async () => {
+      const p1 = { ...mockProduct, id: 'a' };
+      const p2 = { ...mockProduct, id: 'b' };
+      prisma.product.findMany.mockResolvedValue([p2, p1]);
+
+      const result = await service.findByIds(['a', 'b', 'missing']);
+
+      expect(result.map((r) => r.id)).toEqual(['a', 'b']);
+    });
+  });
+
   describe('findBySlug', () => {
-    it('should return product by slug', async () => {
+    it('returns product by slug', async () => {
       prisma.product.findUnique.mockResolvedValue(mockProduct);
       const result = await service.findBySlug('test-product');
       expect(result.slug).toBe('test-product');
     });
 
-    it('should throw NotFoundException when slug not found', async () => {
+    it('throws NotFoundException when slug not found', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       await expect(service.findBySlug('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
-    it('should update and return product', async () => {
+    it('updates and returns product', async () => {
       const dto: UpdateProductDto = { name: 'Updated Name', priceCents: 5000 };
       prisma.product.findUnique
         .mockResolvedValueOnce({ id: mockProduct.id, slug: mockProduct.slug })
@@ -214,14 +229,14 @@ describe('ProductsService', () => {
       expect(result.price).toBe(5000);
     });
 
-    it('should throw NotFoundException when product does not exist', async () => {
+    it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       await expect(
         service.update('missing', { name: 'X' }),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ConflictException when new slug already exists', async () => {
+    it('throws ConflictException when new slug already exists', async () => {
       prisma.product.findUnique
         .mockResolvedValueOnce({ id: mockProduct.id, slug: 'old-slug' })
         .mockResolvedValueOnce({ id: 'other' });
@@ -232,14 +247,14 @@ describe('ProductsService', () => {
   });
 
   describe('remove', () => {
-    it('should delete product', async () => {
+    it('deletes product', async () => {
       prisma.product.findUnique.mockResolvedValue(mockProduct);
       prisma.product.delete.mockResolvedValue(mockProduct);
       await service.remove(mockProduct.id);
       expect(prisma.product.delete).toHaveBeenCalledWith({ where: { id: mockProduct.id } });
     });
 
-    it('should throw NotFoundException when product does not exist', async () => {
+    it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
       await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
       expect(prisma.product.delete).not.toHaveBeenCalled();
