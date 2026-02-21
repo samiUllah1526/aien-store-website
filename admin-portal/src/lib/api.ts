@@ -5,10 +5,10 @@
  */
 
 import { getStoredToken, setStoredToken, clearStoredTokens } from './auth';
-import { API_BASE_URL } from './config';
+import { apiBaseUrl, loginRedirectPath } from './config';
 
 export function getApiBaseUrl(): string {
-  return API_BASE_URL;
+  return apiBaseUrl;
 }
 
 export function getAuthToken(): string | null {
@@ -33,7 +33,7 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, string | number | undefined> } = {}
 ): Promise<T> {
   const { params, ...init } = options;
-  const base = API_BASE_URL.replace(/\/$/, '');
+  const base = apiBaseUrl.replace(/\/$/, '');
   const url = new URL(path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
@@ -52,7 +52,7 @@ async function request<T>(
 
   if (res.status === 401) {
     clearStoredTokens();
-    if (typeof window !== 'undefined') window.location.href = '/admin/login';
+    if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
     const raw = json.message || res.statusText || 'Unauthorized';
     const msg = Array.isArray(raw) ? raw.join(' ') : raw;
     throw new Error(msg);
@@ -68,7 +68,7 @@ async function request<T>(
 
 /** Multipart file upload (e.g. POST /media/upload). Returns { success, data: { id } }. */
 export async function uploadFile(file: File): Promise<{ id: string }> {
-  const base = API_BASE_URL.replace(/\/$/, '');
+  const base = apiBaseUrl.replace(/\/$/, '');
   const url = `${base}/media/upload`;
   const form = new FormData();
   form.append('file', file);
@@ -79,7 +79,7 @@ export async function uploadFile(file: File): Promise<{ id: string }> {
   const json = (await res.json().catch(() => ({}))) as ApiSingleResponse<{ id: string }>;
   if (res.status === 401) {
     clearStoredTokens();
-    if (typeof window !== 'undefined') window.location.href = '/admin/login';
+    if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
     throw new Error('Unauthorized');
   }
   if (!res.ok) throw new Error(json.message || res.statusText || 'Upload failed');

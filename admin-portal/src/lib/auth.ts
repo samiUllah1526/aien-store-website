@@ -3,7 +3,7 @@
  * Access token stored in localStorage, sent with API requests.
  */
 
-const ACCESS_TOKEN_KEY = 'admin_token';
+import { authTokenKey } from './config';
 
 export interface JwtPayload {
   sub?: string;
@@ -39,7 +39,7 @@ function base64UrlDecode(str: string): string {
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(authTokenKey);
 }
 
 export function decodeToken(token: string): JwtPayload | null {
@@ -80,12 +80,12 @@ export function hasPermission(permission: string): boolean {
 
 export function setStoredToken(accessToken: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(authTokenKey, accessToken);
 }
 
 export function clearStoredTokens(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(authTokenKey);
 }
 
 /** @deprecated Use clearStoredTokens for full cleanup */

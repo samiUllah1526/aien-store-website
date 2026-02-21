@@ -4,10 +4,11 @@ interface Props {
 }
 
 const { title = 'Admin' } = Astro.props;
+const pageTitle = `${title} | ${appName}`;
 const currentPath = Astro.url.pathname;
 import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
-import { API_BASE_URL } from '../lib/config';
+import { apiBaseUrl, appName, faviconPath, themeStorageKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
 // Order: overview → operations (orders, products, inventory) → structure → people & comms → config → help
 const navItems = [
@@ -32,18 +33,18 @@ const isActive = (href: string) =>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={faviconPath} />
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title} | E-Commerce Admin</title>
-    <script is:inline>
-      (function(){var d=document.documentElement;var s=localStorage.getItem('admin_dark');if(s==='true')d.classList.add('dark');else if(s==='false')d.classList.remove('dark');})();
+    <title>{pageTitle}</title>
+    <script is:inline define:vars={{ themeStorageKey }}>
+      (function(){var d=document.documentElement;var s=localStorage.getItem(themeStorageKey);if(s==='true')d.classList.add('dark');else if(s==='false')d.classList.remove('dark');})();
     </script>
   </head>
-  <body class="h-screen overflow-hidden bg-slate-100 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100" data-api-base={API_BASE_URL}>
-    <script is:inline>
-      window.__API_BASE__ = document.body.dataset.apiBase || 'http://localhost:3000';
+  <body class="h-screen overflow-hidden bg-slate-100 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100" data-api-base={apiBaseUrl}>
+    <script is:inline define:vars={{ apiBaseUrl }}>
+      window.__API_BASE__ = document.body.dataset.apiBase || apiBaseUrl;
     </script>
     <div class="flex h-screen overflow-hidden" id="admin-root">
       <!-- Mobile sidebar backdrop -->
@@ -61,7 +62,7 @@ const isActive = (href: string) =>
       >
         <div class="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 lg:px-6">
           <a href="/admin" class="text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-            E-Commerce Admin
+            {appName}
           </a>
           <button
             type="button"
@@ -140,7 +141,7 @@ const isActive = (href: string) =>
       </div>
     </div>
 
-    <script>
+    <script define:vars={{ themeStorageKey }}>
       (function () {
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
@@ -171,7 +172,7 @@ const isActive = (href: string) =>
         themeToggle?.addEventListener('click', function () {
           var d = document.documentElement;
           var isDark = d.classList.toggle('dark');
-          localStorage.setItem('admin_dark', isDark ? 'true' : 'false');
+          localStorage.setItem(themeStorageKey, isDark ? 'true' : 'false');
           try { window.dispatchEvent(new CustomEvent('themechange', { detail: { dark: isDark } })); } catch (e) {}
         });
 

@@ -103,6 +103,22 @@ npm run dev
 
 Add more variables in `.env` and `.env.example` as needed (e.g. database, external APIs).
 
+### Admin Portal (Frontend)
+
+All admin configuration lives in `admin-portal/src/lib/config.ts`. Set values via `.env` (see `admin-portal/.env.example` and `admin-portal/site.config.example`).
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PUBLIC_API_URL` | Backend API base URL (no trailing slash) | `http://localhost:3000` |
+| `PUBLIC_ADMIN_APP_NAME` | Admin app display name | `E-Commerce Admin` |
+| `PUBLIC_ADMIN_FAVICON` | Favicon path | `/favicon.svg` |
+| `PUBLIC_ADMIN_THEME_STORAGE_KEY` | Dark mode localStorage key | `admin_dark` |
+| `PUBLIC_ADMIN_AUTH_TOKEN_KEY` | JWT localStorage key | `admin_token` |
+| `PUBLIC_ADMIN_LOGIN_PATH` | Redirect path on 401 | `/admin/login` |
+| `PUBLIC_MAIN_WEBSITE_URL` | Main storefront URL (optional) | (empty) |
+
+For manual JWT injection during development: `localStorage.setItem('admin_token', 'YOUR_JWT')` (or the key from `PUBLIC_ADMIN_AUTH_TOKEN_KEY`).
+
 ---
 
 ## Adding New Modules (Backend)
