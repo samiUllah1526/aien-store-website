@@ -1,10 +1,10 @@
 import {
-  IsNotEmpty,
   IsString,
   IsOptional,
   IsNumber,
   IsIn,
   IsObject,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 
@@ -49,4 +49,14 @@ export class RegisterMediaDto {
   @IsOptional()
   @IsNumber()
   height?: number;
+
+  /** For failed-upload tracking: product being edited (if any). */
+  @IsOptional()
+  @IsUUID()
+  productId?: string;
+
+  /** For failed-upload tracking: order for payment proof (if any). */
+  @IsOptional()
+  @IsUUID()
+  orderId?: string;
 }

@@ -22,6 +22,14 @@ export interface RegisterMediaInput {
   height?: number;
 }
 
+export interface CreateFailedUploadInput {
+  source: 'product' | 'payment_proof';
+  error: unknown;
+  filename?: string;
+  productId?: string;
+  orderId?: string;
+}
+
 /** Sanitize filename: remove path separators, control chars, limit length. */
 function sanitizeFilename(name: string): string {
   return name
@@ -145,6 +153,39 @@ export class MediaService {
       },
     });
     return { id: media.id };
+  }
+
+  /**
+   * Record a failed upload in the media table. Creates a row with placeholder path
+   * and uploadError JSONB containing message, code, purpose, and context.
+   */
+  async createFailedUpload(input: CreateFailedUploadInput): Promise<void> {
+    const err = input.error;
+    const message = err instanceof Error ? err.message : String(err);
+    const code = err instanceof Error && 'code' in err ? String((err as NodeJS.ErrnoException).code) : undefined;
+    const filename = input.filename ? sanitizeFilename(input.filename) : 'unknown';
+
+    const uploadError = {
+      message,
+      ...(code && { code }),
+      attemptedAt: new Date().toISOString(),
+      purpose: input.source,
+      ...(input.productId && { productId: input.productId }),
+      ...(input.orderId && { orderId: input.orderId }),
+      ...(input.filename && { filename: input.filename }),
+    };
+
+    await this.prisma.media.create({
+      data: {
+        filename,
+        mimeType: 'application/octet-stream',
+        sizeBytes: 0,
+        path: `failed/${randomUUID()}`,
+        storageProvider: null,
+        source: input.source,
+        uploadError: uploadError as object,
+      },
+    });
   }
 
   async getById(id: string) {
