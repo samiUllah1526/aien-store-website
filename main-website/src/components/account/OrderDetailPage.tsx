@@ -27,23 +27,35 @@ function formatDateTime(iso: string): string {
   }
 }
 
-export default function OrderDetailPage({ orderId }: { orderId: string }) {
+function getOrderIdFromUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('id')?.trim() ?? '';
+}
+
+export default function OrderDetailPage({ orderId: propOrderId }: { orderId: string }) {
+  const orderId = (propOrderId && propOrderId.trim()) || getOrderIdFromUrl();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !orderId) return;
+    if (typeof window === 'undefined') return;
+    const id = (propOrderId && propOrderId.trim()) || getOrderIdFromUrl();
+    if (!id) {
+      setLoading(false);
+      setError('Order ID required');
+      return;
+    }
     if (!isLoggedIn) {
-      window.location.href = '/login?returnTo=' + encodeURIComponent(`/account/orders/${orderId}`);
+      window.location.href = '/login?returnTo=' + encodeURIComponent(`/account/orders/order?id=${id}`);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
     ordersApi
-      .myOrder(orderId)
+      .myOrder(id)
       .then((res) => {
         if (!cancelled && res?.data) setOrder(res.data as OrderDto);
       })
@@ -56,7 +68,7 @@ export default function OrderDetailPage({ orderId }: { orderId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, orderId]);
+  }, [isLoggedIn, propOrderId]);
 
   if (!isLoggedIn || loading) {
     return (

@@ -365,20 +365,20 @@ export function VouchersManager() {
                         className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
                         onClick={(e) => {
                           if ((e.target as HTMLElement).closest('button, a')) return;
-                          window.location.href = `/admin/vouchers/${v.id}`;
+                          window.location.href = `/admin/vouchers/detail?id=${v.id}`;
                         }}
                         onKeyDown={(e) => {
                           if ((e.target as HTMLElement).closest('button, a')) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            window.location.href = `/admin/vouchers/${v.id}`;
+                            window.location.href = `/admin/vouchers/detail?id=${v.id}`;
                           }
                         }}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <a
-                              href={`/admin/vouchers/${v.id}`}
+                              href={`/admin/vouchers/detail?id=${v.id}`}
                               className="font-mono font-medium text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300"
                             >
                               {v.code}

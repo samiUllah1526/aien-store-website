@@ -51,15 +51,13 @@ function actionLabel(a: string): string {
   return a.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function getIdFromPathname(): string {
+function getIdFromQuery(): string {
   if (typeof window === 'undefined') return '';
-  const match = window.location.pathname.match(/\/admin\/vouchers\/([0-9a-f-]{36})/i);
-  return match ? match[1] : '';
+  return new URLSearchParams(window.location.search).get('id')?.trim() ?? '';
 }
 
 export function VoucherDetail({ voucherId: propId }: VoucherDetailProps) {
-  console.log('propId=>>>', propId);
-  const voucherId = (propId && propId.trim()) || getIdFromPathname();
+  const voucherId = (propId && propId.trim()) || getIdFromQuery();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [stats, setStats] = useState<VoucherStats | null>(null);
   const [auditLogs, setAuditLogs] = useState<VoucherAuditLog[]>([]);

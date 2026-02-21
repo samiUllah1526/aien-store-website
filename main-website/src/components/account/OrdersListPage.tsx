@@ -103,7 +103,7 @@ export default function OrdersListPage() {
           {orders.map((order) => (
             <li key={order.id}>
               <a
-                href={`/account/orders/${order.id}`}
+                href={`/account/orders/order?id=${order.id}`}
                 className="block p-4 sm:p-5 hover:bg-sand/30 dark:hover:bg-charcoal-light/20 transition-colors"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">

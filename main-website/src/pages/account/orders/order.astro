@@ -1,18 +1,17 @@
 ---
 /**
- * Order detail by ID. Rendered on demand (SSR) so any order URL works without build-time paths.
+ * Order detail: static shell. Data fetched client-side (no build-time API dependency).
+ * URL: /account/orders/order?id=xxx
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import OrderDetailPage from '../../../components/account/OrderDetailPage';
 import { brandName, orderDetailMetaDescription } from '../../../config';
 
-export const prerender = false;
-
-const { id } = Astro.params;
+const orderId = Astro.url.searchParams.get('id') ?? '';
 ---
 
 <BaseLayout title={`Order — ${brandName}`} description={orderDetailMetaDescription}>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10 md:py-14">
-    <OrderDetailPage client:load orderId={id ?? ''} />
+    <OrderDetailPage client:load orderId={orderId} />
   </div>
 </BaseLayout>
