@@ -74,6 +74,21 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## API Documentation (Swagger)
+
+Interactive OpenAPI docs are available when Swagger is enabled:
+
+- **Swagger UI:** `http://localhost:3000/docs` (or `/{SWAGGER_PATH}`)
+- **OpenAPI JSON:** `http://localhost:3000/docs-json`
+- **OpenAPI YAML:** `http://localhost:3000/docs-yaml`
+
+**Configuration:**
+- Enabled by default in development; disabled in production unless explicitly enabled
+- Set `SWAGGER_ENABLED=1` to enable in production (e.g. for internal tooling)
+- Set `SWAGGER_PATH=docs` (default) to change the base path
+
+Use **Authorize** in Swagger UI to add a JWT from `/auth/login` for protected endpoints.
+
 ## Run tests
 
 ```bash

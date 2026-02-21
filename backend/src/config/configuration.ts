@@ -25,11 +25,28 @@ function getNumber(env: EnvSource, key: string, fallback: number): number {
  * Build configuration from env-like source. Pass process.env (default) or
  * a merged object from secrets manager for easy swap later.
  */
+function getBool(env: EnvSource, key: string, fallback: boolean): boolean {
+  const v = get(env, key)?.toLowerCase();
+  if (v === undefined || v === '') return fallback;
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 export default function configuration(env: EnvSource = process.env) {
+  const nodeEnv = getOr(env, 'NODE_ENV', 'development');
+  const swaggerEnabledExplicit = get(env, 'SWAGGER_ENABLED');
+  const swaggerEnabled =
+    swaggerEnabledExplicit !== undefined
+      ? getBool(env, 'SWAGGER_ENABLED', false)
+      : nodeEnv !== 'production';
+
   return {
     port: getNumber(env, 'PORT', 3000),
-    nodeEnv: getOr(env, 'NODE_ENV', 'development'),
+    nodeEnv,
     corsOrigin: get(env, 'CORS_ORIGIN'),
+    swagger: {
+      enabled: swaggerEnabled,
+      path: getOr(env, 'SWAGGER_PATH', 'docs'),
+    },
 
     database: {
       url: get(env, 'DATABASE_URL'),

@@ -12,6 +12,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { createReadStream, existsSync } from 'fs';
@@ -28,6 +29,7 @@ import { RegisterMediaDto } from './dto/register-media.dto';
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+@ApiTags('media')
 @Controller('media')
 export class MediaController {
   private readonly logger = new Logger(MediaController.name);
@@ -41,6 +43,7 @@ export class MediaController {
   @Get('cloudinary/signed-params')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
+  @ApiBearerAuth('bearer')
   getSignedUploadParamsLegacy(@Query('folder') folder?: string) {
     return this.getUploadParams(folder);
   }
@@ -49,6 +52,7 @@ export class MediaController {
   @Get('upload-params')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
+  @ApiBearerAuth('bearer')
   getUploadParams(@Query('folder') folder?: string) {
     const provider = this.storageFactory.getRemoteProvider();
     if (!provider) {
@@ -68,6 +72,7 @@ export class MediaController {
   @Post('cloudinary/register')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
+  @ApiBearerAuth('bearer')
   async registerLegacy(@Body() body: { publicId?: string; secureUrl?: string; filename?: string; mimeType?: string; bytes?: number }) {
     return this.register({
       provider: 'cloudinary',
@@ -84,6 +89,7 @@ export class MediaController {
   @Post('register')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
+  @ApiBearerAuth('bearer')
   async register(@Body() dto: RegisterMediaDto) {
     try {
       const { id } = await this.mediaService.registerUpload(
@@ -123,6 +129,7 @@ export class MediaController {
   /** @deprecated Use GET /media/upload-params-payment-proof */
   @Public()
   @Get('cloudinary/signed-params-payment-proof')
+  @ApiOperation({ security: [] })
   getUploadParamsPaymentProofLegacy() {
     return this.getUploadParamsPaymentProof();
   }
@@ -130,6 +137,7 @@ export class MediaController {
   /** Get signed params for payment proof (public). */
   @Public()
   @Get('upload-params-payment-proof')
+  @ApiOperation({ summary: 'Get payment proof upload params (public)', security: [] })
   getUploadParamsPaymentProof() {
     const provider = this.storageFactory.getRemoteProvider();
     if (!provider) {
@@ -147,6 +155,7 @@ export class MediaController {
   /** @deprecated Use POST /media/register-payment-proof */
   @Public()
   @Post('cloudinary/register-payment-proof')
+  @ApiOperation({ security: [] })
   async registerPaymentProofLegacy(@Body() body: { publicId?: string; secureUrl?: string; filename?: string; mimeType?: string; bytes?: number }) {
     return this.registerPaymentProof({
       provider: 'cloudinary',
@@ -162,6 +171,7 @@ export class MediaController {
   /** Register payment proof upload (public). */
   @Public()
   @Post('register-payment-proof')
+  @ApiOperation({ summary: 'Register payment proof upload (public)', security: [] })
   async registerPaymentProof(@Body() dto: RegisterMediaDto) {
     try {
       const { id } = await this.mediaService.registerUpload(
@@ -199,6 +209,7 @@ export class MediaController {
   @Post('upload')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
+  @ApiBearerAuth('bearer')
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: MAX_SIZE },
@@ -258,6 +269,7 @@ export class MediaController {
   /** Public: upload payment proof (legacy server upload when no remote storage). */
   @Public()
   @Post('upload-payment-proof')
+  @ApiOperation({ summary: 'Upload payment proof (public)', security: [] })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: MAX_SIZE },
@@ -316,6 +328,7 @@ export class MediaController {
 
   @Public()
   @Get('file/:folder/:filename')
+  @ApiOperation({ summary: 'Serve local file (public)', security: [] })
   async serveFile(
     @Param('folder') folder: string,
     @Param('filename') filename: string,

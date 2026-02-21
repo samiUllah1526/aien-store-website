@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Delete, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { FavoritesService } from './favorites.service';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,11 +9,13 @@ interface RequestWithUser {
   user?: { userId: string };
 }
 
+@ApiTags('favorites')
 @Controller('favorites')
 @UseGuards(JwtAuthGuard)
 export class FavoritesController {
   constructor(private readonly favoritesService: FavoritesService) {}
 
+  @ApiBearerAuth('bearer')
   @Get()
   async list(@Req() req: RequestWithUser) {
     const userId = req.user?.userId;
@@ -21,6 +24,7 @@ export class FavoritesController {
     return ApiResponseDto.ok(products);
   }
 
+  @ApiBearerAuth('bearer')
   @Get('ids')
   async getIds(@Req() req: RequestWithUser) {
     const userId = req.user?.userId;
@@ -29,6 +33,7 @@ export class FavoritesController {
     return ApiResponseDto.ok(ids);
   }
 
+  @ApiBearerAuth('bearer')
   @Post(':productId')
   async add(@Req() req: RequestWithUser, @Param('productId', ParseUUIDPipe) productId: string) {
     const userId = req.user?.userId;
@@ -37,6 +42,7 @@ export class FavoritesController {
     return ApiResponseDto.ok(result, 'Added to favorites');
   }
 
+  @ApiBearerAuth('bearer')
   @Delete(':productId')
   async remove(@Req() req: RequestWithUser, @Param('productId', ParseUUIDPipe) productId: string) {
     const userId = req.user?.userId;

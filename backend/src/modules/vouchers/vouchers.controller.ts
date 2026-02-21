@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Req,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { VouchersService, ValidateVoucherResult } from './vouchers.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
@@ -31,6 +32,7 @@ interface RequestWithUser {
   headers?: { authorization?: string; 'x-request-id'?: string };
 }
 
+@ApiTags('vouchers')
 @Controller('vouchers')
 export class VouchersController {
   constructor(
@@ -51,6 +53,7 @@ export class VouchersController {
   @Post('validate')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @ApiOperation({ summary: 'Validate voucher (public)', security: [] })
   async validate(
     @Body() dto: ValidateVoucherDto,
     @Req() req: RequestWithUser,
@@ -83,6 +86,7 @@ export class VouchersController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
+  @ApiBearerAuth('bearer')
   async create(@Body() dto: CreateVoucherDto, @Req() req: RequestWithUser) {
     const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
     const data = await this.vouchersService.create(dto, ctx);
@@ -92,6 +96,7 @@ export class VouchersController {
   @Get()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
+  @ApiBearerAuth('bearer')
   async findAll(@Query() query: VoucherQueryDto) {
     const { data, total } = await this.vouchersService.findAll(query);
     const page = query.page ?? 1;
@@ -102,6 +107,7 @@ export class VouchersController {
   @Get('audit-logs')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
+  @ApiBearerAuth('bearer')
   async findAllAuditLogs(@Query() query: VoucherAuditQueryDto) {
     const { data, total } = await this.vouchersService.findAuditLogs(query);
     const page = query.page ?? 1;
@@ -112,6 +118,7 @@ export class VouchersController {
   @Get(':id/stats')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
+  @ApiBearerAuth('bearer')
   async getStats(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.vouchersService.getStats(id);
     return ApiResponseDto.ok(data);
@@ -120,6 +127,7 @@ export class VouchersController {
   @Get(':id/audit-logs')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
+  @ApiBearerAuth('bearer')
   async findVoucherAuditLogs(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: VoucherAuditQueryDto,
@@ -133,6 +141,7 @@ export class VouchersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:read')
+  @ApiBearerAuth('bearer')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.vouchersService.findOne(id);
     return ApiResponseDto.ok(data);
@@ -141,6 +150,7 @@ export class VouchersController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
+  @ApiBearerAuth('bearer')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVoucherDto,
@@ -154,6 +164,7 @@ export class VouchersController {
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
+  @ApiBearerAuth('bearer')
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { isActive: boolean },
@@ -167,6 +178,7 @@ export class VouchersController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
+  @ApiBearerAuth('bearer')
   async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
     const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
     await this.vouchersService.remove(id, ctx);
