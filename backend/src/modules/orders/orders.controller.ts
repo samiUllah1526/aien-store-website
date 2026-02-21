@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Req,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { QuoteOrderDto } from './dto/quote-order.dto';
@@ -29,6 +30,7 @@ interface RequestWithUser {
   user?: { userId: string };
 }
 
+@ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
   constructor(
@@ -39,6 +41,7 @@ export class OrdersController {
   /** Public: get server-computed quote (no order created). Source of truth for totals. */
   @Public()
   @Post('quote')
+  @ApiOperation({ summary: 'Get order quote (public)', security: [] })
   async quote(@Body() dto: QuoteOrderDto) {
     const data = await this.ordersService.quote(dto.items, dto.voucherCode);
     return ApiResponseDto.ok(data);
@@ -47,6 +50,7 @@ export class OrdersController {
   /** Public checkout: guest or optional JWT to link order to customer. */
   @Public()
   @Post('checkout')
+  @ApiOperation({ summary: 'Checkout (public; optional JWT)', security: [] })
   async checkout(
     @Body() dto: CreateOrderDto,
     @Req() req: { headers: { authorization?: string } },
@@ -70,6 +74,8 @@ export class OrdersController {
   /** Customer-facing: list my orders (JWT required, ownership enforced). */
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'List my orders' })
   async findMyOrders(
     @Req() req: RequestWithUser,
     @Query('page') page?: string | number,
@@ -89,6 +95,8 @@ export class OrdersController {
   /** Customer-facing: get one of my orders by id (ownership enforced). */
   @Get('me/:id')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Get my order by ID' })
   async findMyOrder(@Req() req: RequestWithUser, @Param('id', ParseUUIDPipe) id: string) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
@@ -99,6 +107,7 @@ export class OrdersController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('orders:write')
+  @ApiBearerAuth('bearer')
   async create(@Body() dto: CreateOrderDto) {
     const data = await this.ordersService.create(dto);
     return ApiResponseDto.ok(data, 'Order created');
@@ -107,6 +116,7 @@ export class OrdersController {
   @Get()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('orders:read')
+  @ApiBearerAuth('bearer')
   async findAll(@Query() query: OrderQueryDto) {
     const { data, total } = await this.ordersService.findAll(query);
     const page = query.page ?? 1;
@@ -117,6 +127,7 @@ export class OrdersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('orders:read')
+  @ApiBearerAuth('bearer')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.ordersService.findOne(id);
     return ApiResponseDto.ok(data);
@@ -125,6 +136,7 @@ export class OrdersController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('orders:write')
+  @ApiBearerAuth('bearer')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateOrderDto,
@@ -136,6 +148,7 @@ export class OrdersController {
   @Patch(':id/assign')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('orders:write')
+  @ApiBearerAuth('bearer')
   async assignStaff(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: AssignOrderDto,

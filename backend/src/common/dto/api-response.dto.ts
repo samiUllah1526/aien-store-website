@@ -1,11 +1,23 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 /**
  * Consistent API response wrapper for list and single-resource endpoints.
  * Compatible with Astro store frontend expectations.
  */
 export class ApiResponseDto<T> {
+  @ApiProperty({ example: true })
   success: boolean;
+
+  @ApiPropertyOptional({ description: 'Response payload' })
   data?: T;
+
+  @ApiPropertyOptional({ example: 'Operation successful' })
   message?: string;
+
+  @ApiPropertyOptional({
+    description: 'Pagination metadata for list endpoints',
+    example: { total: 100, page: 1, limit: 20, totalPages: 5 },
+  })
   meta?: {
     total: number;
     page: number;
