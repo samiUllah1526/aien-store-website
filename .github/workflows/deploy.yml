@@ -55,6 +55,10 @@ jobs:
             echo ">>> Seeding..."
             docker compose run --rm -T backend sh -c "npx prisma db seed" || true
 
+            # Debug: check what's in dist
+            echo ">>> Contents of /app/dist:"
+            docker compose run --rm -T backend sh -c "ls -la /app/dist/ | head -20" || true
+
             # Start backend only (no dependency chain)
             echo ">>> Starting backend..."
             docker compose up -d --no-deps backend
