@@ -27,7 +27,7 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 COPY package.json package-lock.json tsconfig.json ./
 COPY --from=builder /app/prisma ./prisma
 RUN npm ci --omit=dev && \
-    npm install --no-save ts-node tsconfig-paths dotenv
+    npm install --no-save ts-node tsconfig-paths dotenv @types/bcrypt
 
 # Overwrite prisma client with the one generated in builder (has the full client)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma

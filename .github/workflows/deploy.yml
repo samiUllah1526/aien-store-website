@@ -54,23 +54,35 @@ jobs:
             echo ">>> Seeding..."
             docker compose run --rm -T backend sh -c "npx prisma db seed" || true
 
-            # Start all services
-            docker compose up -d --remove-orphans
+            # Start backend only (no dependency chain)
+            echo ">>> Starting backend..."
+            docker compose up -d --no-deps backend
 
-            # Wait for backend to become healthy, show logs on failure
-            echo ">>> Waiting for backend to start..."
+            # Wait for backend to be healthy
+            echo ">>> Waiting for backend..."
             for i in $(seq 1 30); do
-              if docker compose exec -T backend wget -qO- http://localhost:3000/health > /dev/null 2>&1; then
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' aien-store-website-backend-1 2>/dev/null || echo "starting")
+              if [ "$STATUS" = "healthy" ]; then
                 echo "Backend is healthy!"
                 break
               fi
-              if [ "$i" = "30" ]; then
-                echo "Backend failed to start. Logs:"
-                docker compose logs backend --tail 50
+              # Check if container crashed
+              RUNNING=$(docker inspect --format='{{.State.Running}}' aien-store-website-backend-1 2>/dev/null || echo "false")
+              if [ "$RUNNING" = "false" ]; then
+                echo "Backend crashed! Logs:"
+                docker compose logs backend --tail 100
                 exit 1
               fi
-              sleep 2
+              if [ "$i" = "30" ]; then
+                echo "Backend did not become healthy in time. Logs:"
+                docker compose logs backend --tail 100
+                exit 1
+              fi
+              sleep 3
             done
+
+            # Now start frontends
+            docker compose up -d --remove-orphans
 
             echo ""
             echo "Deployment complete!"
