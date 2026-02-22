@@ -19,6 +19,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Copy prisma schema BEFORE npm ci so postinstall (prisma generate) works
+COPY --from=builder /app/prisma ./prisma
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --omit=dev && \
     npm install --no-save ts-node tsconfig-paths dotenv
@@ -26,7 +28,6 @@ RUN npm ci --omit=dev && \
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 
