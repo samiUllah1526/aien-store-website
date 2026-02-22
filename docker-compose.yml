@@ -17,31 +17,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # ─── Database Migrations & Seed (runs once then exits) ────────────────
-  db-migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-aien}:${POSTGRES_PASSWORD:-aien_db_secret_2024}@postgres:5432/${POSTGRES_DB:-adab}?schema=public&options=-c%20TimeZone%3DUTC"
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@aien.store}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin123!}
-      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
-    networks:
-      - aien-internal
-    restart: "no"
-    command: >
-      sh -c "
-        echo '>>> Running Prisma migrations...' &&
-        npx prisma migrate deploy &&
-        echo '>>> Seeding database...' &&
-        npx ts-node -r tsconfig-paths/register prisma/seed.ts &&
-        echo '>>> Database ready!'
-      "
-
   # ─── Backend API (NestJS) ─────────────────────────────────────────────
   backend:
     build:
@@ -51,8 +26,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      db-migrate:
-        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -89,8 +62,8 @@ services:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 10
+      start_period: 30s
 
   # ─── Main Website (Astro → nginx) ────────────────────────────────────
   main-website:
