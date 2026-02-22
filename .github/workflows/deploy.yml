@@ -39,7 +39,7 @@ jobs:
               cd "$APP_DIR"
             fi
 
-            # Build all images in parallel (BuildKit caches layers)
+            # Build all images in parallel
             docker compose build --parallel
 
             # Start postgres, wait for healthy
@@ -50,13 +50,29 @@ jobs:
             echo ">>> Running migrations..."
             docker compose run --rm -T backend sh -c "npx prisma migrate deploy"
 
-            # Seed (idempotent — safe to run every deploy)
+            # Seed (idempotent)
             echo ">>> Seeding..."
-            docker compose run --rm -T backend sh -c "npx ts-node -r tsconfig-paths/register prisma/seed.ts" || true
+            docker compose run --rm -T backend sh -c "npx prisma db seed" || true
 
-            # Start all remaining services
+            # Start all services
             docker compose up -d --remove-orphans
 
+            # Wait for backend to become healthy, show logs on failure
+            echo ">>> Waiting for backend to start..."
+            for i in $(seq 1 30); do
+              if docker compose exec -T backend wget -qO- http://localhost:3000/health > /dev/null 2>&1; then
+                echo "Backend is healthy!"
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "Backend failed to start. Logs:"
+                docker compose logs backend --tail 50
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo ""
             echo "Deployment complete!"
             echo "  Store  : https://aien.store"
             echo "  Admin  : https://admin.aien.store"
