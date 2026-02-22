@@ -15,19 +15,21 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASS }}
-          script_stop: true
+          command_timeout: 10m
           script: |
             set -e
 
             APP_DIR="/opt/aien-store-website"
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
 
-            # Install Docker & Docker Compose if not present
+            # Install Docker if not present
             if ! command -v docker &> /dev/null; then
               curl -fsSL https://get.docker.com | sh
               systemctl enable --now docker
             fi
 
-            # Clone or pull latest code (.env is in the repo)
+            # Clone or pull latest code
             if [ -d "$APP_DIR/.git" ]; then
               cd "$APP_DIR"
               git fetch origin main
@@ -37,11 +39,25 @@ jobs:
               cd "$APP_DIR"
             fi
 
-            # Build and start all services
-            # db-migrate runs automatically before backend starts (migrations + seed)
-            docker compose up -d --build --remove-orphans
+            # Build all images in parallel (BuildKit caches layers)
+            docker compose build --parallel
 
-            # Clean up dangling images
+            # Start postgres, wait for healthy
+            docker compose up -d postgres
+            until docker compose exec -T postgres pg_isready -U aien -d adab; do sleep 2; done
+
+            # Run migrations
+            echo ">>> Running migrations..."
+            docker compose run --rm -T backend sh -c "npx prisma migrate deploy"
+
+            # Seed (idempotent — safe to run every deploy)
+            echo ">>> Seeding..."
+            docker compose run --rm -T backend sh -c "npx ts-node -r tsconfig-paths/register prisma/seed.ts" || true
+
+            # Start all remaining services
+            docker compose up -d --remove-orphans
+
+            # Cleanup
             docker image prune -f
 
             echo "Deployment complete!"
