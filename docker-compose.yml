@@ -1,0 +1,140 @@
+services:
+  # ─── PostgreSQL Database (internal only — no host port) ──────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aien}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aien_db_secret_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-adab}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aien-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aien} -d ${POSTGRES_DB:-adab}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Database Migrations & Seed (runs once then exits) ────────────────
+  db-migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-aien}:${POSTGRES_PASSWORD:-aien_db_secret_2024}@postgres:5432/${POSTGRES_DB:-adab}?schema=public&options=-c%20TimeZone%3DUTC"
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@aien.store}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin123!}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
+    networks:
+      - aien-internal
+    restart: "no"
+    command: >
+      sh -c "
+        echo '>>> Running Prisma migrations...' &&
+        npx prisma migrate deploy &&
+        echo '>>> Seeding database...' &&
+        npx ts-node -r tsconfig-paths/register prisma/seed.ts &&
+        echo '>>> Database ready!'
+      "
+
+  # ─── Backend API (NestJS) ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-aien}:${POSTGRES_PASSWORD:-aien_db_secret_2024}@postgres:5432/${POSTGRES_DB:-adab}?schema=public&options=-c%20TimeZone%3DUTC"
+      JWT_SECRET: ${JWT_SECRET:-j8Kz3mP9xQ2wR7nT5vB4cY6dF1hG0sL}
+      JWT_ACCESS_EXPIRES_SEC: ${JWT_ACCESS_EXPIRES_SEC:-86400}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://aien.store,https://admin.aien.store}
+      APP_URL: ${APP_URL:-https://aien.store}
+      ADMIN_URL: ${ADMIN_URL:-https://admin.aien.store}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-1}
+      SWAGGER_PATH: docs
+      # Mail
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-mock}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@aien.store}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Aien Store}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      # Storage
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      UPLOAD_DIR: /app/uploads
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      # Seed
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@aien.store}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin123!}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - aien-internal
+      - npm_default
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ─── Main Website (Astro → nginx) ────────────────────────────────────
+  main-website:
+    build:
+      context: ./main-website
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.aien.store}
+        PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://aien.store}
+        PUBLIC_BRAND_NAME: ${PUBLIC_BRAND_NAME:-Aien}
+        PUBLIC_HERO_VIDEO_URL: ${PUBLIC_HERO_VIDEO_URL:-}
+        PUBLIC_HERO_VIDEO_POSTER: ${PUBLIC_HERO_VIDEO_POSTER:-}
+        PUBLIC_META_DESCRIPTION: ${PUBLIC_META_DESCRIPTION:-Cultural-art streetwear. Poetry on fabric. Pakistan.}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - npm_default
+
+  # ─── Admin Portal (Astro → nginx) ────────────────────────────────────
+  admin-portal:
+    build:
+      context: ./admin-portal
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.aien.store}
+        PUBLIC_ADMIN_APP_NAME: ${PUBLIC_ADMIN_APP_NAME:-Aien Admin}
+        PUBLIC_MAIN_WEBSITE_URL: ${PUBLIC_MAIN_WEBSITE_URL:-https://aien.store}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - npm_default
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  # Internal network — postgres is only reachable here
+  aien-internal:
+    driver: bridge
+  # Nginx Proxy Manager network — NPM routes domains to these containers
+  npm_default:
+    external: true
