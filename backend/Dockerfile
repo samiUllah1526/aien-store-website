@@ -34,9 +34,6 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/dist ./dist
 
-# Clear dummy — real DATABASE_URL comes from docker-compose environment
-ENV DATABASE_URL=""
-
 EXPOSE 3000
 
 CMD ["node", "dist/main"]
