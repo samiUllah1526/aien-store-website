@@ -1,6 +1,7 @@
 /**
  * Admin portal configuration — single source of truth.
  * Set values via .env (see .env.example / site.config.example) or override defaults below.
+ * Fails fast at build time if required variables are missing in production.
  */
 
 const env = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
@@ -8,6 +9,21 @@ const env = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<
 function envStr(key: string, fallback: string): string {
   const v = env?.[key];
   return (typeof v === 'string' ? v.trim() : '') || fallback;
+}
+
+function envRaw(key: string): string {
+  const v = env?.[key];
+  return (typeof v === 'string' ? v.trim() : '') || '';
+}
+
+// Fail fast in production build if required vars are missing
+if (typeof import.meta !== 'undefined' && (import.meta as { env?: { PROD?: boolean } }).env?.PROD) {
+  const apiUrl = envRaw('PUBLIC_API_URL');
+  if (!apiUrl) {
+    throw new Error(
+      '[config] PUBLIC_API_URL is required in production. Set it in .env or your hosting environment (e.g. PUBLIC_API_URL=https://api.yoursite.com). See admin-portal/.env.example.',
+    );
+  }
 }
 
 /** Backend API base URL (no trailing slash) */

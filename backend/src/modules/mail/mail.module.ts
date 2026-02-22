@@ -4,7 +4,7 @@ import { MailService } from './mail.service';
 import { MAIL_TRANSPORT } from './constants';
 import type { IMailTransport } from './interfaces/mail.interface';
 import { BrevoTransport } from './transports/brevo.transport';
-import { SendgridTransport } from './transports/sendgrid.transport';
+// import { SendgridTransport } from './transports/sendgrid.transport';
 import { MockMailTransport } from './transports/mock.transport';
 import type { MailProviderType } from './constants';
 
@@ -20,7 +20,8 @@ import type { MailProviderType } from './constants';
           case 'brevo':
             return new BrevoTransport(config);
           case 'sendgrid':
-            return new SendgridTransport(config);
+            // SendGrid disabled for now — uncomment SendgridTransport usage in sendgrid.transport.ts
+            return new MockMailTransport();
           default:
             return new MockMailTransport();
         }
