@@ -39,6 +39,9 @@ jobs:
               cd "$APP_DIR"
             fi
 
+            # Ensure persistent data directories exist
+            mkdir -p "$APP_DIR/data/postgres" "$APP_DIR/data/uploads"
+
             # Rebuild backend without cache to clear stale layers, frontends use cache
             docker compose build --no-cache backend
             docker compose build --parallel main-website admin-portal
@@ -53,7 +56,8 @@ jobs:
 
             # Seed (idempotent)
             echo ">>> Seeding..."
-            docker compose run --rm -T backend sh -c "npx prisma db seed" || true
+            docker compose run --rm -T backend sh -c "npx prisma db seed"
+
             # Start backend only (no dependency chain)
             echo ">>> Starting backend..."
             docker compose up -d --no-deps backend

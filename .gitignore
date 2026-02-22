@@ -22,6 +22,9 @@ pnpm-debug.log*
 *.swp
 *.swo
 
+# Docker persistent data
+data/
+
 # OS
 .DS_Store
 Thumbs.db
