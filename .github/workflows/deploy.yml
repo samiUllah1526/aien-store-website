@@ -42,6 +42,10 @@ jobs:
             # Ensure persistent data directories exist
             mkdir -p "$APP_DIR/data/postgres" "$APP_DIR/data/uploads"
 
+            # One-time: wipe stale postgres data (was created with corrupted password)
+            docker compose down postgres 2>/dev/null || true
+            rm -rf "$APP_DIR/data/postgres/"*
+
             # Rebuild backend without cache to clear stale layers, frontends use cache
             docker compose build --no-cache backend
             docker compose build --parallel main-website admin-portal
