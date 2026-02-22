@@ -57,9 +57,6 @@ jobs:
             # Start all remaining services
             docker compose up -d --remove-orphans
 
-            # Cleanup
-            docker image prune -f
-
             echo "Deployment complete!"
             echo "  Store  : https://aien.store"
             echo "  Admin  : https://admin.aien.store"
