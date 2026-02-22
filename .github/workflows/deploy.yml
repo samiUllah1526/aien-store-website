@@ -15,7 +15,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASS }}
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
             set -e
 
@@ -39,8 +39,9 @@ jobs:
               cd "$APP_DIR"
             fi
 
-            # Build all images in parallel
-            docker compose build --parallel
+            # Rebuild backend without cache to clear stale layers, frontends use cache
+            docker compose build --no-cache backend
+            docker compose build --parallel main-website admin-portal
 
             # Start postgres, wait for healthy
             docker compose up -d postgres
@@ -66,7 +67,6 @@ jobs:
                 echo "Backend is healthy!"
                 break
               fi
-              # Check if container crashed
               RUNNING=$(docker inspect --format='{{.State.Running}}' aien-store-website-backend-1 2>/dev/null || echo "false")
               if [ "$RUNNING" = "false" ]; then
                 echo "Backend crashed! Logs:"
@@ -81,7 +81,7 @@ jobs:
               sleep 3
             done
 
-            # Now start frontends
+            # Start frontends
             docker compose up -d --remove-orphans
 
             echo ""
