@@ -42,9 +42,8 @@ jobs:
             # Ensure persistent data directories exist
             mkdir -p "$APP_DIR/data/postgres" "$APP_DIR/data/uploads"
 
-            # Rebuild backend without cache to clear stale layers, frontends use cache
+            # Rebuild backend only
             docker compose build --no-cache backend
-            docker compose build --parallel main-website admin-portal
 
             # Start postgres, wait for healthy
             docker compose up -d postgres
