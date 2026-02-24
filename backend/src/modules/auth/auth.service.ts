@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
@@ -19,7 +19,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mail: MailService,
+    private readonly emailQueue: EmailQueueService,
     private readonly config: ConfigService,
   ) {
     this.accessExpiresSec = this.config.get<number>('JWT_ACCESS_EXPIRES_SEC', ACCESS_EXPIRES_DEFAULT);
@@ -66,8 +66,8 @@ export class AuthService {
       permissions: [],
       roleNames: ['Customer'],
     });
-    this.mail.sendWelcome({ to: user.email, name: user.name }).catch((err) => {
-      console.warn('[AuthService] Welcome email failed:', err);
+    this.emailQueue.enqueueWelcome({ to: user.email, name: user.name }).catch((err) => {
+      console.warn('[AuthService] Failed to enqueue welcome email:', err);
     });
     return {
       accessToken,
@@ -130,8 +130,8 @@ export class AuthService {
         data: { passwordResetToken: token, passwordResetExpiresAt: expiresAt },
       });
       const resetLink = this.buildResetLink(token, context);
-      this.mail.sendPasswordReset({ to: user.email, name: user.name, resetLink }).catch((err) => {
-        console.warn('[AuthService] Password reset email failed:', err);
+      this.emailQueue.enqueuePasswordReset({ to: user.email, name: user.name, resetLink }).catch((err) => {
+        console.warn('[AuthService] Failed to enqueue password reset email:', err);
       });
     }
     return { message: 'If an account exists with this email, you will receive a password reset link shortly.' };

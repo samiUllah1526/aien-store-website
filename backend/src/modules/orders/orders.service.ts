@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { CreateOrderDto, CreateOrderPaymentMethod } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -30,7 +30,7 @@ import { VoucherAuditService } from '../vouchers/voucher-audit.service';
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService,
+    private readonly emailQueue: EmailQueueService,
     private readonly settingsService: SettingsService,
     private readonly inventory: InventoryService,
     private readonly vouchersService: VouchersService,
@@ -281,7 +281,7 @@ export class OrdersService {
     },
   ): Promise<void> {
     try {
-      await this.mail.sendOrderConfirmation({
+      await this.emailQueue.enqueueOrderConfirmation({
         to: order.customerEmail,
         orderId: order.id,
         customerName: order.customerName ?? undefined,
@@ -295,7 +295,7 @@ export class OrdersService {
         })),
       });
     } catch (err) {
-      console.warn('[OrdersService] Order confirmation email failed:', err);
+      console.warn('[OrdersService] Failed to enqueue order confirmation email:', err);
     }
   }
 
@@ -501,7 +501,7 @@ export class OrdersService {
     const statusUpdatedAt = latestEntry
       ? latestEntry.createdAt.toISOString()
       : new Date().toISOString();
-    await this.mail.sendOrderStatusChange({
+    await this.emailQueue.enqueueOrderStatusChange({
       to: order.customerEmail,
       orderId: order.id,
       status: newStatus,

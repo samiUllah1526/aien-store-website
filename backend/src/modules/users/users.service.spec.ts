@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+jest.mock('pg-boss', () => ({
+  PgBoss: jest.fn(),
+}));
+
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { UsersService } from './users.service';
 
 jest.mock('bcrypt', () => ({
@@ -37,7 +42,7 @@ describe('UsersService', () => {
     userRole: { deleteMany: jest.Mock; createMany: jest.Mock };
     role: { findMany: jest.Mock };
   };
-  let mail: { sendUserCreated: jest.Mock };
+  let emailQueue: { enqueueUserCreated: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -53,13 +58,13 @@ describe('UsersService', () => {
       userRole: { deleteMany: jest.fn(), createMany: jest.fn() },
       role: { findMany: jest.fn() },
     };
-    mail = { sendUserCreated: jest.fn().mockResolvedValue(undefined) };
+    emailQueue = { enqueueUserCreated: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: PrismaService, useValue: prisma },
-        { provide: MailService, useValue: mail },
+        { provide: EmailQueueService, useValue: emailQueue },
       ],
     }).compile();
 
@@ -133,7 +138,7 @@ describe('UsersService', () => {
       });
 
       expect(result.email).toBe('new@test.com');
-      expect(mail.sendUserCreated).toHaveBeenCalledWith({
+      expect(emailQueue.enqueueUserCreated).toHaveBeenCalledWith({
         to: 'new@test.com',
         name: 'New User',
       });

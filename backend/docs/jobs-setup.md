@@ -1,16 +1,46 @@
 # Background Jobs Setup
 
-This guide explains how to set up background jobs in the backend. Jobs are currently **not** configured; this document describes how to add them when ready.
+This guide explains how background jobs work in the backend.
+
+---
+
+## pg-boss (PostgreSQL Job Queue)
+
+The backend uses [pg-boss](https://github.com/timgit/pg-boss) for background jobs. pg-boss uses the same PostgreSQL database (no Redis or extra infrastructure). Jobs are stored in a `pgboss` schema.
+
+**Requirements:** PostgreSQL 13+, Node 22.12+ (pg-boss v12+)
+
+### Email Queues
+
+Transactional emails are sent via background jobs:
+
+| Queue | Job types | Concurrency | Purpose |
+|-------|-----------|-------------|---------|
+| `email-high` | password-reset | 5 | High priority (reset token expires in 1h) |
+| `email-default` | order-confirmation, order-status-change, welcome, user-created | 3 | Standard priority |
+
+Emails are enqueued by `EmailQueueService` and processed by `EmailJobProcessor` (runs in the NestJS process). Failed jobs are retried by pg-boss with exponential backoff.
+
+### Configuration
+
+- **DATABASE_URL**: Required. pg-boss uses the same connection.
+- **PGBOSS_SCHEMA**: Optional. Default `pgboss`. Custom schema if needed.
+
+pg-boss creates its schema and tables automatically on first `start()`.
 
 ---
 
 ## Current State
+
+- **Email jobs**: Configured. All transactional emails (order confirmation, status change, welcome, user-created, password reset) go through pg-boss. No setup needed beyond `DATABASE_URL`.
 
 - **Voucher expired job**: A standalone script exists (`scripts/job-voucher-expired.ts`) that writes `EXPIRED` audit logs for vouchers past their expiry date. Run manually:
 
   ```bash
   npm run job:voucher-expired
   ```
+
+  Future: Can be migrated to pg-boss cron via `boss.schedule()`.
 
 - **Archival job**: Not implemented. Plan: delete or archive `voucher_audit_logs` rows older than `VOUCHER_AUDIT_RETENTION_DAYS`.
 
@@ -129,9 +159,12 @@ When ready to add archival for `voucher_audit_logs`:
 
 ## Summary
 
-| Job | Run command | Recommended schedule |
-|-----|-------------|----------------------|
-| Voucher expired | `npm run job:voucher-expired` | Daily |
+| Job | How it runs | Schedule |
+|-----|-------------|----------|
+| Email (all types) | pg-boss worker (in-process) | Immediate (queued on send) |
+| Voucher expired | Standalone script | Manual or cron |
 | Audit archival | (to be added) | Daily |
 
-**For now:** Run `npm run job:voucher-expired` manually or via system cron until you add `@nestjs/schedule` or another scheduler.
+**Email jobs:** Start automatically with the NestJS server. Ensure `DATABASE_URL` is set.
+
+**Voucher expired:** Run `npm run job:voucher-expired` manually or via system cron until migrated to pg-boss.

@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+jest.mock('pg-boss', () => ({
+  PgBoss: jest.fn(),
+}));
+
 import { UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { AuthService } from './auth.service';
 
 jest.mock('bcrypt', () => ({
@@ -29,7 +34,7 @@ describe('AuthService', () => {
     user: { findUnique: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
     role: { findFirst: jest.Mock };
   };
-  let mail: { sendWelcome: jest.Mock; sendPasswordReset: jest.Mock };
+  let emailQueue: { enqueueWelcome: jest.Mock; enqueuePasswordReset: jest.Mock };
   let jwtSign: jest.Mock;
 
   beforeEach(async () => {
@@ -46,9 +51,9 @@ describe('AuthService', () => {
       },
       role: { findFirst: jest.fn() },
     };
-    mail = {
-      sendWelcome: jest.fn().mockResolvedValue(undefined),
-      sendPasswordReset: jest.fn().mockResolvedValue(undefined),
+    emailQueue = {
+      enqueueWelcome: jest.fn().mockResolvedValue(undefined),
+      enqueuePasswordReset: jest.fn().mockResolvedValue(undefined),
     };
     jwtSign = jest.fn().mockReturnValue('jwt-token');
 
@@ -57,7 +62,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: { sign: jwtSign } },
-        { provide: MailService, useValue: mail },
+        { provide: EmailQueueService, useValue: emailQueue },
         {
           provide: ConfigService,
           useValue: {
@@ -97,7 +102,7 @@ describe('AuthService', () => {
           }),
         }),
       );
-      expect(mail.sendWelcome).toHaveBeenCalledWith({ to: 'new@test.com', name: expect.any(String) });
+      expect(emailQueue.enqueueWelcome).toHaveBeenCalledWith({ to: 'new@test.com', name: expect.any(String) });
     });
 
     it('throws ConflictException when email exists', async () => {
@@ -194,7 +199,7 @@ describe('AuthService', () => {
           }),
         }),
       );
-      expect(mail.sendPasswordReset).toHaveBeenCalledWith(
+      expect(emailQueue.enqueuePasswordReset).toHaveBeenCalledWith(
         expect.objectContaining({
           to: mockUser.email,
           name: mockUser.name,
