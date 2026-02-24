@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PgbossService } from './pgboss.service';
-import { QUEUE_EMAIL_HIGH, QUEUE_EMAIL_DEFAULT } from './jobs.constants';
-
-const QUEUE_NAMES = [QUEUE_EMAIL_HIGH, QUEUE_EMAIL_DEFAULT] as const;
+import { QUEUE_NAMES } from './jobs.constants';
 
 export interface QueueStatsDto {
   name: string;
