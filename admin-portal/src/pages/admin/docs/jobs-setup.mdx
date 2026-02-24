@@ -9,11 +9,22 @@ title: Background jobs setup
 
 # Background jobs setup
 
-How to set up background jobs for the backend. Jobs are currently **not** scheduled; this guide explains how to add them when ready.
+How background jobs work in the backend.
+
+---
+
+## pg-boss (email jobs)
+
+Transactional emails are sent via [pg-boss](https://github.com/timgit/pg-boss), a PostgreSQL-based job queue. No extra setup is needed beyond `DATABASE_URL` — email jobs run automatically with the NestJS server.
+
+- **email-high** (priority): password reset
+- **email-default**: order confirmation, order status, welcome, user-created
 
 ---
 
 ## Current state
+
+- **Email jobs** — Configured. Run with the backend. No cron needed.
 
 - **Voucher expired job** — A script exists that writes `EXPIRED` audit logs for vouchers past their expiry date. Run it manually:
 
@@ -138,9 +149,10 @@ When ready to add archival for voucher audit logs:
 
 ## Summary
 
-| Job | Run command | Recommended schedule |
-|-----|-------------|----------------------|
-| Voucher expired | `npm run job:voucher-expired` | Daily |
+| Job | How it runs | Schedule |
+|-----|-------------|----------|
+| Email (all types) | pg-boss (in-process) | Immediate |
+| Voucher expired | Standalone script | Manual or cron |
 | Audit archival | (to be added) | Daily |
 
-**For now:** Run `npm run job:voucher-expired` manually or via system cron until you add `@nestjs/schedule` or another scheduler.
+**Email jobs:** Start with the backend. **Voucher expired:** Run manually or via cron.

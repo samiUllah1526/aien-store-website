@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -25,7 +25,7 @@ const SALT_ROUNDS = 10;
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService,
+    private readonly emailQueue: EmailQueueService,
   ) {}
 
   async findAll(
@@ -101,8 +101,8 @@ export class UsersService {
       },
       include: { roles: { include: { role: true } } },
     });
-    this.mail.sendUserCreated({ to: user.email, name: user.name }).catch((err) => {
-      console.warn('[UsersService] User-created email failed:', err);
+    this.emailQueue.enqueueUserCreated({ to: user.email, name: user.name }).catch((err) => {
+      console.warn('[UsersService] Failed to enqueue user-created email:', err);
     });
     return this.toResponseDto(user);
   }
