@@ -29,6 +29,9 @@ export class JobsAdminController {
     const { data, total } = await this.jobsAdmin.findJobs({
       queue: query.queue,
       state: query.state,
+      search: query.search,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
       page: query.page,
       limit: query.limit,
     });
