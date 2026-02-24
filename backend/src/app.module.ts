@@ -18,6 +18,7 @@ import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     VouchersModule,
     FavoritesModule,
     ProfileModule,
+    JobsModule,
   ],
 })
 export class AppModule {}

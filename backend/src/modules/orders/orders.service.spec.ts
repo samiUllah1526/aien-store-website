@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+jest.mock('pg-boss', () => ({
+  PgBoss: jest.fn(),
+}));
+
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
+import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { SettingsService } from '../settings/settings.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { VouchersService } from '../vouchers/vouchers.service';
@@ -78,7 +83,7 @@ type PrismaMock = {
 describe('OrdersService', () => {
   let service: OrdersService;
   let prisma: PrismaMock;
-  let mail: { sendOrderStatusChange: jest.Mock; sendOrderConfirmation: jest.Mock };
+  let emailQueue: { enqueueOrderStatusChange: jest.Mock; enqueueOrderConfirmation: jest.Mock };
   let settingsService: { getByKey: jest.Mock };
   let inventoryService: {
     deductForOrder: jest.Mock;
@@ -116,9 +121,9 @@ describe('OrdersService', () => {
       $executeRaw: jest.fn().mockResolvedValue(1),
       $queryRaw: jest.fn().mockResolvedValue([]),
     };
-    mail = {
-      sendOrderStatusChange: jest.fn().mockResolvedValue(undefined),
-      sendOrderConfirmation: jest.fn().mockResolvedValue(undefined),
+    emailQueue = {
+      enqueueOrderStatusChange: jest.fn().mockResolvedValue(undefined),
+      enqueueOrderConfirmation: jest.fn().mockResolvedValue(undefined),
     };
     settingsService = {
       getByKey: jest.fn().mockResolvedValue({ deliveryChargesCents: 0 }),
@@ -138,7 +143,7 @@ describe('OrdersService', () => {
       providers: [
         OrdersService,
         { provide: PrismaService, useValue: prisma },
-        { provide: MailService, useValue: mail },
+        { provide: EmailQueueService, useValue: emailQueue },
         { provide: SettingsService, useValue: settingsService },
         { provide: InventoryService, useValue: inventoryService },
         { provide: VouchersService, useValue: vouchersService },
@@ -336,7 +341,7 @@ describe('OrdersService', () => {
           }),
         }),
       );
-      expect(mail.sendOrderStatusChange).toHaveBeenCalledWith(
+      expect(emailQueue.enqueueOrderStatusChange).toHaveBeenCalledWith(
         expect.objectContaining({
           to: mockOrder.customerEmail,
           orderId,
@@ -356,7 +361,7 @@ describe('OrdersService', () => {
         BadRequestException,
       );
       expect(prisma.order.update).not.toHaveBeenCalled();
-      expect(mail.sendOrderStatusChange).not.toHaveBeenCalled();
+      expect(emailQueue.enqueueOrderStatusChange).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when order does not exist', async () => {
