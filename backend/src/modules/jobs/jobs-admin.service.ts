@@ -12,6 +12,9 @@ import { QUEUE_NAMES } from './jobs.constants';
  * the response at 100 jobs per request. For high volume you can tune archive retention in
  * PgbossService (archiveCompletedAfterSeconds, etc.).
  */
+import { QUEUE_EMAIL_HIGH, QUEUE_EMAIL_DEFAULT } from './jobs.constants';
+
+const QUEUE_NAMES = [QUEUE_EMAIL_HIGH, QUEUE_EMAIL_DEFAULT] as const;
 
 export interface QueueStatsDto {
   name: string;
