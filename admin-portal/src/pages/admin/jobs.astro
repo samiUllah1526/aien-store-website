@@ -1,0 +1,8 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { JobsManager } from '../../components/JobsManager';
+---
+
+<AdminLayout title="Jobs">
+  <JobsManager client:load />
+</AdminLayout>

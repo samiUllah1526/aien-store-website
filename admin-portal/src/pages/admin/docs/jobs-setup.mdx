@@ -20,6 +20,8 @@ Transactional emails are sent via [pg-boss](https://github.com/timgit/pg-boss), 
 - **email-high** (priority): password reset
 - **email-default**: order confirmation, order status, welcome, user-created
 
+**Jobs page:** View queue stats (queued, active, total) and job list with filters. From the Jobs page you can retry failed jobs or cancel queued jobs. Requires `jobs:read`, `jobs:retry`, `jobs:cancel` permissions (included for Admin after running `npm run db:seed`).
+
 ---
 
 ## Current state

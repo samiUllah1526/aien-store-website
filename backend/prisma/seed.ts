@@ -29,6 +29,9 @@ const PERMISSION_NAMES = [
   'settings:write',
   'emaillogs:read',
   'emaillogs:resend',
+  'jobs:read',
+  'jobs:retry',
+  'jobs:cancel',
 ] as const;
 
 async function main() {

@@ -37,6 +37,7 @@ function setupSwagger(app: Parameters<typeof SwaggerModule.setup>[1], path: stri
     .addTag('favorites', 'User favorites')
     .addTag('profile', 'User profile and shipping')
     .addTag('email-logs', 'Email delivery logs')
+    .addTag('jobs', 'Background jobs (pg-boss queues and job list)')
     .build();
 
   const documentFactory = () =>
