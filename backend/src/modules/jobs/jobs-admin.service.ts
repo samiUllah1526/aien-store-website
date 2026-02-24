@@ -48,6 +48,9 @@ export class JobsAdminService {
   async findJobs(params: {
     queue?: string;
     state?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
     page?: number;
     limit?: number;
   }): Promise<{ data: JobDto[]; total: number }> {
@@ -94,11 +97,41 @@ export class JobsAdminService {
       }
     }
 
-    allJobs.sort((a, b) => (b.createdOn > a.createdOn ? 1 : -1));
-    const total = allJobs.length;
+    let filtered = allJobs;
+
+    if (params.search?.trim()) {
+      const q = params.search.trim().toLowerCase();
+      filtered = allJobs.filter((job) => {
+        if (job.id.toLowerCase().includes(q)) return true;
+        if (job.name.toLowerCase().includes(q)) return true;
+        if (job.state.toLowerCase().includes(q)) return true;
+        try {
+          const dataStr = JSON.stringify(job.data).toLowerCase();
+          if (dataStr.includes(q)) return true;
+        } catch {
+          // ignore
+        }
+        return false;
+      });
+    }
+
+    const sortBy = params.sortBy ?? 'createdOn';
+    const sortOrder = params.sortOrder ?? 'desc';
+    filtered.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'id') cmp = a.id.localeCompare(b.id);
+      else if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortBy === 'state') cmp = a.state.localeCompare(b.state);
+      else if (sortBy === 'createdOn') cmp = a.createdOn.localeCompare(b.createdOn);
+      else if (sortBy === 'retryCount') cmp = a.retryCount - b.retryCount;
+      else cmp = a.createdOn.localeCompare(b.createdOn);
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    const total = filtered.length;
     const page = Math.max(1, params.page ?? 1);
     const start = (page - 1) * limit;
-    const data = allJobs.slice(start, start + limit);
+    const data = filtered.slice(start, start + limit);
 
     return { data, total };
   }

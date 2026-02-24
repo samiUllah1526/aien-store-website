@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatDateTime } from '../lib/format';
 
 const PAGE_SIZE = 25;
@@ -35,6 +36,10 @@ export function JobsManager() {
   const [page, setPage] = useState(1);
   const [queueFilter, setQueueFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<string>('createdOn');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const debouncedSearch = useDebounce(search.trim(), 400);
   const [loading, setLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +66,12 @@ export function JobsManager() {
       const params: Record<string, string | number | undefined> = {
         page,
         limit: PAGE_SIZE,
+        sortBy,
+        sortOrder,
       };
       if (queueFilter) params.queue = queueFilter;
       if (stateFilter) params.state = stateFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
 
       const res = await api.getList<Job>('/jobs', params);
       setJobs(res.data ?? []);
@@ -74,7 +82,7 @@ export function JobsManager() {
     } finally {
       setJobsLoading(false);
     }
-  }, [page, queueFilter, stateFilter]);
+  }, [page, queueFilter, stateFilter, debouncedSearch, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchQueues();
@@ -82,7 +90,7 @@ export function JobsManager() {
 
   useEffect(() => {
     setPage(1);
-  }, [queueFilter, stateFilter]);
+  }, [queueFilter, stateFilter, debouncedSearch, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchJobs();
@@ -138,6 +146,39 @@ export function JobsManager() {
         return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300';
     }
   };
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+    setPage(1);
+  };
+
+  const SortHeader = ({
+    column,
+    label,
+  }: {
+    column: string;
+    label: string;
+  }) => (
+    <th
+      role="columnheader"
+      className="cursor-pointer select-none px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-600/50"
+      onClick={() => handleSort(column)}
+    >
+      <span className="flex items-center gap-1">
+        {label}
+        {sortBy === column && (
+          <span className="text-slate-500" aria-hidden>
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </span>
+    </th>
+  );
 
   const dataPreview = (data: Record<string, unknown>) => {
     if (!data || Object.keys(data).length === 0) return '—';
@@ -214,6 +255,19 @@ export function JobsManager() {
         className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
       >
         <div className="flex flex-wrap gap-4">
+          <div className="min-w-[200px]">
+            <label htmlFor="search" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Search
+            </label>
+            <input
+              id="search"
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ID, queue, state, type, email…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-500 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
           <div>
             <label htmlFor="queue" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Queue
@@ -256,6 +310,9 @@ export function JobsManager() {
               onClick={() => {
                 setQueueFilter('');
                 setStateFilter('');
+                setSearch('');
+                setSortBy('createdOn');
+                setSortOrder('desc');
                 setPage(1);
               }}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
@@ -317,12 +374,12 @@ export function JobsManager() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                 <thead className="bg-slate-50 dark:bg-slate-700/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Queue</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">State</th>
+                    <SortHeader column="id" label="ID" />
+                    <SortHeader column="name" label="Queue" />
+                    <SortHeader column="state" label="State" />
                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Data</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Retries</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Created</th>
+                    <SortHeader column="retryCount" label="Retries" />
+                    <SortHeader column="createdOn" label="Created" />
                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
                   </tr>
                 </thead>
