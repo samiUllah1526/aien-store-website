@@ -160,6 +160,16 @@ export interface PermissionGroup {
   permissions: Array<{ id: string; name: string; description: string | null }>;
 }
 
+/** Single permission as returned by POST /roles/permissions and PATCH /roles/permissions/:id */
+export interface PermissionDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Categories (GET /categories, POST /categories, PUT /categories/:id, DELETE /categories/:id)
 // ---------------------------------------------------------------------------

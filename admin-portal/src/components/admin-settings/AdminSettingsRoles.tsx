@@ -257,27 +257,72 @@ function RoleFormModal({ mode, role, permissionGroups, onClose, onSuccess }: Rol
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Permissions</label>
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-600 p-3 space-y-2">
-            {permissionGroups.map((group) => (
-              <div key={group.category ?? 'uncategorized'}>
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                  {group.category ?? 'Other'}
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            {permissionIds.length} of {permissionGroups.reduce((n, g) => n + g.permissions.length, 0)} selected
+          </p>
+          <div className="max-h-[min(20rem,60vh)] space-y-4 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-600 dark:bg-slate-800/50">
+            {permissionGroups.map((group) => {
+              const groupPermIds = group.permissions.map((p) => p.id);
+              const selectedInGroup = groupPermIds.filter((id) => permissionIds.includes(id)).length;
+              const allSelected = selectedInGroup === group.permissions.length;
+              const toggleGroup = () => {
+                if (allSelected) {
+                  setPermissionIds((prev) => prev.filter((id) => !groupPermIds.includes(id)));
+                } else {
+                  setPermissionIds((prev) => [
+                    ...prev.filter((id) => !groupPermIds.includes(id)),
+                    ...groupPermIds,
+                  ]);
+                }
+              };
+              return (
+                <div
+                  key={group.category ?? 'uncategorized'}
+                  className="rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      {group.category ?? 'Other'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleGroup}
+                      className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      {allSelected ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 p-3 sm:grid-cols-2">
+                    {group.permissions.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex cursor-pointer items-start gap-2 rounded py-1.5 pr-2 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={permissionIds.includes(p.id)}
+                          onChange={() => togglePermission(p.id)}
+                          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {p.name}
+                          </span>
+                          {p.description && (
+                            <span
+                              className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400"
+                              title={p.description}
+                            >
+                              {p.description}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {group.permissions.map((p) => (
-                    <label key={p.id} className="inline-flex items-center gap-1">
-                      <input
-                        type="checkbox"
-                        checked={permissionIds.includes(p.id)}
-                        onChange={() => togglePermission(p.id)}
-                        className="h-3 w-3 rounded border-slate-300 text-slate-600"
-                      />
-                      <span className="text-xs text-slate-700 dark:text-slate-300">{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div className="flex gap-3 pt-2">
