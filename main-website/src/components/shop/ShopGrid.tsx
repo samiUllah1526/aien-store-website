@@ -74,21 +74,23 @@ function sortToBackend(value: string): { sortBy: string; sortOrder: string } {
   }
 }
 
-export function buildShopSearchParams(params: { category?: string; price?: string; sort?: string }): string {
+export function buildShopSearchParams(params: { category?: string; price?: string; sort?: string; q?: string }): string {
   const sp = new URLSearchParams();
   if (params.category && params.category !== 'all') sp.set('category', params.category);
   if (params.price && params.price !== 'any') sp.set('price', params.price);
   if (params.sort && params.sort !== 'newest') sp.set('sort', params.sort);
+  if (params.q && params.q.trim()) sp.set('q', params.q.trim());
   const s = sp.toString();
   return s ? `?${s}` : '';
 }
 
-export function parseShopSearchParams(search: string): { category: string; price: string; sort: string } {
+export function parseShopSearchParams(search: string): { category: string; price: string; sort: string; q: string } {
   const sp = new URLSearchParams(search);
   return {
     category: sp.get('category')?.trim() || 'all',
     price: sp.get('price')?.trim() || 'any',
     sort: sp.get('sort')?.trim() || 'newest',
+    q: sp.get('q')?.trim() || '',
   };
 }
 
@@ -102,6 +104,7 @@ interface ShopGridProps {
   initialCategory?: string;
   initialPrice?: string;
   initialSort?: string;
+  initialSearch?: string;
 }
 
 const DEFAULT_CATEGORIES: CategoryOption[] = [{ value: 'all', label: 'All' }];
@@ -114,6 +117,7 @@ export default function ShopGrid({
   initialCategory = 'all',
   initialPrice = 'any',
   initialSort = 'newest',
+  initialSearch = '',
 }: ShopGridProps) {
   const categories = categoriesProp?.length ? categoriesProp : DEFAULT_CATEGORIES;
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -124,6 +128,7 @@ export default function ShopGrid({
   const [category, setCategory] = useState(initialCategory);
   const [priceRange, setPriceRange] = useState(initialPrice);
   const [sort, setSort] = useState(initialSort);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   const hasMore = products.length < total;
 
@@ -131,17 +136,19 @@ export default function ShopGrid({
     async (
       page: number,
       append: boolean,
-      filterOverrides?: { category: string; price: string; sort: string }
+      filterOverrides?: { category: string; price: string; sort: string; q?: string }
     ) => {
       const cat = filterOverrides?.category ?? category;
       const price = filterOverrides?.price ?? priceRange;
       const sortVal = filterOverrides?.sort ?? sort;
+      const searchTerm = filterOverrides?.q !== undefined ? filterOverrides.q : searchQuery;
       const params: Record<string, string | number | undefined> = {
         page,
         limit: pageSize,
         ...sortToBackend(sortVal),
       };
       if (cat && cat !== 'all') params.category = cat;
+      if (searchTerm && searchTerm.trim()) params.search = searchTerm.trim();
       Object.assign(params, priceRangeToCents(price));
 
       if (page === 1 && !append) setLoading(true);
@@ -166,24 +173,26 @@ export default function ShopGrid({
         setLoadingMore(false);
       }
     },
-    [category, priceRange, sort, pageSize, total]
+    [category, priceRange, sort, searchQuery, pageSize, total]
   );
 
-  const updateUrl = useCallback((cat: string, price: string, sortVal: string) => {
-    const query = buildShopSearchParams({ category: cat, price, sort: sortVal });
+  const updateUrl = useCallback((cat: string, price: string, sortVal: string, q: string) => {
+    const query = buildShopSearchParams({ category: cat, price, sort: sortVal, q: q || undefined });
     const url = `${window.location.pathname}${query}`;
-    window.history.pushState({ category: cat, price, sort: sortVal }, '', url);
+    window.history.pushState({ category: cat, price, sort: sortVal, q }, '', url);
   }, []);
 
   const applyFilters = useCallback(
-    (cat: string, price: string, sortVal: string) => {
+    (cat: string, price: string, sortVal: string, q?: string) => {
+      const nextQ = q !== undefined ? q : searchQuery;
       setCategory(cat);
       setPriceRange(price);
       setSort(sortVal);
-      updateUrl(cat, price, sortVal);
-      fetchProducts(1, false, { category: cat, price, sort: sortVal });
+      if (q !== undefined) setSearchQuery(q);
+      updateUrl(cat, price, sortVal, nextQ);
+      fetchProducts(1, false, { category: cat, price, sort: sortVal, q: nextQ });
     },
-    [updateUrl, fetchProducts]
+    [updateUrl, fetchProducts, searchQuery]
   );
 
   useEffect(() => {
@@ -192,6 +201,7 @@ export default function ShopGrid({
       setCategory(parsed.category);
       setPriceRange(parsed.price);
       setSort(parsed.sort);
+      setSearchQuery(parsed.q);
       fetchProducts(1, false, parsed);
     };
     window.addEventListener('popstate', onPopState);
@@ -200,17 +210,17 @@ export default function ShopGrid({
 
   const onCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    applyFilters(value, priceRange, sort);
+    applyFilters(value, priceRange, sort, searchQuery);
   };
 
   const onPriceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    applyFilters(category, value, sort);
+    applyFilters(category, value, sort, searchQuery);
   };
 
   const onSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    applyFilters(category, priceRange, value);
+    applyFilters(category, priceRange, value, searchQuery);
   };
 
   const loadMore = useCallback(() => {

@@ -1,19 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { brandName } from '../../config';
+import { getApiBaseUrl } from '../../lib/api';
+import { api } from '../../lib/api';
+import { formatMoney } from '../../lib/formatMoney';
 import CartIcon from '../cart/CartIcon';
 import ThemeToggle from '../ThemeToggle';
 import ProfileMenu from './ProfileMenu';
 
+interface LandingCategory {
+  id: string;
+  name: string;
+  slug: string;
+  bannerImageUrl: string | null;
+  landingOrder: number | null;
+  productCount: number;
+}
+
+type NavLinkItem = {
+  href: string;
+  label: string;
+  match: (path: string, search: string) => boolean;
+};
+
+const HOME_LINK: NavLinkItem = {
+  href: '/',
+  label: 'HOME',
+  match: (path: string) => path === '/',
+};
+
+const ABOUT_LINK: NavLinkItem = {
+  href: '/about',
+  label: 'ABOUT',
+  match: (path: string) => path === '/about',
+};
+
+function buildNavLinks(categories: LandingCategory[]): NavLinkItem[] {
+  const middle = categories.map((cat) => ({
+    href: `/shop?category=${encodeURIComponent(cat.slug)}`,
+    label: cat.name.toUpperCase(),
+    match: (path: string, search: string) =>
+      path === '/shop' && search.includes(`category=${encodeURIComponent(cat.slug)}`),
+  }));
+  return [HOME_LINK, ...middle, ABOUT_LINK];
+}
+
+const FALLBACK_NAV_LINKS: NavLinkItem[] = [HOME_LINK, ABOUT_LINK];
+
+interface SearchProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  currency: string;
+  image: string;
+}
+
+const SEARCH_DEBOUNCE_MS = 280;
+const SEARCH_LIMIT = 6;
+
 interface AppHeaderProps {
   logoSrc: string;
 }
-
-const navLinks = [
-  { href: '/', label: 'HOME', match: (path: string, search: string) => path === '/' },
-  { href: '/shop?category=beggy-tees', label: 'BEGGY T-SHIRTS', match: (path: string, search: string) => path === '/shop' && search.includes('category=beggy-tees') },
-  { href: '/shop?category=hoodies', label: 'HOODIES', match: (path: string, search: string) => path === '/shop' && search.includes('category=hoodies') },
-  { href: '/about', label: 'ABOUT', match: (path: string, search: string) => path === '/about' },
-] as const;
 
 function NavLink({
   href,
@@ -48,6 +95,94 @@ function NavLink({
 export default function AppHeader({ logoSrc }: AppHeaderProps) {
   const [pathname, setPathname] = useState('');
   const [search, setSearch] = useState('');
+  const [navLinks, setNavLinks] = useState<NavLinkItem[]>(FALLBACK_NAV_LINKS);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const runSearch = useCallback((q: string) => {
+    const term = q.trim();
+    if (!term) {
+      setSearchResults([]);
+      setSearchOpen(!!term);
+      return;
+    }
+    setSearchLoading(true);
+    setSearchOpen(true);
+    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
+    api
+      .getList<Record<string, unknown>>('/products', { search: term, limit: SEARCH_LIMIT })
+      .then((res) => {
+        if (!res.success || !Array.isArray(res.data)) {
+          setSearchResults([]);
+          return;
+        }
+        const list = res.data.map((p) => {
+          const img = p.image as string;
+          return {
+            id: String(p.id),
+            slug: String(p.slug),
+            name: String(p.name),
+            price: Number(p.price),
+            currency: String(p.currency ?? 'PKR'),
+            image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
+          };
+        });
+        setSearchResults(list);
+      })
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearchLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => runSearch(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchQuery, runSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
+    fetch(`${baseUrl}/categories/landing`)
+      .then((res) => res.json())
+      .then((json: { success?: boolean; data?: LandingCategory[] }) => {
+        if (cancelled) return;
+        const list = json?.success && Array.isArray(json.data) ? json.data : [];
+        setNavLinks(buildNavLinks(list));
+      })
+      .catch(() => {
+        if (!cancelled) setNavLinks(FALLBACK_NAV_LINKS);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setPathname(window.location.pathname);
@@ -75,16 +210,80 @@ export default function AppHeader({ logoSrc }: AppHeaderProps) {
               <span className="text-xl sm:text-2xl" aria-hidden>ع</span>
             )}
           </a>
-          <form action="/shop" method="get" className="hidden sm:flex justify-center min-w-0 px-2 col-start-2">
-            <label htmlFor="nav-search" className="sr-only">Search</label>
-            <input
-              id="nav-search"
-              type="search"
-              name="q"
-              placeholder="Search Product"
-              className="w-full max-w-md min-w-0 px-3 sm:px-4 py-2 rounded-lg border border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white placeholder:text-ash focus:outline-none focus:ring-2 focus:ring-mehndi/50 text-sm"
-            />
-          </form>
+          <div ref={searchContainerRef} className="hidden sm:flex justify-center min-w-0 px-2 col-start-2 relative">
+            <label htmlFor="nav-search" className="sr-only">Search products</label>
+            <div className="relative w-full max-w-md min-w-0">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft-charcoal dark:text-off-white" aria-hidden>
+                <svg className="h-4 w-4 sm:h-[0.9375rem] sm:w-[0.9375rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </span>
+              <input
+                id="nav-search"
+                type="search"
+                autoComplete="off"
+                placeholder="Search Product"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    runSearch(searchQuery);
+                  }
+                }}
+                onFocus={() => searchQuery.trim() && setSearchOpen(true)}
+                className="w-full max-w-md min-w-0 pl-9 sm:pl-10 pr-3 sm:px-4 py-2 rounded-lg border border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white placeholder:text-ash focus:outline-none focus:ring-2 focus:ring-mehndi/50 text-sm"
+              />
+              {searchOpen && searchQuery.trim() !== '' && (
+                <div
+                  className="absolute left-0 right-0 top-full mt-1 py-2 rounded-lg border border-ash/30 bg-bone dark:bg-charcoal-light shadow-lg z-[60] max-h-[min(70vh,320px)] overflow-y-auto"
+                  role="listbox"
+                  aria-label="Search results"
+                >
+                  {searchLoading ? (
+                    <div className="px-4 py-6 text-center text-sm text-ash">Searching…</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-ash">No products found.</div>
+                  ) : (
+                    <ul className="divide-y divide-ash/20">
+                      {searchResults.map((product) => (
+                        <li key={product.id} role="option">
+                          <a
+                            href={`/shop/${product.slug}`}
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-ash/10 dark:hover:bg-ash/20 transition-colors text-left"
+                            onClick={() => setSearchOpen(false)}
+                          >
+                            <span className="flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 rounded overflow-hidden bg-ash/10">
+                              {product.image ? (
+                                <img src={product.image} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="w-full h-full flex items-center justify-center text-ash text-xs" aria-hidden>—</span>
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-soft-charcoal dark:text-off-white truncate">{product.name}</span>
+                              <span className="block text-xs text-ash mt-0.5">{formatMoney(product.price, product.currency)}</span>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {searchOpen && searchQuery.trim() !== '' && !searchLoading && searchResults.length > 0 && (
+                    <div className="border-t border-ash/20 pt-2 mt-1">
+                      <a
+                        href={`/shop?q=${encodeURIComponent(searchQuery.trim())}`}
+                        className="block px-4 py-2 text-sm font-medium text-mehndi hover:bg-ash/10 dark:hover:bg-ash/20 text-center"
+                        onClick={() => setSearchOpen(false)}
+                      >
+                        View all results
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           <ul className="flex items-center gap-2 sm:gap-4 justify-self-end col-start-3">
             <li className="flex items-center"><ThemeToggle /></li>
             <li><CartIcon /></li>

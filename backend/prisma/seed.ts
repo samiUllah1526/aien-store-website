@@ -103,15 +103,37 @@ async function main() {
     { name: 'Shirts', slug: 'shirts', description: 'T-shirts, casual and formal shirts' },
     { name: 'Accessories', slug: 'accessories', description: 'Bags, caps, and accessories' },
     { name: 'Footwear', slug: 'footwear', description: 'Shoes and sandals' },
+    {
+      name: 'Beggy Tees',
+      slug: 'beggy-tees',
+      description: 'Premium oversized tees',
+      bannerImageUrl: 'https://picsum.photos/seed/tees/600/750',
+      showOnLanding: true,
+      landingOrder: 0,
+    },
+    {
+      name: 'Hoodies',
+      slug: 'hoodies',
+      description: 'Premium hoodies',
+      bannerImageUrl: 'https://picsum.photos/seed/hoodie/600/750',
+      showOnLanding: true,
+      landingOrder: 1,
+    },
   ];
   for (const cat of exampleCategories) {
     await prisma.category.upsert({
       where: { slug: cat.slug },
       create: cat,
-      update: { name: cat.name, description: cat.description ?? undefined },
+      update: {
+        name: cat.name,
+        description: (cat as { description?: string }).description ?? undefined,
+        bannerImageUrl: (cat as { bannerImageUrl?: string }).bannerImageUrl ?? undefined,
+        showOnLanding: (cat as { showOnLanding?: boolean }).showOnLanding ?? undefined,
+        landingOrder: (cat as { landingOrder?: number }).landingOrder ?? undefined,
+      },
     });
   }
-  console.log('Seed: Ensured 3 example categories (shirts, accessories, footwear).');
+  console.log('Seed: Ensured example categories (shirts, accessories, footwear, beggy-tees, hoodies).');
 
   const currentYear = new Date().getFullYear();
   const defaultSettings = [

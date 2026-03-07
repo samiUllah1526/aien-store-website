@@ -115,6 +115,7 @@ export function CategoriesManager() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Slug</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Description</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Landing</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
                 {canWrite && (
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -132,6 +133,9 @@ export function CategoriesManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -159,6 +163,7 @@ export function CategoriesManager() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Name</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Slug</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Description</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Landing</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Products</th>
                   {canWrite && (
                     <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -172,6 +177,9 @@ export function CategoriesManager() {
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{cat.slug}</td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">
                       {cat.description ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                      {cat.showOnLanding ? `Yes (#${cat.landingOrder ?? '—'})` : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                       {(cat as Category & { productCount?: number }).productCount ?? 0}
@@ -248,6 +256,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const [name, setName] = useState(category?.name ?? '');
   const [slug, setSlug] = useState(category?.slug ?? '');
   const [description, setDescription] = useState(category?.description ?? '');
+  const [bannerImageUrl, setBannerImageUrl] = useState(category?.bannerImageUrl ?? '');
+  const [showOnLanding, setShowOnLanding] = useState(category?.showOnLanding ?? false);
+  const [landingOrder, setLandingOrder] = useState<string>(category?.landingOrder != null ? String(category.landingOrder) : '');
   const [parentId, setParentId] = useState<string>(category?.parentId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -280,6 +291,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
           name: name.trim(),
           slug: slugTrim,
           description: description.trim() || undefined,
+          bannerImageUrl: bannerImageUrl.trim() || null,
+          showOnLanding,
+          landingOrder: landingOrder === '' ? null : parseInt(landingOrder, 10),
           parentId: parentId || null,
         });
       } else {
@@ -287,6 +301,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
           name: name.trim(),
           slug: slugTrim,
           description: description.trim() || undefined,
+          bannerImageUrl: bannerImageUrl.trim() || undefined,
+          showOnLanding,
+          landingOrder: landingOrder === '' ? undefined : parseInt(landingOrder, 10),
           parentId: parentId || null,
         });
       }
@@ -370,6 +387,47 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
                 ))}
             </select>
           </div>
+          <div>
+            <label htmlFor="cat-banner" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Banner image URL (optional)
+            </label>
+            <input
+              id="cat-banner"
+              type="url"
+              value={bannerImageUrl}
+              onChange={(e) => setBannerImageUrl(e.target.value)}
+              placeholder="https://…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="cat-show-landing"
+              type="checkbox"
+              checked={showOnLanding}
+              onChange={(e) => setShowOnLanding(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
+            />
+            <label htmlFor="cat-show-landing" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Show on storefront landing page
+            </label>
+          </div>
+          {showOnLanding && (
+            <div>
+              <label htmlFor="cat-landing-order" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Landing order (lower = first)
+              </label>
+              <input
+                id="cat-landing-order"
+                type="number"
+                min={0}
+                value={landingOrder}
+                onChange={(e) => setLandingOrder(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              />
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"

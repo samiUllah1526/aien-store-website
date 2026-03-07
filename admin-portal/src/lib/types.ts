@@ -149,6 +149,9 @@ export interface Category {
   name: string;
   slug: string;
   description: string | null;
+  bannerImageUrl: string | null;
+  showOnLanding: boolean;
+  landingOrder: number | null;
   parentId: string | null;
   createdAt: string;
   updatedAt: string;
