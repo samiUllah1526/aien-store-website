@@ -22,6 +22,17 @@ Transactional emails are sent via [pg-boss](https://github.com/timgit/pg-boss), 
 
 **Jobs page:** View queue stats (queued, active, total) and job list with filters. From the Jobs page you can retry failed jobs or cancel queued jobs. Requires `jobs:read`, `jobs:retry`, `jobs:cancel` permissions (included for Admin after running `npm run db:seed`).
 
+### Deployment (pg-boss schema)
+
+You **do not** need to run any script on deployment. When the backend starts, pg-boss creates the `pgboss` schema and tables automatically. If your database already existed without the schema (e.g. before a fix that strips `?schema=public` from the URL), run this **once** only:
+
+```bash
+cd backend
+PGBOSS_DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE" npx pg-boss create
+```
+
+Use your real `DATABASE_URL` credentials and omit `?schema=public` from the URL. After that, normal deploys are enough.
+
 ---
 
 ## Current state

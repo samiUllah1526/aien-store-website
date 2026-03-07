@@ -11,6 +11,17 @@ title: Deployment
 
 Both the **main website** and **admin portal** deploy separately to Cloudflare Pages via GitHub Actions. Deploys run automatically when you push changes to `main`—and only when the relevant project files change (path-based triggers).
 
+The **backend** deploys separately (e.g. Railway, Render, or your own server). See the repository’s `backend/DEPLOY-RAILWAY.md` and `backend/README.md` for backend-specific steps.
+
+---
+
+## Backend deployment (Railway or other)
+
+When deploying the NestJS backend:
+
+1. **Migrations:** Run `npm run db:migrate:deploy` (or use Railway’s pre-deploy: `npx prisma migrate deploy`) so the `public` schema and app tables are up to date.
+2. **pg-boss (background jobs):** No extra step. The app creates the `pgboss` schema and job tables automatically on first start. You do **not** need to run `pg-boss create` or any script on each deploy. If you have an existing DB where `pgboss` was never created, see [Background jobs setup](/admin/docs/jobs-setup) for a one-time CLI command.
+
 ---
 
 ## Overview

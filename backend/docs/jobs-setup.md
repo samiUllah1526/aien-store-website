@@ -28,6 +28,16 @@ Emails are enqueued by `EmailQueueService` and processed by `EmailJobProcessor` 
 
 pg-boss creates its schema and tables automatically on first `start()`.
 
+### Deployment and schema (no manual step)
+
+- **On deploy:** You do **not** need to run any script or migration for pg-boss. When the backend starts, pg-boss creates the `pgboss` schema and its tables automatically if they don’t exist.
+- **Connection URL:** If your `DATABASE_URL` includes `?schema=public` (common with Prisma), the app strips that parameter before passing the URL to pg-boss so the `pgboss` schema is created correctly. Your app tables stay in `public`; job tables live in `pgboss`.
+- **One-time fix:** If you have an existing database where the `pgboss` schema was never created (e.g. before this fix), run once:
+  ```bash
+  PGBOSS_DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE" npx pg-boss create
+  ```
+  Use the same credentials as `DATABASE_URL` but **omit** `?schema=public` from the URL. After that, normal app starts are enough; no need to run the script on every deploy.
+
 ---
 
 ## Current State

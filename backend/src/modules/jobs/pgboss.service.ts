@@ -2,6 +2,17 @@ import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { PgBoss } from 'pg-boss';
 
+/** Remove schema= from URL query so pg-boss uses its own schema, not Prisma's. */
+function stripSchemaFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.delete('schema');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 @Injectable()
 export class PgbossService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PgbossService.name);
@@ -12,14 +23,18 @@ export class PgbossService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     const databaseUrl = this.configService.get<string>('DATABASE_URL');
     if (!databaseUrl) {
-      this.logger.warn('DATABASE_URL not set; pg-boss will not start');
+      this.logger.error('DATABASE_URL not set; pg-boss will not start');
       return;
     }
 
     const schema = this.configService.get<string>('PGBOSS_SCHEMA', 'pgboss');
 
+    // Use a connection URL without ?schema=public so pg-boss creates/uses its own schema.
+    // Prisma often adds schema=public to DATABASE_URL; that can prevent pg-boss from creating the pgboss schema.
+    const connectionString = stripSchemaFromUrl(databaseUrl);
+
     this.boss = new PgBoss({
-      connectionString: databaseUrl,
+      connectionString,
       schema,
     });
 
