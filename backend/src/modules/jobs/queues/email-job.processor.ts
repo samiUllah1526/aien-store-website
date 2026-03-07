@@ -12,6 +12,7 @@ import type {
   WelcomeEmailPayload,
   UserCreatedEmailPayload,
   PasswordResetEmailPayload,
+  InviteEmailPayload,
 } from '../../mail/interfaces/mail.interface';
 
 type EmailJobData =
@@ -19,7 +20,8 @@ type EmailJobData =
   | ({ type: typeof EMAIL_JOB_TYPES.ORDER_CONFIRMATION } & OrderConfirmationEmailPayload)
   | ({ type: typeof EMAIL_JOB_TYPES.ORDER_STATUS_CHANGE } & OrderStatusEmailPayload)
   | ({ type: typeof EMAIL_JOB_TYPES.WELCOME } & WelcomeEmailPayload)
-  | ({ type: typeof EMAIL_JOB_TYPES.USER_CREATED } & UserCreatedEmailPayload);
+  | ({ type: typeof EMAIL_JOB_TYPES.USER_CREATED } & UserCreatedEmailPayload)
+  | ({ type: typeof EMAIL_JOB_TYPES.INVITE } & InviteEmailPayload);
 
 @Injectable()
 export class EmailJobProcessor implements OnModuleInit, OnModuleDestroy {
@@ -114,6 +116,13 @@ export class EmailJobProcessor implements OnModuleInit, OnModuleDestroy {
           to: data.to,
           name: data.name,
           loginUrl: data.loginUrl,
+        });
+        break;
+      case EMAIL_JOB_TYPES.INVITE:
+        await this.mail.sendInvite({
+          to: data.to,
+          name: data.name,
+          setPasswordLink: data.setPasswordLink,
         });
         break;
       default:

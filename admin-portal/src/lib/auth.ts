@@ -78,6 +78,11 @@ export function hasPermission(permission: string): boolean {
   return getStoredPermissions().includes(permission);
 }
 
+/** True if the current user has Super Admin capabilities (superadmin:manage). */
+export function isSuperAdmin(): boolean {
+  return hasPermission('superadmin:manage');
+}
+
 export function setStoredToken(accessToken: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(authTokenKey, accessToken);

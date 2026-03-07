@@ -131,6 +131,9 @@ export interface User {
   lastLoginAt: string | null;
   roleIds: string[];
   roles: UserRoleDto[];
+  permissions?: string[];
+  isSuperAdmin?: boolean;
+  directPermissionIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +141,23 @@ export interface User {
 export interface Role {
   id: string;
   name: string;
+  description?: string | null;
+}
+
+/** Role with counts (GET /roles). */
+export interface RoleDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  userCount: number;
+  permissionCount: number;
+  permissionIds: string[];
+}
+
+/** Permissions grouped by category (GET /roles/permissions/grouped). */
+export interface PermissionGroup {
+  category: string | null;
+  permissions: Array<{ id: string; name: string; description: string | null }>;
 }
 
 // ---------------------------------------------------------------------------

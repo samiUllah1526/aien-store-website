@@ -8,7 +8,7 @@ const pageTitle = `${title} | ${appName}`;
 const currentPath = Astro.url.pathname;
 import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
-import { apiBaseUrl, appName, faviconPath, themeStorageKey } from '../lib/config';
+import { apiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
 // Order: overview → operations (orders, products, inventory) → structure → people & comms → config → help
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
   { href: '/admin/categories', label: 'Categories', icon: 'categories' },
   { href: '/admin/users', label: 'Users', icon: 'users' },
+  { href: '/admin/admin-settings', label: 'User Management', icon: 'settings', superAdminOnly: true },
   { href: '/admin/vouchers', label: 'Vouchers', icon: 'vouchers' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings' },
   { href: '/admin/email-logs', label: 'Email Logs', icon: 'emaillogs' },
@@ -79,6 +80,7 @@ const isActive = (href: string) =>
         <nav class="p-3 space-y-0.5" aria-label="Sidebar">
           {navItems.map((item) => {
             const active = isActive(item.href);
+            const superAdminOnly = item.superAdminOnly === true;
             return (
               <a
                 href={item.href}
@@ -87,6 +89,7 @@ const isActive = (href: string) =>
                     ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-slate-700 dark:text-slate-100'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100'
                 }`}
+                {...(superAdminOnly ? { 'data-super-admin-only': 'true' } : {})}
               >
                 <svg
                   class="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
@@ -142,7 +145,7 @@ const isActive = (href: string) =>
       </div>
     </div>
 
-    <script define:vars={{ themeStorageKey }}>
+    <script define:vars={{ themeStorageKey, authTokenKey }}>
       (function () {
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
@@ -181,6 +184,25 @@ const isActive = (href: string) =>
         document.addEventListener('keydown', function (e) {
           if (e.key === 'Escape') closeSidebar();
         });
+
+        // Hide Admin Settings link for non–Super Admins
+        (function () {
+          try {
+            if (typeof localStorage === 'undefined') return;
+            var raw = localStorage.getItem(authTokenKey);
+            if (!raw) {
+              document.querySelectorAll('[data-super-admin-only]').forEach(function (el) { el.style.display = 'none'; });
+              return;
+            }
+            var payload = raw.split('.')[1];
+            if (!payload) return;
+            var json = decodeURIComponent(atob(payload.replace(/-/g, '+').replace(/_/g, '/')).split('').map(function (c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+            var data = JSON.parse(json);
+            if (!data.permissions || !data.permissions.includes('superadmin:manage')) {
+              document.querySelectorAll('[data-super-admin-only]').forEach(function (el) { el.style.display = 'none'; });
+            }
+          } catch (e) {}
+        })();
       })();
     </script>
   </body>

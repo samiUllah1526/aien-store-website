@@ -19,6 +19,7 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
     FavoritesModule,
     ProfileModule,
     JobsModule,
+    RolesModule,
   ],
 })
 export class AppModule {}

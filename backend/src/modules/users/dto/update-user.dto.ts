@@ -1,8 +1,17 @@
-import { IsString, IsOptional, IsArray, IsEnum, MinLength, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsEnum, MinLength, IsEmail, ValidateNested, IsBoolean, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum UpdateUserStatus {
   ACTIVE = 'ACTIVE',
   DISABLED = 'DISABLED',
+}
+
+export class DirectPermissionDto {
+  @IsUUID()
+  permissionId: string;
+
+  @IsBoolean()
+  granted: boolean;
 }
 
 export class UpdateUserDto {
@@ -36,4 +45,11 @@ export class UpdateUserDto {
   @IsArray()
   @IsString({ each: true })
   roleIds?: string[];
+
+  /** Direct permission overrides: grant or revoke. Only allowed when caller has superadmin:manage. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DirectPermissionDto)
+  directPermissions?: DirectPermissionDto[];
 }
