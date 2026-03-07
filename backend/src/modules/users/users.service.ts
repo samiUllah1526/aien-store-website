@@ -371,6 +371,8 @@ export class UsersService {
     lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    passwordHash?: string | null;
+    googleId?: string | null;
     roles: Array<{
       role: {
         id: string;
@@ -411,6 +413,8 @@ export class UsersService {
       permissions: Array.from(permissionsSet),
       isSuperAdmin,
       directPermissionIds,
+      hasPassword: !!user.passwordHash,
+      hasGoogleLogin: !!user.googleId,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };

@@ -62,6 +62,14 @@ export default function configuration(env: EnvSource = process.env) {
       app: get(env, 'APP_URL')?.replace(/\/$/, '') ?? 'https://example.com',
       admin: get(env, 'ADMIN_URL')?.replace(/\/$/, ''),
       adminLogin: get(env, 'ADMIN_LOGIN_URL')?.replace(/\/$/, ''),
+      /** Backend public URL (for OAuth callback). e.g. https://api.example.com */
+      api: get(env, 'API_URL')?.replace(/\/$/, ''),
+    },
+
+    /** Google OAuth (optional). Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable. */
+    google: {
+      clientId: get(env, 'GOOGLE_CLIENT_ID'),
+      clientSecret: get(env, 'GOOGLE_CLIENT_SECRET'),
     },
 
     mail: {

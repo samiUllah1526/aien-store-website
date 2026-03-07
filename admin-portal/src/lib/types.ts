@@ -134,6 +134,10 @@ export interface User {
   permissions?: string[];
   isSuperAdmin?: boolean;
   directPermissionIds?: string[];
+  /** True if user can sign in with email/password. */
+  hasPassword?: boolean;
+  /** True if user has linked Google sign-in. */
+  hasGoogleLogin?: boolean;
   createdAt: string;
   updatedAt: string;
 }

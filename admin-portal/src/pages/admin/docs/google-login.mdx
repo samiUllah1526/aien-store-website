@@ -1,0 +1,134 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Google sign-in
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Google sign-in
+
+The admin portal and main website support **Sign in with Google** alongside email/password. Users can use one or the other; accounts created via Google have no password (they must use Google to sign in next time).
+
+---
+
+## What’s included
+
+| Where | Behavior |
+|-------|----------|
+| **Admin portal** | Login page has a “Sign in with Google” button. Redirects to Google, then back to admin with a JWT; token is stored and user is sent to the dashboard. |
+| **Main website (store)** | Login page has “Sign in with Google”. Same flow; after success the user is redirected to checkout or a `returnTo` path. |
+| **Backend** | Uses Passport.js and the Google OAuth 2.0 strategy. `GET /auth/google` starts the flow; `GET /auth/google/callback` exchanges the code, finds or creates the user, and redirects to the frontend with `?token=...` or `?error=...`. |
+
+If Google sign-in is not configured (missing env vars), the admin “Sign in with Google” link still appears; clicking it redirects to the backend, which then redirects back to the login page with an error (e.g. “Google login not configured”).
+
+---
+
+## Prerequisites
+
+1. **Google Cloud project**  
+   [Google Cloud Console](https://console.cloud.google.com/) → create or select a project.
+
+2. **OAuth consent screen**  
+   APIs & Services → **OAuth consent screen** → choose External (or Internal for workspace-only), set app name and support email. Add your admin/store domains under **Authorized domains** if you use them in redirect URLs.
+
+3. **OAuth 2.0 Client ID**  
+   APIs & Services → **Credentials** → **Create credentials** → **OAuth client ID** → Application type: **Web application**.
+
+   - **Name:** e.g. “Admin & store login”.
+   - **Authorized redirect URIs:** add exactly:
+     - **Development:** `http://localhost:3000/auth/google/callback`
+     - **Production:** `https://your-api-domain.com/auth/google/callback`  
+     Use your real backend URL (no trailing slash). The path must be `/auth/google/callback`.
+
+   After saving, copy the **Client ID** and **Client secret**.
+
+---
+
+## Backend configuration
+
+Set these in the backend environment (e.g. `.env` or your host’s env):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GOOGLE_CLIENT_ID` | Yes (for Google login) | OAuth 2.0 Client ID from Google Cloud Console. |
+| `GOOGLE_CLIENT_SECRET` | Yes (for Google login) | OAuth 2.0 Client secret. |
+| `API_URL` | Yes (for Google login) | Public URL of the backend, no trailing slash. Used as the base for the callback URL. Examples: `http://localhost:3000`, `https://api.yoursite.com`. |
+| `ADMIN_URL` | Recommended | Admin portal URL (e.g. `https://admin.yoursite.com`). Used after Google callback to send the user back to the admin login page with the token. |
+| `APP_URL` | Recommended | Main website URL. Used when `context=store` to redirect after Google sign-in. |
+
+**Example (development):**
+
+```bash
+API_URL=http://localhost:3000
+ADMIN_URL=http://localhost:4322
+GOOGLE_CLIENT_ID=123456789-xxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
+```
+
+**Example (production):**
+
+```bash
+API_URL=https://api.yoursite.com
+ADMIN_URL=https://admin.yoursite.com
+APP_URL=https://www.yoursite.com
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+If `GOOGLE_CLIENT_ID` (or `GOOGLE_CLIENT_SECRET`) is not set, the backend will not perform the Google token exchange; the “Sign in with Google” link will redirect to Google then back with an error.
+
+---
+
+## Database
+
+Google-only users are stored with:
+
+- `password_hash` = `NULL`
+- `google_id` = their Google subject ID
+
+The migration that adds optional `password_hash` and `google_id` is in the backend repo (e.g. `prisma/migrations/..._add_google_oauth_user_fields`). Run migrations as usual:
+
+```bash
+cd backend && npm run db:migrate:dev
+# or in production: npm run db:migrate:deploy
+```
+
+Existing users keep their password; new users created via Google have no password and must use “Sign in with Google” next time. If someone tries email/password for a Google-only account, they see: *“This account uses Google sign-in. Sign in with Google.”*
+
+---
+
+## Flow summary
+
+1. User clicks **Sign in with Google** on admin (or store) login page.
+2. Browser goes to backend `GET /auth/google?context=admin` (or `context=store`). Backend redirects to Google with `state` that encodes `context`.
+3. User signs in with Google; Google redirects to backend `GET /auth/google/callback?code=...&state=...`.
+4. Backend exchanges the code for tokens, loads the user profile, then:
+   - **Find user** by email or `google_id`; if found and active, update `last_login_at` and optionally set `google_id` if missing.
+   - **Create user** if not found: new Customer with name/email from Google, `password_hash` null, `google_id` set.
+5. Backend issues a JWT (same shape as email/password login) and redirects the browser to:
+   - Admin: `ADMIN_URL/admin/login?token=JWT` (or `?error=...` on failure).
+   - Store: `APP_URL/login?token=JWT` (or `?error=...`).
+6. Frontend reads `token` from the URL, stores it (e.g. in localStorage), and redirects to the dashboard or checkout.
+
+---
+
+## Security notes
+
+- Keep `GOOGLE_CLIENT_SECRET` only on the backend; never expose it in the admin or store frontends.
+- Redirect URIs in Google Cloud must match exactly (including path `/auth/google/callback` and no trailing slash on the origin).
+- JWTs are passed in the URL only on the redirect from the backend to the frontend; the frontend then stores the token and uses it in the `Authorization` header for API calls. Consider using short-lived tokens and HTTPS in production.
+
+---
+
+## Troubleshooting
+
+| Issue | Check |
+|-------|--------|
+| “Google login not configured” | Backend env: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set; backend restarted. |
+| Redirect URI mismatch | In Google Cloud, the redirect URI must be exactly `{API_URL}/auth/google/callback` (e.g. `https://api.yoursite.com/auth/google/callback`). No extra path or query. |
+| User not found / not created | Ensure migrations are applied (`users.google_id`, `users.password_hash` nullable). Check backend logs for errors during callback. |
+| Token not applied on admin | Admin login page must read `?token=` from the URL and call `setStoredToken(token)` then redirect; confirm no script errors and that the redirect from the backend includes `token` in the query string. |
+
+For more on general configuration and env vars, see [Configuration & secrets](/admin/docs/configuration).
