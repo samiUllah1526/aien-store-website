@@ -69,6 +69,15 @@ export interface AnnouncementValue {
   items?: AnnouncementItem[];
 }
 
+export interface HeroSlideValue {
+  src: string;
+  alt?: string;
+}
+
+export interface HeroValue {
+  slides?: HeroSlideValue[];
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
@@ -76,6 +85,8 @@ export interface PublicSettingsDto {
   social: SocialValue;
   /** Announcement bar items (multiple messages). */
   announcement: AnnouncementValue;
+  /** Hero carousel image slides (home page). */
+  hero: HeroValue;
   /** Delivery charges in cents. 0 = free delivery. */
   deliveryChargesCents: number;
   /** Bank account details shown at checkout for Bank Deposit. */
@@ -126,7 +137,7 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery, banking, seo, marketing, announcement] = await Promise.all([
+    const [general, about, footer, social, delivery, banking, seo, marketing, announcement, hero] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
@@ -136,6 +147,7 @@ export class SettingsService {
       this.getByKey('seo'),
       this.getByKey('marketing'),
       this.getByKey('announcement'),
+      this.getByKey('hero'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -158,6 +170,18 @@ export class SettingsService {
         const raw = (announcement as AnnouncementValue) ?? { items: [] };
         const items = (raw.items ?? []).filter((item) => item.visible !== false);
         return { items };
+      })(),
+      hero: (() => {
+        const raw = (hero as HeroValue) ?? { slides: [] };
+        const slides = Array.isArray(raw.slides)
+          ? (raw.slides as HeroSlideValue[])
+              .filter((s) => s && typeof s.src === 'string' && (s.src as string).trim() !== '')
+              .map((s) => ({
+                src: (s.src as string).trim(),
+                alt: typeof s.alt === 'string' ? (s.alt as string).trim() || undefined : undefined,
+              }))
+          : [];
+        return { slides };
       })(),
       deliveryChargesCents,
       banking: bankingVal

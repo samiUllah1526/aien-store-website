@@ -201,6 +201,16 @@ async function main() {
         ],
       },
     },
+    {
+      key: 'hero',
+      value: {
+        slides: [
+          { src: 'https://picsum.photos/seed/hero1/1920/1080', alt: 'Hero 1' },
+          { src: 'https://picsum.photos/seed/hero2/1920/1080', alt: 'Hero 2' },
+          { src: 'https://picsum.photos/seed/hero3/1920/1080', alt: 'Hero 3' },
+        ],
+      },
+    },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -209,7 +219,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement, hero).');
 }
 
 main()

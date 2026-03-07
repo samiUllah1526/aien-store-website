@@ -53,11 +53,21 @@ export interface PublicAnnouncement {
   items: PublicAnnouncementItem[];
 }
 
+export interface PublicHeroSlide {
+  src: string;
+  alt?: string;
+}
+
+export interface PublicHero {
+  slides: PublicHeroSlide[];
+}
+
 export interface PublicSettings {
   logoPath: string | null;
   footer: PublicFooter;
   social: PublicSocial;
   announcement: PublicAnnouncement;
+  hero: PublicHero;
   seo: PublicSeo;
   marketing: PublicMarketing;
 }
@@ -105,6 +115,16 @@ export async function getPublicSettings(): Promise<PublicSettings> {
           youtubeVisible: youtubeVisibleVal === true,
         },
         announcement: { items: announcementItems },
+        hero: {
+          slides: (() => {
+            const raw = (data.hero as { slides?: { src?: string; alt?: string }[] }) ?? {};
+            return Array.isArray(raw.slides)
+              ? raw.slides
+                  .filter((s) => s && typeof s.src === 'string' && String(s.src).trim() !== '')
+                  .map((s) => ({ src: String(s.src).trim(), alt: typeof s.alt === 'string' ? String(s.alt).trim() || undefined : undefined }))
+              : [];
+          })(),
+        },
         seo: {
           siteTitle: (seo.siteTitle as string)?.trim() || brandName,
           defaultDescription: (seo.defaultDescription as string)?.trim() || defaultMetaDescription,
@@ -137,6 +157,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
     },
     social: {},
     announcement: { items: [] },
+    hero: { slides: [] },
     seo: {
       siteTitle: brandName,
       defaultDescription: defaultMetaDescription,
