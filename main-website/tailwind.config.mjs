@@ -43,6 +43,9 @@ export default {
         '30': '7.5rem',
         'prose': '65ch',
       },
+      maxWidth: {
+        site: '1440px',
+      },
       animation: {
         'fade-in': 'fadeIn 1.2s ease-out forwards',
         'fade-up': 'fadeUp 0.8s ease-out forwards',

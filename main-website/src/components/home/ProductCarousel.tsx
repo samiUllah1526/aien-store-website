@@ -97,7 +97,7 @@ export default function ProductCarousel({
   return (
     <section aria-label={title ?? 'Products'}>
       {title && (
-        <div className="px-4 sm:px-6 mb-8 sm:mb-12">
+        <div className="mb-8 sm:mb-12">
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -109,9 +109,9 @@ export default function ProductCarousel({
           </motion.h2>
         </div>
       )}
-      <div
-        ref={scrollRef}
-        className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 pl-4 sm:pl-6 pr-4 sm:pr-6 cursor-grab active:cursor-grabbing select-none touch-pan-x"
+        <div
+          ref={scrollRef}
+          className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 cursor-grab active:cursor-grabbing select-none touch-pan-x"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -202,7 +202,7 @@ export default function ProductCarousel({
           </motion.a>
         ))}
       </div>
-      <div className="mt-12 px-4 sm:px-6 text-center">
+      <div className="mt-12 text-center">
         <motion.a
           href="/shop"
           initial={{ opacity: 0 }}

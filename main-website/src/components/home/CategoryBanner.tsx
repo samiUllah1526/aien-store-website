@@ -1,6 +1,9 @@
 /**
  * Category banner: headline + large title + optional SALE band and image.
+ * Full-bleed section (edge-to-edge); inner content aligned with site container.
  */
+
+import { SITE_CONTAINER_CLASS } from '../layout/SiteContainer';
 
 interface CategoryBannerProps {
   smallTitle: string;
@@ -18,8 +21,8 @@ export default function CategoryBanner({
   imageAlt = '',
 }: CategoryBannerProps) {
   return (
-    <section className="px-4 sm:px-6 overflow-hidden" aria-label={largeTitle}>
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6 sm:gap-8">
+    <section className="w-full overflow-hidden" aria-label={largeTitle}>
+      <div className={`${SITE_CONTAINER_CLASS} flex flex-col md:flex-row md:items-center md:justify-between gap-6 sm:gap-8`}>
         <div className="flex-1 min-w-0">
           <p className="font-display text-xs sm:text-sm md:text-base uppercase tracking-widest text-ash">
             {smallTitle}

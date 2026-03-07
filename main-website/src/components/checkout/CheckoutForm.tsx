@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { randomUUID } from '../../lib/idempotency';
 import { useForm } from 'react-hook-form';
+import type { Resolver, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCart, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
@@ -66,7 +67,7 @@ export default function CheckoutForm() {
     clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
+    resolver: zodResolver(checkoutSchema) as Resolver<CheckoutFormData>,
     defaultValues: checkoutDefaultValues,
   });
 
@@ -196,7 +197,7 @@ export default function CheckoutForm() {
   const pricesUpdated =
     quote != null && totalAmount > 0 && quote.subtotalCents !== totalAmount;
 
-  const onSubmit = async (data: CheckoutFormData) => {
+  const onSubmit: SubmitHandler<CheckoutFormData> = async (data) => {
     if (items.length === 0) {
       setError('root', { message: 'Cart is empty' });
       return;
@@ -349,24 +350,13 @@ export default function CheckoutForm() {
       )}
       <div className="space-y-10">
         <section>
-          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Contact</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white">Contact</h2>
+            <a href="/login" className="text-form-label text-mehndi hover:opacity-90 underline-offset-2 hover:underline transition-colors duration-200">
+              Sign in
+            </a>
+          </div>
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  {...register('email')}
-                  className={`w-full ${inputClass} ${errors.email ? inputErrorClass : ''}`}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.email.message}</p>
-                )}
-              </div>
-              <a href="/login" className="text-form-label text-mehndi hover:opacity-90 self-center sm:self-auto">
-                Sign in
-              </a>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <input
@@ -387,6 +377,17 @@ export default function CheckoutForm() {
                   className={`w-full ${inputClass}`}
                 />
               </div>
+            </div>
+            <div>
+              <input
+                type="email"
+                placeholder="Email"
+                {...register('email')}
+                className={`w-full ${inputClass} ${errors.email ? inputErrorClass : ''}`}
+              />
+              {errors.email && (
+                <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.email.message}</p>
+              )}
             </div>
           </div>
         </section>
@@ -466,19 +467,19 @@ export default function CheckoutForm() {
         <section>
           <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Shipping method</h2>
           {shippingCents === 0 ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-mehndi/30 bg-mehndi/5 dark:bg-mehndi/10 px-4 py-4">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-green-400/50 bg-green-50/80 dark:border-green-500/40 dark:bg-green-900/15 px-4 py-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mehndi/20 dark:bg-mehndi/30 text-mehndi dark:text-mehndi/90" aria-hidden>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-500/90 text-white dark:bg-green-500/80 dark:text-off-white" aria-hidden>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
                 <div>
-                  <p className="font-medium text-soft-charcoal dark:text-off-white">Standard Delivery</p>
-                  <p className="text-form-hint text-ash">Delivery to your address</p>
+                  <p className="font-semibold text-soft-charcoal dark:text-off-white">Free shipping</p>
+                  <p className="text-form-hint text-ash">Standard delivery to your address</p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-full bg-mehndi px-3 py-1.5 text-form-label font-semibold text-white shadow-sm dark:bg-mehndi/80">
+              <span className="shrink-0 rounded-full bg-green-500/90 px-3 py-1.5 text-form-label font-semibold text-white dark:bg-green-500/80 dark:text-off-white">
                 Free
               </span>
             </div>
@@ -533,7 +534,11 @@ export default function CheckoutForm() {
                     className={`block w-full text-form-label text-soft-charcoal dark:text-off-white file:mr-3 file:rounded file:border-0 file:bg-mehndi file:px-3 file:py-2 file:text-form-label file:text-white file:hover:opacity-90 ${errors.paymentProof ? 'border-red-500' : ''}`}
                   />
                   {errors.paymentProof && (
-                    <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.paymentProof.message}</p>
+                    <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">
+                      {'message' in errors.paymentProof && typeof errors.paymentProof.message === 'string'
+                        ? errors.paymentProof.message
+                        : 'Please upload a valid image.'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -660,11 +665,11 @@ export default function CheckoutForm() {
                 <p className="flex justify-between text-form-label text-soft-charcoal dark:text-off-white">
                   <span>Shipping</span>
                   {shippingCents === 0 ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-mehndi/15 px-2 py-0.5 text-mehndi dark:bg-mehndi/25 dark:text-mehndi/90 font-medium">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-form-label font-semibold text-white-800 dark:bg-green-800/40 dark:text-green-200">
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Free
+                      Free shipping
                     </span>
                   ) : (
                     <span>{formatMoney(shippingCents, currency)}</span>
