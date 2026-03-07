@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength, Matches } from 'class-validator';
+import { IsString, IsOptional, MinLength, Matches, IsBoolean, IsInt } from 'class-validator';
 
 export class CreateCategoryDto {
   @IsString()
@@ -15,6 +15,18 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  bannerImageUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  showOnLanding?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  landingOrder?: number;
 
   @IsOptional()
   @IsString()

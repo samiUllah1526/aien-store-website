@@ -27,19 +27,21 @@ function mapProduct(p: Record<string, unknown>): Product {
   };
 }
 
-function parseParams(): { category: string; price: string; sort: string } {
-  if (typeof window === 'undefined') return { category: 'all', price: 'any', sort: 'newest' };
+function parseParams(): { category: string; price: string; sort: string; q: string } {
+  if (typeof window === 'undefined') return { category: 'all', price: 'any', sort: 'newest', q: '' };
   const sp = new URLSearchParams(window.location.search);
   return {
     category: sp.get('category')?.trim() || 'all',
     price: sp.get('price')?.trim() || 'any',
     sort: sp.get('sort')?.trim() || 'newest',
+    q: sp.get('q')?.trim() || '',
   };
 }
 
-function buildQuery(category: string, price: string, sort: string): Record<string, string | number> {
+function buildQuery(category: string, price: string, sort: string, searchQ: string): Record<string, string | number> {
   const params: Record<string, string | number> = { page: 1, limit: PAGE_SIZE };
   if (category && category !== 'all') params.category = category;
+  if (searchQ) params.search = searchQ;
   if (price === 'under-5k') params.maxPriceCents = 5000;
   else if (price === '5k-6k') { params.minPriceCents = 5000; params.maxPriceCents = 6500; }
   else if (price === 'over-6k') params.minPriceCents = 6500;
@@ -60,13 +62,13 @@ export default function ShopPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const { category, price, sort } = parseParams();
+    const { category, price, sort, q } = parseParams();
 
     async function load() {
       setLoading(true);
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          api.getList<Record<string, unknown>>('/products', buildQuery(category, price, sort)),
+          api.getList<Record<string, unknown>>('/products', buildQuery(category, price, sort, q)),
           api.get<Array<{ slug: string; name: string }>>('/categories'),
         ]);
         if (cancelled) return;
@@ -124,6 +126,7 @@ export default function ShopPage() {
         initialCategory={parseParams().category}
         initialPrice={parseParams().price}
         initialSort={parseParams().sort}
+        initialSearch={parseParams().q}
       />
     </div>
   );

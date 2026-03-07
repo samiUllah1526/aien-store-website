@@ -224,6 +224,12 @@ model Category {
   name        String    @map("name")
   slug        String    @unique @map("slug")
   description String?   @map("description")
+  /** Optional banner image URL for category/landing sections. */
+  bannerImageUrl String? @map("banner_image_url")
+  /** When true, category appears on the storefront landing page in order of landingOrder. */
+  showOnLanding  Boolean  @default(false) @map("show_on_landing")
+  /** Order on landing page (lower = first). Null = last. */
+  landingOrder   Int?     @map("landing_order")
   parentId    String?   @map("parent_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
