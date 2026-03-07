@@ -17,14 +17,19 @@ export interface CarouselProduct {
   image: string;
   urduVerse?: string | null;
   description?: string | null;
+  /** When set, show sale badge (e.g. "30% Save") and strikethrough original price. */
+  compareAtPrice?: number | null;
 }
 
 export default function ProductCarousel({
   products,
   title,
+  showSaleBadge = false,
 }: {
   products: CarouselProduct[];
   title?: string;
+  /** When true, show "SALE 30% OFF" on first N items if compareAtPrice set, else generic badge. */
+  showSaleBadge?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -90,15 +95,15 @@ export default function ProductCarousel({
   if (products.length === 0) return null;
 
   return (
-    <section className="py-20 md:py-28" aria-label={title ?? 'Products'}>
+    <section aria-label={title ?? 'Products'}>
       {title && (
-        <div className="px-4 sm:px-6 mb-12">
+        <div className="px-4 sm:px-6 mb-8 sm:mb-12">
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 1, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white"
+            className="font-display text-xl sm:text-2xl md:text-3xl text-soft-charcoal dark:text-off-white"
           >
             {title}
           </motion.h2>
@@ -106,7 +111,7 @@ export default function ProductCarousel({
       )}
       <div
         ref={scrollRef}
-        className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-6 md:gap-10 pl-4 sm:pl-6 pr-4 sm:pr-6 cursor-grab active:cursor-grabbing select-none"
+        className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 pl-4 sm:pl-6 pr-4 sm:pr-6 cursor-grab active:cursor-grabbing select-none touch-pan-x"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -132,15 +137,27 @@ export default function ProductCarousel({
               delay: i * 0.1,
               ease: [0.25, 0.46, 0.45, 0.94],
             }}
-            className="flex-shrink-0 w-[75vw] sm:w-[55vw] md:w-[42vw] snap-center group"
+            className="flex-shrink-0 w-[75vw] sm:w-[55vw] md:w-[42vw] max-w-[280px] sm:max-w-[320px] md:max-w-[360px] snap-center group min-w-0"
             onMouseEnter={() => setHoveredId(product.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            <div className="aspect-[3/4] overflow-hidden rounded-xl bg-ash/10 relative">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl bg-ash/10 relative">
+              {showSaleBadge && (product.compareAtPrice != null && product.compareAtPrice > product.price) && (
+                <span className="absolute left-3 top-3 z-10 rounded bg-red-600 text-white text-xs font-semibold px-2 py-1">
+                  {product.compareAtPrice > 0
+                    ? `${Math.round((1 - product.price / product.compareAtPrice) * 100)}% Save`
+                    : 'SALE'}
+                </span>
+              )}
+              {showSaleBadge && (product.compareAtPrice == null || product.compareAtPrice <= product.price) && i < 3 && (
+                <span className="absolute left-3 top-3 z-10 rounded bg-red-600 text-white text-xs font-semibold px-2 py-1">
+                  SALE 30% OFF
+                </span>
+              )}
               <motion.img
                 src={product.image}
                 alt=""
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
                 animate={{
                   scale: hoveredId === product.id ? 1.04 : 1,
                 }}
@@ -171,9 +188,16 @@ export default function ProductCarousel({
               <p className="font-display text-lg text-soft-charcoal dark:text-off-white">
                 {product.name}
               </p>
-              <p className="text-ash text-sm mt-1">
-                {formatMoney(product.price, product.currency)}
-              </p>
+              <div className="flex items-baseline gap-2 mt-1">
+                {product.compareAtPrice != null && product.compareAtPrice > product.price && (
+                  <span className="text-ash line-through text-sm">
+                    {formatMoney(product.compareAtPrice, product.currency)}
+                  </span>
+                )}
+                <p className="text-ash text-sm">
+                  {formatMoney(product.price, product.currency)}
+                </p>
+              </div>
             </div>
           </motion.a>
         ))}
@@ -187,7 +211,7 @@ export default function ProductCarousel({
           transition={{ delay: 0.5, duration: 0.8 }}
           className="inline-block font-display text-sm text-ash hover:text-soft-charcoal dark:hover:text-off-white transition-colors duration-300"
         >
-          Continue reading →
+          View all
         </motion.a>
       </div>
     </section>

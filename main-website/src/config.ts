@@ -35,6 +35,14 @@ export const heroVideoUrl = envStr('PUBLIC_HERO_VIDEO_URL', '/videos/hero.mp4');
 /** Hero poster: image URL for mobile/reduced-motion (optional; auto for YouTube) */
 export const heroVideoPoster = envStr('PUBLIC_HERO_VIDEO_POSTER', '');
 
+/** Hero image carousel — minimal config. Replace with your image URLs. */
+export type HeroSlide = { src: string; alt?: string };
+export const heroSlides: HeroSlide[] = [
+  { src: 'https://picsum.photos/seed/hero1/1920/1080', alt: 'Hero 1' },
+  { src: 'https://picsum.photos/seed/hero2/1920/1080', alt: 'Hero 2' },
+  { src: 'https://picsum.photos/seed/hero3/1920/1080', alt: 'Hero 3' },
+];
+
 /** Brand name */
 export const brandName = envStr('PUBLIC_BRAND_NAME', 'Aien');
 
@@ -79,3 +87,27 @@ export const faviconPath = envStr('PUBLIC_FAVICON', '/favicon.svg');
 
 /** Theme localStorage key */
 export const themeStorageKey = envStr('PUBLIC_THEME_STORAGE_KEY', 'aien-theme');
+
+/** Landing: announcement bar text */
+export const announcementText = envStr('PUBLIC_ANNOUNCEMENT_TEXT', 'FREE DELIVERY ON ORDERS PKR 2000 & ABOVE');
+
+/** Landing: footer contact (Customer Support column) */
+export const footerContact = {
+  email: envStr('PUBLIC_FOOTER_EMAIL', 'contact.theclothingbrand@gmail.com'),
+  phone: envStr('PUBLIC_FOOTER_PHONE', '000-0000000'),
+  hours: envStr('PUBLIC_FOOTER_HOURS', 'MON - SAT | 9am - 5pm'),
+};
+
+/** Landing: feature strip (support, exchange, shipping) */
+export const featureStrip = {
+  supportText: envStr('PUBLIC_FEATURE_SUPPORT', 'Full customer support — we\'re here whenever you need us.'),
+  supportHours: envStr('PUBLIC_FEATURE_SUPPORT_HOURS', 'MON - SAT | 9am - 5pm'), // kept for backwards compatibility if used elsewhere
+  exchangeText: envStr('PUBLIC_FEATURE_EXCHANGE', '14 days easy exchange. Exchange only.'),
+  shippingText: envStr('PUBLIC_FEATURE_SHIPPING', 'Free delivery on every order.'),
+};
+
+/** Landing: category banner images (optional; placeholder or your asset URLs). */
+export const categoryBannerImages = {
+  tees: envStr('PUBLIC_BANNER_TEES_IMAGE', 'https://picsum.photos/seed/tees/600/750'),
+  hoodie: envStr('PUBLIC_BANNER_HOODIE_IMAGE', 'https://picsum.photos/seed/hoodie/600/750'),
+};

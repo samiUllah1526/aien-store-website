@@ -22,13 +22,20 @@ export default {
         'charcoal-light': '#1e1e1e',
       },
       fontFamily: {
-        display: ['"Playfair Display"', 'Georgia', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Single typeface for all UI and headings; set once on body, no need to repeat in components.
+        sans: ['Montserrat', 'system-ui', 'sans-serif'],
+        display: ['Montserrat', 'system-ui', 'sans-serif'],
+        mono: ['Montserrat', 'system-ui', 'sans-serif'],
         urdu: ['"Noto Nastaliq Urdu"', 'serif'],
       },
       fontSize: {
         'urdu-hero': ['clamp(2rem, 6vw, 4.5rem)', { lineHeight: '1.6' }],
         'urdu-large': ['clamp(1.75rem, 4vw, 3rem)', { lineHeight: '1.7' }],
+        // Centralized form/checkout typography (all Montserrat via body)
+        'page-title': ['1.875rem', { lineHeight: '2.25rem' }],
+        'section-title': ['1.125rem', { lineHeight: '1.75rem' }],
+        'form-label': ['0.875rem', { lineHeight: '1.25rem' }],
+        'form-hint': ['0.75rem', { lineHeight: '1rem' }],
       },
       spacing: {
         '18': '4.5rem',

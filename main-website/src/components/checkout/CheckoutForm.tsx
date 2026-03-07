@@ -278,20 +278,20 @@ export default function CheckoutForm() {
   };
 
   const inputClass =
-    'rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50';
+    'rounded border border-sand dark:border-charcoal-light bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white px-3 py-2.5 text-form-label focus:outline-none focus:ring-2 focus:ring-mehndi/50';
   const inputErrorClass = 'border-red-500 dark:border-red-400';
 
   if (!hasHydrated) {
     return (
-      <div className="py-12 text-center text-charcoal/70 dark:text-cream/70">Loading…</div>
+      <div className="py-12 text-center text-form-label text-ash">Loading…</div>
     );
   }
 
   if (items.length === 0 && !submitted) {
     return (
-      <div className="py-12 text-center text-charcoal/70 dark:text-cream/70">
+      <div className="py-12 text-center text-form-label text-ash">
         <p>Your cart is empty.</p>
-        <a href="/shop" className="mt-4 inline-block text-emerald hover:text-emerald-light font-medium">
+        <a href="/shop" className="mt-4 inline-block text-mehndi hover:opacity-90 font-medium">
           Continue shopping
         </a>
       </div>
@@ -301,15 +301,15 @@ export default function CheckoutForm() {
   if (submitted) {
     return (
       <div className="py-12 text-center max-w-md mx-auto">
-        <p className="font-display text-xl text-ink dark:text-cream">Thank you.</p>
-        <p className="mt-2 text-charcoal/80 dark:text-cream/80">
+        <p className="text-section-title font-semibold text-soft-charcoal dark:text-off-white">Thank you.</p>
+        <p className="mt-2 text-form-label text-ash">
           Your order has been placed.
-          {orderId && <span className="block mt-1 text-sm">Order ID: {orderId}</span>}
+          {orderId && <span className="block mt-1 text-form-hint">Order ID: {orderId}</span>}
         </p>
-        <p className="mt-3 text-sm text-charcoal/70 dark:text-cream/70">
+        <p className="mt-3 text-form-hint text-ash">
           Payment method: {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Bank Deposit'}
         </p>
-        <a href="/shop" className="mt-6 inline-block text-emerald hover:text-emerald-light font-medium">
+        <a href="/shop" className="mt-6 inline-block text-mehndi hover:opacity-90 font-medium">
           Back to shop
         </a>
       </div>
@@ -331,11 +331,11 @@ export default function CheckoutForm() {
               </svg>
             </span>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">{errors.root.message}</p>
+              <p className="font-medium text-form-hint">{errors.root.message}</p>
               {errors.root.type === 'stock' && (
                 <a
                   href="/cart"
-                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
+                  className="mt-2 inline-flex items-center gap-1.5 text-form-label font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
                 >
                   Update your cart
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,7 +349,7 @@ export default function CheckoutForm() {
       )}
       <div className="space-y-10">
         <section>
-          <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Contact</h2>
+          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Contact</h2>
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
@@ -360,10 +360,10 @@ export default function CheckoutForm() {
                   className={`w-full ${inputClass} ${errors.email ? inputErrorClass : ''}`}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email.message}</p>
+                  <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.email.message}</p>
                 )}
               </div>
-              <a href="/login" className="text-sm text-emerald hover:text-emerald-light self-center sm:self-auto">
+              <a href="/login" className="text-form-label text-mehndi hover:opacity-90 self-center sm:self-auto">
                 Sign in
               </a>
             </div>
@@ -376,7 +376,7 @@ export default function CheckoutForm() {
                   className={`w-full ${inputClass} ${errors.firstName ? inputErrorClass : ''}`}
                 />
                 {errors.firstName && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.firstName.message}</p>
+                  <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.firstName.message}</p>
                 )}
               </div>
               <div>
@@ -392,7 +392,7 @@ export default function CheckoutForm() {
         </section>
 
         <section>
-          <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Delivery</h2>
+          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Delivery</h2>
           <div className="space-y-3">
             <div>
               <select {...register('shippingCountry')} className={`w-full ${inputClass}`}>
@@ -407,7 +407,7 @@ export default function CheckoutForm() {
                 className={`w-full ${inputClass} ${errors.shippingAddressLine1 ? inputErrorClass : ''}`}
               />
               {errors.shippingAddressLine1 && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.shippingAddressLine1.message}</p>
+                <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.shippingAddressLine1.message}</p>
               )}
             </div>
             <div>
@@ -427,7 +427,7 @@ export default function CheckoutForm() {
                   className={`w-full ${inputClass} ${errors.shippingCity ? inputErrorClass : ''}`}
                 />
                 {errors.shippingCity && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.shippingCity.message}</p>
+                  <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.shippingCity.message}</p>
                 )}
               </div>
               <div>
@@ -447,15 +447,15 @@ export default function CheckoutForm() {
                 className={`w-full ${inputClass} ${errors.phone ? inputErrorClass : ''}`}
               />
               {errors.phone && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.phone.message}</p>
+                <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.phone.message}</p>
               )}
             </div>
             {isLoggedIn && (
-              <label className="flex items-center gap-2 text-sm text-charcoal dark:text-cream/90 cursor-pointer">
+              <label className="flex items-center gap-2 text-form-label text-soft-charcoal dark:text-off-white/90 cursor-pointer">
                 <input
                   type="checkbox"
                   {...register('saveInfo')}
-                  className="rounded border-sand dark:border-charcoal-light text-emerald focus:ring-emerald/50"
+                  className="rounded border-sand dark:border-charcoal-light text-mehndi focus:ring-mehndi/50"
                 />
                 Save this information for next time
               </label>
@@ -464,76 +464,76 @@ export default function CheckoutForm() {
         </section>
 
         <section>
-          <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Shipping method</h2>
+          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Shipping method</h2>
           {shippingCents === 0 ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-emerald/30 bg-emerald/5 dark:bg-emerald/10 px-4 py-4">
+            <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-mehndi/30 bg-mehndi/5 dark:bg-mehndi/10 px-4 py-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald/20 dark:bg-emerald/30 text-emerald dark:text-emerald-300" aria-hidden>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mehndi/20 dark:bg-mehndi/30 text-mehndi dark:text-mehndi/90" aria-hidden>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
                 <div>
-                  <p className="font-medium text-ink dark:text-cream">Standard Delivery</p>
-                  <p className="text-sm text-charcoal/70 dark:text-cream/70">Delivery to your address</p>
+                  <p className="font-medium text-soft-charcoal dark:text-off-white">Standard Delivery</p>
+                  <p className="text-form-hint text-ash">Delivery to your address</p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-full bg-emerald px-3 py-1.5 text-sm font-semibold text-white shadow-sm dark:bg-emerald-600">
+              <span className="shrink-0 rounded-full bg-mehndi px-3 py-1.5 text-form-label font-semibold text-white shadow-sm dark:bg-mehndi/80">
                 Free
               </span>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3">
-              <span className="text-charcoal dark:text-cream">Standard Delivery</span>
-              <span className="text-charcoal/80 dark:text-cream/80">{formatMoney(shippingCents, currency)}</span>
+            <div className="flex items-center justify-between rounded-lg border border-sand dark:border-charcoal-light bg-bone dark:bg-charcoal-light px-4 py-3">
+              <span className="text-soft-charcoal dark:text-off-white">Standard Delivery</span>
+              <span className="text-ash">{formatMoney(shippingCents, currency)}</span>
             </div>
           )}
         </section>
 
         <section>
-          <h2 className="font-display text-lg text-ink dark:text-cream mb-2">Payment</h2>
-          <p className="text-sm text-charcoal/70 dark:text-cream/70 mb-4">
+          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-2">Payment</h2>
+          <p className="text-form-hint text-ash mb-4">
             All transactions are secure and encrypted.
           </p>
           <div className="space-y-3">
-            <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3 cursor-pointer">
-              <input type="radio" value="cod" {...register('paymentMethod')} className="text-emerald focus:ring-emerald/50" />
-              <span className="text-charcoal dark:text-cream">Cash on Delivery (COD)</span>
+            <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-bone dark:bg-charcoal-light px-4 py-3 cursor-pointer">
+              <input type="radio" value="cod" {...register('paymentMethod')} className="text-mehndi focus:ring-mehndi/50" />
+              <span className="text-form-label text-soft-charcoal dark:text-off-white">Cash on Delivery (COD)</span>
             </label>
-            <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-4 py-3 cursor-pointer">
-              <input type="radio" value="bank" {...register('paymentMethod')} className="text-emerald focus:ring-emerald/50" />
-              <span className="text-charcoal dark:text-cream">Bank Deposit</span>
+            <label className="flex items-center gap-3 rounded-lg border border-sand dark:border-charcoal-light bg-bone dark:bg-charcoal-light px-4 py-3 cursor-pointer">
+              <input type="radio" value="bank" {...register('paymentMethod')} className="text-mehndi focus:ring-mehndi/50" />
+              <span className="text-form-label text-soft-charcoal dark:text-off-white">Bank Deposit</span>
             </label>
             {paymentMethod === 'bank' && (
-              <div className="rounded-lg border border-sand dark:border-charcoal-light bg-sand/30 dark:bg-charcoal-light/30 p-4 text-sm text-charcoal dark:text-cream/90 space-y-3 animate-fade-in">
-                <p className="font-medium text-ink dark:text-cream">Bank account details</p>
+              <div className="rounded-lg border border-sand dark:border-charcoal-light bg-sand/30 dark:bg-charcoal-light/30 p-4 text-form-label text-soft-charcoal dark:text-off-white/90 space-y-3 animate-fade-in">
+                <p className="font-medium text-soft-charcoal dark:text-off-white">Bank account details</p>
                 {banking?.bankName ? (
-                  <p><span className="text-charcoal/70 dark:text-cream/70">Bank name:</span> {banking.bankName}</p>
+                  <p><span className="text-ash">Bank name:</span> {banking.bankName}</p>
                 ) : null}
                 {banking?.accountTitle ? (
-                  <p><span className="text-charcoal/70 dark:text-cream/70">Account title:</span> {banking.accountTitle}</p>
+                  <p><span className="text-ash">Account title:</span> {banking.accountTitle}</p>
                 ) : null}
                 {banking?.accountNumber ? (
-                  <p><span className="text-charcoal/70 dark:text-cream/70">Account number:</span> {banking.accountNumber}</p>
+                  <p><span className="text-ash">Account number:</span> {banking.accountNumber}</p>
                 ) : null}
                 {banking?.iban ? (
-                  <p><span className="text-charcoal/70 dark:text-cream/70">IBAN:</span> {banking.iban}</p>
+                  <p><span className="text-ash">IBAN:</span> {banking.iban}</p>
                 ) : null}
                 {banking?.instructions ? (
-                  <p className="pt-2 text-charcoal/70 dark:text-cream/70">{banking.instructions}</p>
+                  <p className="pt-2 text-ash">{banking.instructions}</p>
                 ) : null}
                 <div>
-                  <label className="block text-sm font-medium text-ink dark:text-cream mb-1">
+                  <label className="block text-form-label font-medium text-soft-charcoal dark:text-off-white mb-1">
                     Payment proof (screenshot) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     {...register('paymentProof')}
-                    className={`block w-full text-sm text-charcoal dark:text-cream file:mr-3 file:rounded file:border-0 file:bg-emerald file:px-3 file:py-2 file:text-sm file:text-cream file:hover:opacity-90 ${errors.paymentProof ? 'border-red-500' : ''}`}
+                    className={`block w-full text-form-label text-soft-charcoal dark:text-off-white file:mr-3 file:rounded file:border-0 file:bg-mehndi file:px-3 file:py-2 file:text-form-label file:text-white file:hover:opacity-90 ${errors.paymentProof ? 'border-red-500' : ''}`}
                   />
                   {errors.paymentProof && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.paymentProof.message}</p>
+                    <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{errors.paymentProof.message}</p>
                   )}
                 </div>
               </div>
@@ -544,11 +544,11 @@ export default function CheckoutForm() {
 
       <div className="mt-10 lg:mt-0">
         <div className="lg:sticky lg:top-24 rounded-lg border border-sand dark:border-charcoal-light bg-sand/20 dark:bg-charcoal-light/20 p-6">
-          <h2 className="font-display text-lg text-ink dark:text-cream mb-4">Order summary</h2>
+          <h2 className="text-section-title font-semibold text-soft-charcoal dark:text-off-white mb-4">Order summary</h2>
           {quoteLoading ? (
-            <p className="text-charcoal/70 dark:text-cream/70 text-sm py-4">Loading summary…</p>
+            <p className="text-ash text-form-label py-4">Loading summary…</p>
           ) : quoteError ? (
-            <p className="text-amber-700 dark:text-amber-400 text-sm py-4">{quoteError}</p>
+            <p className="text-amber-700 dark:text-amber-400 text-form-label py-4">{quoteError}</p>
           ) : (
             <>
               <ul className="space-y-4 mb-6 max-h-60 overflow-y-auto">
@@ -565,12 +565,12 @@ export default function CheckoutForm() {
                             />
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-ink dark:text-cream text-sm truncate">{line.productName}</p>
-                            <p className="text-xs text-charcoal/70 dark:text-cream/70">
+                            <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{line.productName}</p>
+                            <p className="text-form-hint text-ash">
                               {cartItem ? `${cartItem.size} × ` : ''}{line.quantity}
                             </p>
                           </div>
-                          <p className="text-sm text-charcoal dark:text-cream shrink-0">
+                          <p className="text-form-label text-soft-charcoal dark:text-off-white shrink-0">
                             {formatMoney(line.lineTotalCents, quote.currency)}
                           </p>
                         </li>
@@ -580,12 +580,12 @@ export default function CheckoutForm() {
                       <li key={`${item.productId}-${item.size}`} className="flex gap-3">
                         <img src={item.image} alt="" className="w-14 h-14 object-cover rounded bg-sand dark:bg-charcoal shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-ink dark:text-cream text-sm truncate">{item.name}</p>
-                          <p className="text-xs text-charcoal/70 dark:text-cream/70">
+                          <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{item.name}</p>
+                          <p className="text-form-hint text-ash">
                             {item.size} × {item.quantity}
                           </p>
                         </div>
-                        <p className="text-sm text-charcoal dark:text-cream shrink-0">
+                        <p className="text-form-label text-soft-charcoal dark:text-off-white shrink-0">
                           {formatMoney(item.price * item.quantity, item.currency)}
                         </p>
                       </li>
@@ -593,18 +593,18 @@ export default function CheckoutForm() {
               </ul>
               <div className="border-t border-sand dark:border-charcoal-light pt-4 space-y-3">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-charcoal dark:text-cream">
+                  <label className="mb-1.5 block text-form-label font-medium text-soft-charcoal dark:text-off-white">
                     Voucher code
                   </label>
                   {appliedVoucherCode ? (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald/30 bg-emerald/5 dark:bg-emerald/10 px-3 py-2.5">
-                      <span className="font-mono text-sm font-medium text-emerald dark:text-emerald-300">
+                    <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-mehndi/30 bg-mehndi/5 dark:bg-mehndi/10 px-3 py-2.5">
+                      <span className="text-form-label font-medium text-mehndi dark:text-mehndi/90">
                         {appliedVoucherCode}
                       </span>
                       <button
                         type="button"
                         onClick={handleRemoveVoucher}
-                        className="text-xs font-medium text-charcoal/70 hover:text-charcoal dark:text-cream/70 dark:hover:text-cream"
+                        className="text-form-hint font-medium text-ash hover:text-soft-charcoal dark:text-off-white/90 dark:hover:text-off-white"
                       >
                         Remove
                       </button>
@@ -626,41 +626,41 @@ export default function CheckoutForm() {
                         }}
                         placeholder="e.g. SUMMER20"
                         disabled={voucherApplying}
-                        className={`flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/50 ${
+                        className={`flex-1 rounded border px-3 py-2 text-form-label focus:outline-none focus:ring-2 focus:ring-mehndi/50 ${
                           voucherError
                             ? 'border-red-500 bg-red-50/50 dark:border-red-400 dark:bg-red-900/10'
-                            : 'border-sand dark:border-charcoal-light bg-cream dark:bg-ink text-charcoal dark:text-cream'
+                            : 'border-sand dark:border-charcoal-light bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white'
                         }`}
                       />
                       <button
                         type="button"
                         onClick={handleApplyVoucher}
                         disabled={voucherApplying || !voucherInput.trim()}
-                        className="rounded border border-sand dark:border-charcoal-light bg-ink dark:bg-cream px-3 py-2 text-sm font-medium text-cream dark:text-ink hover:opacity-90 disabled:opacity-50"
+                        className="rounded border border-sand dark:border-charcoal-light bg-soft-charcoal dark:bg-off-white px-3 py-2 text-form-label font-medium text-off-white dark:text-soft-charcoal hover:opacity-90 disabled:opacity-50"
                       >
                         {voucherApplying ? '…' : 'Apply'}
                       </button>
                     </div>
                   )}
                   {voucherError && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{voucherError}</p>
+                    <p className="mt-1 text-form-hint text-red-600 dark:text-red-400">{voucherError}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                <p className="flex justify-between text-sm text-charcoal dark:text-cream">
+                <p className="flex justify-between text-form-label text-soft-charcoal dark:text-off-white">
                   <span>Subtotal</span>
                   <span>{formatMoney(subtotal, currency)}</span>
                 </p>
                 {discountCents > 0 && (
-                  <p className="flex justify-between text-sm text-emerald dark:text-emerald-300">
+                  <p className="flex justify-between text-form-label text-mehndi dark:text-mehndi/90">
                     <span>Discount ({appliedVoucherCode})</span>
                     <span>-{formatMoney(discountCents, currency)}</span>
                   </p>
                 )}
-                <p className="flex justify-between text-sm text-charcoal dark:text-cream">
+                <p className="flex justify-between text-form-label text-soft-charcoal dark:text-off-white">
                   <span>Shipping</span>
                   {shippingCents === 0 ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald/15 px-2 py-0.5 text-emerald dark:bg-emerald/25 dark:text-emerald-300 font-medium">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-mehndi/15 px-2 py-0.5 text-mehndi dark:bg-mehndi/25 dark:text-mehndi/90 font-medium">
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -670,19 +670,19 @@ export default function CheckoutForm() {
                     <span>{formatMoney(shippingCents, currency)}</span>
                   )}
                 </p>
-                <p className="flex justify-between font-display text-ink dark:text-cream pt-2">
+                <p className="flex justify-between text-form-label font-semibold text-soft-charcoal dark:text-off-white pt-2">
                   <span>Total</span>
                   <span>{formatMoney(total, currency)}</span>
                 </p>
                 </div>
               </div>
               {pricesUpdated && quote && (
-                <p className="mt-4 text-amber-700 dark:text-amber-400 text-sm">
+                <p className="mt-4 text-amber-700 dark:text-amber-400 text-form-label">
                   Prices have been updated. Your total is now {formatMoney(quote.totalCents, quote.currency)}.
                 </p>
               )}
               {hasMixedCurrencies && (
-                <p className="mt-4 text-amber-700 dark:text-amber-400 text-sm">
+                <p className="mt-4 text-amber-700 dark:text-amber-400 text-form-label">
                   Cart has multiple currencies. Please use one currency per order.
                 </p>
               )}
@@ -691,7 +691,7 @@ export default function CheckoutForm() {
           <button
             type="submit"
             disabled={isSubmitting || hasMixedCurrencies || !!quoteError || quoteLoading || (items.length > 0 && !quote)}
-            className="w-full mt-6 py-3 bg-ink dark:bg-cream text-cream dark:text-ink font-medium rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-emerald/50 focus:ring-offset-2 dark:focus:ring-offset-ink disabled:opacity-60"
+            className="w-full mt-6 py-3 bg-soft-charcoal dark:bg-off-white text-off-white dark:text-soft-charcoal font-medium rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-mehndi/50 focus:ring-offset-2 dark:focus:ring-offset-charcoal disabled:opacity-60"
           >
             {isSubmitting ? 'Placing order…' : 'Place order'}
           </button>
