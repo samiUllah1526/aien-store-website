@@ -61,6 +61,8 @@ The project uses Prisma Migrate with a single initial migration (`0_init`) that 
 **Fresh database (new environment):**
 - Run `npm run db:migrate:deploy` — the `0_init` migration creates all tables from scratch
 
+**Background jobs (pg-boss):** The app creates the `pgboss` schema and job tables automatically on first start. No separate migration or script is required on deploy. See `docs/jobs-setup.md` for details and an optional one-time CLI step if the schema was never created.
+
 ## Compile and run the project
 
 ```bash
