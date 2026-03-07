@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore, getStoredUserDisplay } from '../../store/authStore';
 
 export default function ProfileMenu() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const userDisplay = getStoredUserDisplay();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -30,14 +31,18 @@ export default function ProfileMenu() {
         <button
           type="button"
           onClick={() => setProfileOpen((o) => !o)}
-          className="flex items-center justify-center rounded-full w-9 h-9 sm:w-10 sm:h-10 border-2 border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white hover:border-mehndi/50 hover:bg-sand/50 dark:hover:bg-charcoal/50 focus:outline-none focus:ring-2 focus:ring-mehndi/50 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal transition-colors overflow-hidden"
+          className="flex items-center justify-center rounded-full w-9 h-9 sm:w-10 sm:h-10 border-2 border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white hover:border-mehndi/50 hover:bg-sand/50 dark:hover:bg-charcoal/50 focus:outline-none focus:ring-2 focus:ring-mehndi/50 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal transition-colors overflow-hidden font-medium text-sm sm:text-base"
           aria-expanded={profileOpen}
           aria-haspopup="true"
           aria-label="Account menu"
         >
-          <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
+          {isLoggedIn && userDisplay ? (
+            <span aria-hidden>{userDisplay.initial}</span>
+          ) : (
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          )}
         </button>
         {profileOpen && (
           <div

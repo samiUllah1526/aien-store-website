@@ -19,6 +19,10 @@ export interface UserResponseDto {
   isSuperAdmin: boolean;
   /** IDs of permissions directly assigned (grant or revoke). */
   directPermissionIds?: string[];
+  /** True if user can sign in with email/password (password set). */
+  hasPassword: boolean;
+  /** True if user has linked Google sign-in. */
+  hasGoogleLogin: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -165,6 +165,7 @@ export function UsersManager() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Sign-in</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                 {canWrite && (
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -191,6 +192,9 @@ export function UsersManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -221,6 +225,7 @@ export function UsersManager() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Sign-in</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                   {canWrite && (
                     <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -251,6 +256,30 @@ export function UsersManager() {
                       >
                         {user.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {user.hasGoogleLogin && user.hasPassword && (
+                          <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" title="Can sign in with Google or password">
+                            Google + Password
+                          </span>
+                        )}
+                        {user.hasGoogleLogin && !user.hasPassword && (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" title="Can only sign in with Google">
+                            Google only
+                          </span>
+                        )}
+                        {user.hasPassword && !user.hasGoogleLogin && (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200" title="Can sign in with email/password only">
+                            Password only
+                          </span>
+                        )}
+                        {!user.hasPassword && !user.hasGoogleLogin && (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-600 dark:text-slate-400" title="No sign-in method (invite pending or legacy)">
+                            —
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDateTime(user.lastLoginAt)}</td>
                     {canWrite && (
@@ -433,6 +462,19 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
           <h2 id="user-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {user ? 'Edit user' : 'Add user'}
           </h2>
+          {user && (user.hasPassword || user.hasGoogleLogin) && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {user.hasGoogleLogin && user.hasPassword && (
+                <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Google + Password</span>
+              )}
+              {user.hasGoogleLogin && !user.hasPassword && (
+                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Google only</span>
+              )}
+              {user.hasPassword && !user.hasGoogleLogin && (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200">Password only</span>
+              )}
+            </div>
+          )}
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (

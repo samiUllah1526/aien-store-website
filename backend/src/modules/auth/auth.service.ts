@@ -88,6 +88,9 @@ export class AuthService {
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Invalid credentials');
     }
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('This account uses Google sign-in. Sign in with Google.');
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -109,6 +112,91 @@ export class AuthService {
       accessToken,
       expiresIn: this.accessExpiresSec,
       user: { id: user.id, email: user.email, name: user.name, permissions, roleNames },
+    };
+  }
+
+  /** Used by Google OAuth: find user by email or googleId, or create a new Customer. Returns same shape as login(). */
+  async findOrCreateFromGoogle(profile: {
+    id: string;
+    displayName?: string;
+    name?: { familyName?: string; givenName?: string };
+    emails?: Array<{ value: string; type?: string }>;
+  }) {
+    const emailRaw = profile.emails?.[0]?.value;
+    if (!emailRaw || typeof emailRaw !== 'string') {
+      throw new UnauthorizedException('Google account has no email');
+    }
+    const email = emailRaw.trim().toLowerCase();
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: { equals: email, mode: 'insensitive' } },
+          { googleId: profile.id },
+        ],
+      },
+      include: {
+        roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+        directPermissions: { include: { permission: true } },
+      },
+    });
+    if (existing) {
+      if (existing.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Account is disabled');
+      }
+      const updateData: { lastLoginAt: Date; googleId?: string } = { lastLoginAt: new Date() };
+      if (!existing.googleId) updateData.googleId = profile.id;
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: updateData,
+      });
+      const permissions = this.resolvePermissions(existing);
+      const roleNames = existing.roles.map((ur) => ur.role.name);
+      const { accessToken } = this.buildTokens({
+        id: existing.id,
+        email: existing.email,
+        name: existing.name,
+        permissions,
+        roleNames,
+      });
+      return {
+        accessToken,
+        expiresIn: this.accessExpiresSec,
+        user: { id: existing.id, email: existing.email, name: existing.name, permissions, roleNames },
+      };
+    }
+    const customerRole = await this.prisma.role.findFirst({ where: { name: 'Customer' } });
+    if (!customerRole) {
+      throw new UnauthorizedException('Customer role not found; run database seed.');
+    }
+    const givenName = profile.name?.givenName?.trim() ?? '';
+    const familyName = profile.name?.familyName?.trim() ?? '';
+    const name =
+      [givenName, familyName].filter(Boolean).join(' ').trim() ||
+      profile.displayName?.trim() ||
+      email;
+    const newUser = await this.prisma.user.create({
+      data: {
+        name,
+        firstName: givenName || null,
+        lastName: familyName || null,
+        email,
+        passwordHash: null,
+        googleId: profile.id,
+        status: 'ACTIVE',
+        roles: { create: [{ roleId: customerRole.id }] },
+      },
+    });
+    const { accessToken } = this.buildTokens({
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      permissions: [],
+      roleNames: ['Customer'],
+    });
+    return {
+      accessToken,
+      expiresIn: this.accessExpiresSec,
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, permissions: [], roleNames: ['Customer'] },
     };
   }
 
