@@ -90,17 +90,19 @@ function ShellContent({
               />
             </form>
             <ul className="flex items-center gap-1 sm:gap-4 shrink-0">
-              <li>
-                <a
-                  href={isLoggedIn ? '/account/favorites' : '/login'}
-                  className="p-2.5 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors rounded focus-ring"
-                  aria-label="Wishlist"
-                >
-                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </a>
-              </li>
+              {isLoggedIn && (
+                <li>
+                  <a
+                    href="/account/favorites"
+                    className="p-2.5 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors rounded focus-ring"
+                    aria-label="Wishlist"
+                  >
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </a>
+                </li>
+              )}
               <li><CartIcon /></li>
               <li className="flex items-center gap-1">
                 <ThemeToggle />
@@ -108,7 +110,7 @@ function ShellContent({
               {isLoggedIn ? (
                 <>
                   <li>
-                    <a href="/account/orders" className="text-xs sm:text-sm text-soft-charcoal/80 dark:text-off-white/80 hover:text-soft-charcoal dark:hover:text-off-white py-2 px-1.5 sm:px-2">Orders</a>
+                    <a href="/account/orders" className="text-xs sm:text-sm text-soft-charcoal/80 dark:text-off-white/80 hover:text-soft-charcoal dark:hover:text-off-white py-2 px-1.5 sm:px-2">My Orders</a>
                   </li>
                   <li>
                     <button type="button" onClick={() => { clearAuth(); window.location.href = '/'; }} className="text-xs sm:text-sm text-ash hover:text-soft-charcoal dark:hover:text-off-white py-2 px-1.5 sm:px-2">Log out</button>
