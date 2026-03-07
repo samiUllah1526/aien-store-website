@@ -3,7 +3,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { brandName, footerContact } from '../config';
+import { brandName } from '../config';
 import { getApiBaseUrl } from '../lib/api';
 import CartSidebar from './cart/CartSidebar';
 import AnnouncementBar from './layout/AnnouncementBar';
@@ -48,13 +48,12 @@ function ShellContent({
   children: ReactNode;
   siteSettings: SiteSettings | null | undefined;
 }) {
-  const copyrightText =
-    siteSettings?.footer?.copyright ?? `© ${new Date().getFullYear()} ${brandName}`;
+  const copyrightText = siteSettings?.footer?.copyright ?? '';
   const logoSrc = siteSettings?.logoPath ? logoUrl(siteSettings.logoPath) : '';
   const social = siteSettings?.social ?? {};
-  const email = siteSettings?.footer?.email ?? footerContact.email;
-  const phone = siteSettings?.footer?.phone ?? footerContact.phone;
-  const hours = siteSettings?.footer?.hours ?? footerContact.hours;
+  const email = siteSettings?.footer?.email ?? '';
+  const phone = siteSettings?.footer?.phone ?? '';
+  const hours = siteSettings?.footer?.hours ?? '';
 
   return (
     <>
@@ -65,6 +64,7 @@ function ShellContent({
       <main className="flex-1 w-full min-w-0 overflow-x-clip">{children}</main>
       <AppFooter
           copyrightText={copyrightText}
+          tagline={siteSettings?.footer?.tagline}
           email={email}
           phone={phone}
           hours={hours}

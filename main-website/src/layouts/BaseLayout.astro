@@ -22,15 +22,17 @@ interface Props {
 const settings = await getPublicSettings();
 const seo = settings.seo;
 const marketing = settings.marketing;
+const siteSettings = {
+  logoPath: settings.logoPath,
+  footer: settings.footer,
+  social: settings.social,
+};
 
 const { title: titleProp, description: descProp, image: imageProp, canonical: canonicalProp, jsonLd } = Astro.props;
 const title = titleProp ?? seo.siteTitle;
 const description = descProp ?? seo.defaultDescription;
 const image = imageProp ?? (seo.ogImageDefault || undefined);
 const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pathname}` : undefined);
-
-// Site settings for LayoutShell (logo, footer, social). Fetched separately by about page; layout uses minimal.
-const siteSettings = null;
 ---
 <!doctype html>
 <html lang="en">

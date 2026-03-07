@@ -7,9 +7,27 @@ import {
   apiBaseUrl,
   brandName,
   defaultMetaDescription,
-  faviconPath,
   siteUrl,
 } from '../config';
+
+export interface PublicFooter {
+  tagline?: string;
+  copyright?: string;
+  email?: string;
+  phone?: string;
+  hours?: string;
+}
+
+export interface PublicSocial {
+  facebook?: string;
+  facebookVisible?: boolean;
+  instagram?: string;
+  instagramVisible?: boolean;
+  twitter?: string;
+  twitterVisible?: boolean;
+  youtube?: string;
+  youtubeVisible?: boolean;
+}
 
 export interface PublicSeo {
   siteTitle: string;
@@ -28,14 +46,19 @@ export interface PublicMarketing {
 }
 
 export interface PublicSettings {
+  logoPath: string | null;
+  footer: PublicFooter;
+  social: PublicSocial;
   seo: PublicSeo;
   marketing: PublicMarketing;
 }
 
 let cached: PublicSettings | null = null;
 
+const isDev = typeof import.meta !== 'undefined' && (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+
 export async function getPublicSettings(): Promise<PublicSettings> {
-  if (cached) return cached;
+  if (cached && !isDev) return cached;
   try {
     const res = await fetch(`${apiBaseUrl}/settings/public`);
     const json = (await res.json()) as { success?: boolean; data?: unknown };
@@ -43,7 +66,31 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       const data = json.data as Record<string, unknown>;
       const seo = (data.seo as Record<string, unknown>) ?? {};
       const marketing = (data.marketing as Record<string, unknown>) ?? {};
-      cached = {
+      const footer = (data.footer as Record<string, unknown>) ?? {};
+      const social = (data.social as Record<string, unknown>) ?? {};
+      const logoPath = (data.logoPath as string)?.trim() || null;
+      // Support both lowercase and capitalized keys (e.g. youtube vs YouTube from API)
+      const youtubeUrl = (social.youtube as string) ?? (social.YouTube as string);
+      const youtubeVisibleVal = social.youtubeVisible ?? social.YouTubeVisible;
+      const next: PublicSettings = {
+        logoPath,
+        footer: {
+          tagline: (footer.tagline as string)?.trim() || '',
+          copyright: (footer.copyright as string)?.trim() || '',
+          email: (footer.email as string)?.trim() || '',
+          phone: (footer.phone as string)?.trim() || '',
+          hours: (footer.hours as string)?.trim() || '',
+        },
+        social: {
+          facebook: (social.facebook as string)?.trim() || '',
+          facebookVisible: social.facebookVisible === true,
+          instagram: (social.instagram as string)?.trim() || '',
+          instagramVisible: social.instagramVisible === true,
+          twitter: (social.twitter as string)?.trim() || '',
+          twitterVisible: social.twitterVisible === true,
+          youtube: (youtubeUrl as string)?.trim() || '',
+          youtubeVisible: youtubeVisibleVal === true,
+        },
         seo: {
           siteTitle: (seo.siteTitle as string)?.trim() || brandName,
           defaultDescription: (seo.defaultDescription as string)?.trim() || defaultMetaDescription,
@@ -59,12 +106,22 @@ export async function getPublicSettings(): Promise<PublicSettings> {
           enabled: marketing.enabled !== false,
         },
       };
-      return cached;
+      cached = next;
+      return next;
     }
   } catch {
     // fall through to defaults
   }
-  cached = {
+  return {
+    logoPath: null,
+    footer: {
+      tagline: '',
+      copyright: '',
+      email: '',
+      phone: '',
+      hours: '',
+    },
+    social: {},
     seo: {
       siteTitle: brandName,
       defaultDescription: defaultMetaDescription,
@@ -77,5 +134,4 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       enabled: true,
     },
   };
-  return cached;
 }

@@ -152,6 +152,9 @@ async function main() {
       value: {
         tagline: 'Wear the words. Urdu poetry & adab on streetwear.',
         copyright: `© ${currentYear} Adab. All rights reserved.`,
+        email: 'contact.theclothingbrand@gmail.com',
+        phone: '000-0000000',
+        hours: 'MON - SAT | 9am - 5pm',
       },
     },
     {
