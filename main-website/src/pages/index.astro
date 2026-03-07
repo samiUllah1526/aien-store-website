@@ -1,12 +1,17 @@
 ---
 /**
- * Home: static shell. Data fetched client-side (no build-time API dependency).
+ * Home: static shell. Hero carousel from admin settings when available.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HomePage from '../components/home/HomePage';
 import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroSlides } from '../config';
+import { getPublicSettings } from '../lib/settings';
+
+const settings = await getPublicSettings();
+const heroSlidesFromApi = settings.hero?.slides?.length ? settings.hero.slides : [];
+const heroSlidesToUse = heroSlidesFromApi.length > 0 ? heroSlidesFromApi : heroSlides;
 ---
 
 <BaseLayout title={brandName} description={defaultMetaDescription}>
-  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} heroSlides={heroSlides} />
+  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} heroSlides={heroSlidesToUse} />
 </BaseLayout>

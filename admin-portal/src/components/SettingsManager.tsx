@@ -66,6 +66,15 @@ interface AnnouncementValue {
   items?: AnnouncementItem[];
 }
 
+interface HeroSlideValue {
+  src: string;
+  alt?: string;
+}
+
+interface HeroValue {
+  slides?: HeroSlideValue[];
+}
+
 interface PublicSettings {
   logoPath: string | null;
   about: AboutValue;
@@ -101,6 +110,7 @@ export function SettingsManager() {
   const [seo, setSeo] = useState<SeoValue>({});
   const [marketing, setMarketing] = useState<MarketingValue>({});
   const [announcement, setAnnouncement] = useState<AnnouncementValue>({ items: [] });
+  const [hero, setHero] = useState<HeroValue>({ slides: [] });
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -125,6 +135,7 @@ export function SettingsManager() {
       setSeo((data['seo'] as SeoValue) ?? {});
       setMarketing((data['marketing'] as MarketingValue) ?? {});
       setAnnouncement((data['announcement'] as AnnouncementValue) ?? { items: [] });
+      setHero((data['hero'] as HeroValue) ?? { slides: [] });
     } catch (err) {
       console.log("settingserror=>>>>", err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
@@ -196,6 +207,13 @@ export function SettingsManager() {
   const handleSaveAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     await saveKey('announcement', { items: announcement.items ?? [] });
+  };
+
+  const handleSaveHero = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const slides = (hero.slides ?? []).filter((s) => (s.src ?? '').trim() !== '');
+    await saveKey('hero', { slides });
+    setHero({ slides });
   };
 
   const handleSaveSocial = async (e: React.FormEvent) => {
@@ -637,6 +655,80 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'announcement' ? 'Saving…' : 'Save announcement bar'}
+          </button>
+        </form>
+      </section>
+
+      {/* Hero carousel */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Hero carousel (home page)</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Add image URLs for the hero carousel on the home page. Order is preserved. Leave URL empty to remove when saving.
+        </p>
+        <form onSubmit={handleSaveHero} className="space-y-4">
+          {(hero.slides ?? []).map((slide, index) => (
+            <div key={index} className="rounded-lg border border-slate-200 p-4 dark:border-slate-600">
+              <div className="flex gap-2 flex-wrap">
+                <div className="flex-1 min-w-[200px]">
+                  <label htmlFor={`hero-src-${index}`} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Image URL
+                  </label>
+                  <input
+                    id={`hero-src-${index}`}
+                    type="url"
+                    value={slide.src ?? ''}
+                    onChange={(e) => {
+                      const next = [...(hero.slides ?? [])];
+                      next[index] = { ...next[index], src: e.target.value };
+                      setHero({ slides: next });
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex-1 min-w-[120px]">
+                  <label htmlFor={`hero-alt-${index}`} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Alt text (optional)
+                  </label>
+                  <input
+                    id={`hero-alt-${index}`}
+                    type="text"
+                    value={slide.alt ?? ''}
+                    onChange={(e) => {
+                      const next = [...(hero.slides ?? [])];
+                      next[index] = { ...next[index], alt: e.target.value };
+                      setHero({ slides: next });
+                    }}
+                    placeholder="Description for accessibility"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => setHero({ slides: (hero.slides ?? []).filter((_, i) => i !== index) })}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                    aria-label="Remove slide"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setHero({ slides: [...(hero.slides ?? []), { src: '', alt: '' }] })}
+            className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700/50"
+          >
+            + Add image
+          </button>
+          <button
+            type="submit"
+            disabled={saving === 'hero'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'hero' ? 'Saving…' : 'Save hero carousel'}
           </button>
         </form>
       </section>
