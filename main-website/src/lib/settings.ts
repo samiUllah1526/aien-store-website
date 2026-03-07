@@ -45,10 +45,19 @@ export interface PublicMarketing {
   enabled: boolean;
 }
 
+export interface PublicAnnouncementItem {
+  text: string;
+}
+
+export interface PublicAnnouncement {
+  items: PublicAnnouncementItem[];
+}
+
 export interface PublicSettings {
   logoPath: string | null;
   footer: PublicFooter;
   social: PublicSocial;
+  announcement: PublicAnnouncement;
   seo: PublicSeo;
   marketing: PublicMarketing;
 }
@@ -72,6 +81,10 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       // Support both lowercase and capitalized keys (e.g. youtube vs YouTube from API)
       const youtubeUrl = (social.youtube as string) ?? (social.YouTube as string);
       const youtubeVisibleVal = social.youtubeVisible ?? social.YouTubeVisible;
+      const rawAnnouncement = (data.announcement as { items?: { text: string }[] }) ?? {};
+      const announcementItems = Array.isArray(rawAnnouncement.items)
+        ? rawAnnouncement.items.map((item) => ({ text: (item?.text ?? '').trim() })).filter((item) => item.text !== '')
+        : [];
       const next: PublicSettings = {
         logoPath,
         footer: {
@@ -91,6 +104,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
           youtube: (youtubeUrl as string)?.trim() || '',
           youtubeVisible: youtubeVisibleVal === true,
         },
+        announcement: { items: announcementItems },
         seo: {
           siteTitle: (seo.siteTitle as string)?.trim() || brandName,
           defaultDescription: (seo.defaultDescription as string)?.trim() || defaultMetaDescription,
@@ -122,6 +136,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       hours: '',
     },
     social: {},
+    announcement: { items: [] },
     seo: {
       siteTitle: brandName,
       defaultDescription: defaultMetaDescription,

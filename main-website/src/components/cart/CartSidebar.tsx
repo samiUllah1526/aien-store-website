@@ -24,12 +24,12 @@ export default function CartSidebar() {
   return (
     <>
       <div
-        className="fixed inset-0 bg-charcoal/40 z-40 transition-opacity duration-300"
+        className="fixed inset-0 bg-charcoal/40 z-[100] transition-opacity duration-300"
         aria-hidden
         onClick={closeCart}
       />
       <aside
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-50 flex flex-col shadow-xl sm:rounded-l-xl"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-[101] flex flex-col shadow-xl sm:rounded-l-xl"
         role="dialog"
         aria-label="Shopping cart"
       >

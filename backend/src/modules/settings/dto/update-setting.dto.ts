@@ -1,10 +1,10 @@
 import { IsIn, IsObject } from 'class-validator';
 
-export const SETTINGS_KEYS = ['general', 'about', 'footer', 'social', 'delivery', 'banking', 'seo', 'marketing'] as const;
+export const SETTINGS_KEYS = ['general', 'about', 'footer', 'social', 'delivery', 'banking', 'seo', 'marketing', 'announcement'] as const;
 export type SettingsKey = (typeof SETTINGS_KEYS)[number];
 
 export class UpdateSettingDto {
-  @IsIn(SETTINGS_KEYS, { message: 'key must be one of: general, about, footer, social, delivery, banking, seo, marketing' })
+  @IsIn(SETTINGS_KEYS, { message: 'key must be one of: general, about, footer, social, delivery, banking, seo, marketing, announcement' })
   key: SettingsKey;
 
   @IsObject()
