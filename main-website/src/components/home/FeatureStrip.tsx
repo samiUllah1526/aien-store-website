@@ -12,7 +12,7 @@ const descClass = 'text-sm text-ash mt-1';
 export default function FeatureStrip() {
   return (
     <section className="border-t border-ash/20 bg-bone dark:bg-charcoal" aria-label="Services">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-14">
+      <div className="w-full py-12 md:py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
           <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <span className={iconClass} aria-hidden>

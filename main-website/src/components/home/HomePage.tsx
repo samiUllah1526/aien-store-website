@@ -14,6 +14,7 @@ import LandingMotto from './LandingMotto';
 import ProductCarousel from './ProductCarousel';
 import CategoryBanner from './CategoryBanner';
 import FeatureStrip from './FeatureStrip';
+import SiteContainer from '../layout/SiteContainer';
 
 interface HomePageProps {
   videoSrc?: string;
@@ -102,31 +103,47 @@ export default function HomePage({ videoSrc = '/videos/hero.mp4', videoPoster, h
   const useHeroCarousel = heroSlides.length > 0;
 
   return (
-    <div className="flex flex-col gap-y-16 md:gap-y-24">
+    <div className="flex flex-col">
+      {/* Full-bleed hero */}
       {useHeroCarousel ? (
         <HeroImageCarousel slides={heroSlides} />
       ) : (
         <CinematicVideoHero src={videoSrc} poster={videoPoster} />
       )}
-      <LandingMotto />
-      <ProductCarousel products={shopAll} title="SHOP ALL" showSaleBadge />
-      <CategoryBanner
-        smallTitle="PREMIUM T-SHIRTS"
-        largeTitle="BEGGY"
-        saleText="SALE 30% OFF"
-        imageSrc={categoryBannerImages.tees}
-        imageAlt="Premium Beggy tees"
-      />
-      <ProductCarousel products={beggyTees} title="BEGGY TEES" />
-      <CategoryBanner
-        smallTitle="PREMIUM COLLECTION"
-        largeTitle="HOODIE"
-        saleText="SALE 30% OFF"
-        imageSrc={categoryBannerImages.hoodie}
-        imageAlt="Premium hoodies"
-      />
-      <ProductCarousel products={hoodies} title="HOODIES" />
-      <FeatureStrip />
+
+      <div className="flex flex-col gap-y-16 md:gap-y-24 pt-16 md:pt-24">
+        <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
+          <LandingMotto />
+          <ProductCarousel products={shopAll} title="SHOP ALL" showSaleBadge />
+        </SiteContainer>
+
+        {/* Full-bleed category banner */}
+        <CategoryBanner
+          smallTitle="PREMIUM T-SHIRTS"
+          largeTitle="BEGGY"
+          saleText="SALE 30% OFF"
+          imageSrc={categoryBannerImages.tees}
+          imageAlt="Premium Beggy tees"
+        />
+
+        <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
+          <ProductCarousel products={beggyTees} title="BEGGY TEES" />
+        </SiteContainer>
+
+        {/* Full-bleed category banner */}
+        <CategoryBanner
+          smallTitle="PREMIUM COLLECTION"
+          largeTitle="HOODIE"
+          saleText="SALE 30% OFF"
+          imageSrc={categoryBannerImages.hoodie}
+          imageAlt="Premium hoodies"
+        />
+
+        <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
+          <ProductCarousel products={hoodies} title="HOODIES" />
+          <FeatureStrip />
+        </SiteContainer>
+      </div>
     </div>
   );
 }
