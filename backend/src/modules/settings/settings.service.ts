@@ -59,11 +59,23 @@ export interface MarketingValue {
   enabled?: boolean;
 }
 
+export interface AnnouncementItem {
+  text: string;
+  /** If false, hidden on website but kept in admin. Default true. */
+  visible?: boolean;
+}
+
+export interface AnnouncementValue {
+  items?: AnnouncementItem[];
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
+  /** Announcement bar items (multiple messages). */
+  announcement: AnnouncementValue;
   /** Delivery charges in cents. 0 = free delivery. */
   deliveryChargesCents: number;
   /** Bank account details shown at checkout for Bank Deposit. */
@@ -114,7 +126,7 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery, banking, seo, marketing] = await Promise.all([
+    const [general, about, footer, social, delivery, banking, seo, marketing, announcement] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
@@ -123,6 +135,7 @@ export class SettingsService {
       this.getByKey('banking'),
       this.getByKey('seo'),
       this.getByKey('marketing'),
+      this.getByKey('announcement'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -141,6 +154,11 @@ export class SettingsService {
       about: (about as AboutValue) ?? {},
       footer: (footer as FooterValue) ?? {},
       social: (social as SocialValue) ?? {},
+      announcement: (() => {
+        const raw = (announcement as AnnouncementValue) ?? { items: [] };
+        const items = (raw.items ?? []).filter((item) => item.visible !== false);
+        return { items };
+      })(),
       deliveryChargesCents,
       banking: bankingVal
         ? {

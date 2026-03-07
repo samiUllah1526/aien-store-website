@@ -192,6 +192,15 @@ async function main() {
         enabled: false,
       },
     },
+    {
+      key: 'announcement',
+      value: {
+        items: [
+          { text: 'FREE DELIVERY ON ORDERS PKR 2000 & ABOVE', visible: true },
+          { text: 'New drops every week — wear the words.', visible: true },
+        ],
+      },
+    },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -200,7 +209,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement).');
 }
 
 main()

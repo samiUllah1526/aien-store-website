@@ -57,6 +57,15 @@ interface MarketingValue {
   enabled?: boolean;
 }
 
+interface AnnouncementItem {
+  text: string;
+  visible?: boolean;
+}
+
+interface AnnouncementValue {
+  items?: AnnouncementItem[];
+}
+
 interface PublicSettings {
   logoPath: string | null;
   about: AboutValue;
@@ -91,6 +100,7 @@ export function SettingsManager() {
   const [banking, setBanking] = useState<BankingValue>({});
   const [seo, setSeo] = useState<SeoValue>({});
   const [marketing, setMarketing] = useState<MarketingValue>({});
+  const [announcement, setAnnouncement] = useState<AnnouncementValue>({ items: [] });
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -114,6 +124,7 @@ export function SettingsManager() {
       setBanking((data['banking'] as BankingValue) ?? {});
       setSeo((data['seo'] as SeoValue) ?? {});
       setMarketing((data['marketing'] as MarketingValue) ?? {});
+      setAnnouncement((data['announcement'] as AnnouncementValue) ?? { items: [] });
     } catch (err) {
       console.log("settingserror=>>>>", err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
@@ -180,6 +191,11 @@ export function SettingsManager() {
   const handleSaveFooter = async (e: React.FormEvent) => {
     e.preventDefault();
     await saveKey('footer', footer);
+  };
+
+  const handleSaveAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveKey('announcement', { items: announcement.items ?? [] });
   };
 
   const handleSaveSocial = async (e: React.FormEvent) => {
@@ -556,6 +572,71 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'footer' ? 'Saving…' : 'Save footer'}
+          </button>
+        </form>
+      </section>
+
+      {/* Announcement bar */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Announcement bar</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Add one or more messages to show in the strip above the header. Uncheck “Show on website” to hide a message without removing it. They will rotate on the website when visible.
+        </p>
+        <form onSubmit={handleSaveAnnouncement} className="space-y-4">
+          {(announcement.items ?? []).map((item, index) => (
+            <div key={index} className="rounded-lg border border-slate-200 p-4 dark:border-slate-600">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={item.text ?? ''}
+                  onChange={(e) => {
+                    const next = [...(announcement.items ?? [])];
+                    next[index] = { ...next[index], text: e.target.value };
+                    setAnnouncement({ items: next });
+                  }}
+                  placeholder="e.g. FREE DELIVERY ON ORDERS PKR 2000 & ABOVE"
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = (announcement.items ?? []).filter((_, i) => i !== index);
+                    setAnnouncement({ items: next });
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                  aria-label="Remove announcement"
+                >
+                  Remove
+                </button>
+              </div>
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={item.visible !== false}
+                  onChange={(e) => {
+                    const next = [...(announcement.items ?? [])];
+                    next[index] = { ...next[index], visible: e.target.checked };
+                    setAnnouncement({ items: next });
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
+                />
+                Show on website
+              </label>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAnnouncement({ items: [...(announcement.items ?? []), { text: '', visible: true }] })}
+            className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700/50"
+          >
+            + Add announcement
+          </button>
+          <button
+            type="submit"
+            disabled={saving === 'announcement'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'announcement' ? 'Saving…' : 'Save announcement bar'}
           </button>
         </form>
       </section>

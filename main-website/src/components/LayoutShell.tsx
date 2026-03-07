@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { brandName } from '../config';
 import { getApiBaseUrl } from '../lib/api';
 import CartSidebar from './cart/CartSidebar';
-import AnnouncementBar from './layout/AnnouncementBar';
+import AnnouncementBar, { type AnnouncementBarItem } from './layout/AnnouncementBar';
 import AppFooter from './layout/AppFooter';
 import AppHeader from './layout/AppHeader';
 import SiteContainer from './layout/SiteContainer';
@@ -33,6 +33,7 @@ export interface SiteSettings {
     youtube?: string;
     youtubeVisible?: boolean;
   };
+  announcement?: { items: { text: string }[] };
 }
 
 function logoUrl(logoPath: string | null): string {
@@ -54,10 +55,11 @@ function ShellContent({
   const email = siteSettings?.footer?.email ?? '';
   const phone = siteSettings?.footer?.phone ?? '';
   const hours = siteSettings?.footer?.hours ?? '';
+  const announcements: AnnouncementBarItem[] = siteSettings?.announcement?.items ?? [];
 
   return (
     <>
-      <AnnouncementBar />
+      <AnnouncementBar items={announcements} />
       <SiteContainer className="w-full">
         <AppHeader logoSrc={logoSrc} />
       </SiteContainer>
