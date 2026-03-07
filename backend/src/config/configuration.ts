@@ -87,5 +87,10 @@ export default function configuration(env: EnvSource = process.env) {
       adminPassword: getOr(env, 'SEED_ADMIN_PASSWORD', 'Admin123!'),
       adminName: getOr(env, 'SEED_ADMIN_NAME', 'Admin'),
     },
+
+    health: {
+      /** Max heap size in bytes for readiness check. Default 300 MB. Use lower (e.g. 256) on 512 MB containers. */
+      heapLimitBytes: getNumber(env, 'HEALTH_HEAP_LIMIT_MB', 300) * 1024 * 1024,
+    },
   };
 }

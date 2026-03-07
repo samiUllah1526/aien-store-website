@@ -1,0 +1,13 @@
+# Railway config: deploy only backend from monorepo.
+# In Railway dashboard set this service's Root Directory to: backend
+# and Config file path to: backend/railway.toml (if not auto-detected).
+
+[build]
+buildCommand = "npm run build"
+watchPatterns = ["**"]
+
+[deploy]
+startCommand = "npm run start:prod"
+preDeployCommand = ["npx prisma migrate deploy"]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
