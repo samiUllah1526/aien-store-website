@@ -15,3 +15,12 @@ export interface PermissionGroupDto {
     description: string | null;
   }>;
 }
+
+export interface PermissionDetailDto {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

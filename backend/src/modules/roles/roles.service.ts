@@ -2,7 +2,9 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/create-role.dto';
-import type { RoleDetailDto, PermissionGroupDto } from './dto/role-response.dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { UpdatePermissionDto } from './dto/create-permission.dto';
+import type { RoleDetailDto, PermissionGroupDto, PermissionDetailDto } from './dto/role-response.dto';
 
 @Injectable()
 export class RolesService {
@@ -171,6 +173,65 @@ export class RolesService {
       category,
       permissions: byCategory.get(category)!,
     }));
+  }
+
+  async createPermission(dto: CreatePermissionDto): Promise<PermissionDetailDto> {
+    const name = dto.name.trim().toLowerCase();
+    const existing = await this.prisma.permission.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictException(`Permission "${name}" already exists`);
+    }
+    const permission = await this.prisma.permission.create({
+      data: {
+        name,
+        description: dto.description?.trim() || null,
+        category: dto.category?.trim() || null,
+      },
+    });
+    return {
+      id: permission.id,
+      name: permission.name,
+      description: permission.description ?? null,
+      category: permission.category ?? null,
+      createdAt: permission.createdAt.toISOString(),
+      updatedAt: permission.updatedAt.toISOString(),
+    };
+  }
+
+  async updatePermission(id: string, dto: UpdatePermissionDto): Promise<PermissionDetailDto> {
+    const permission = await this.prisma.permission.findUnique({
+      where: { id },
+    });
+    if (!permission) {
+      throw new NotFoundException(`Permission with id "${id}" not found`);
+    }
+    const data: { description?: string | null; category?: string | null } = {};
+    if (dto.description !== undefined) data.description = dto.description?.trim() || null;
+    if (dto.category !== undefined) data.category = dto.category?.trim() || null;
+    if (Object.keys(data).length === 0) {
+      return {
+        id: permission.id,
+        name: permission.name,
+        description: permission.description ?? null,
+        category: permission.category ?? null,
+        createdAt: permission.createdAt.toISOString(),
+        updatedAt: permission.updatedAt.toISOString(),
+      };
+    }
+    const updated = await this.prisma.permission.update({
+      where: { id },
+      data,
+    });
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description ?? null,
+      category: updated.category ?? null,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
   }
 
   private async validatePermissionIds(permissionIds: string[]): Promise<void> {

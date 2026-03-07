@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -13,6 +14,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/create-role.dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { UpdatePermissionDto } from './dto/create-permission.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -36,6 +39,21 @@ export class RolesController {
   async listPermissionsGrouped() {
     const data = await this.rolesService.listPermissionsGrouped();
     return ApiResponseDto.ok(data);
+  }
+
+  @Post('permissions')
+  async createPermission(@Body() dto: CreatePermissionDto) {
+    const data = await this.rolesService.createPermission(dto);
+    return ApiResponseDto.ok(data, 'Permission created');
+  }
+
+  @Patch('permissions/:id')
+  async updatePermission(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdatePermissionDto,
+  ) {
+    const data = await this.rolesService.updatePermission(id, dto);
+    return ApiResponseDto.ok(data, 'Permission updated');
   }
 
   @Get(':id')
