@@ -50,7 +50,7 @@ export default function CollectionGrid({
             href="/shop"
             className="inline-block font-display text-sm text-ash hover:text-soft-charcoal dark:hover:text-off-white transition-colors duration-300"
           >
-            Continue reading →
+            View all
           </a>
         </div>
       </div>

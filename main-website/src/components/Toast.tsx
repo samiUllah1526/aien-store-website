@@ -10,7 +10,7 @@ export default function Toast() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] flex flex-col gap-2 w-full max-w-[calc(100%-2rem)] sm:max-w-sm pointer-events-none"
       aria-live="polite"
     >
       {toasts.map((toast) => (
@@ -48,7 +48,7 @@ function ToastItem({
         <button
           type="button"
           onClick={onDismiss}
-          className="shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+          className="shrink-0 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity -m-2"
           aria-label="Dismiss"
         >
           ×

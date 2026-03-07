@@ -4,9 +4,9 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HomePage from '../components/home/HomePage';
-import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster } from '../config';
+import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroSlides } from '../config';
 ---
 
 <BaseLayout title={brandName} description={defaultMetaDescription}>
-  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} />
+  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} heroSlides={heroSlides} />
 </BaseLayout>
