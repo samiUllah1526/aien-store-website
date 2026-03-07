@@ -1,7 +1,13 @@
 /**
  * Standalone script: write EXPIRED audit logs for vouchers past expiryDate.
+ *
+ * What it does: Finds vouchers whose expiry date has passed and, for each one that
+ * doesn’t already have an EXPIRED audit entry, creates that entry. So the voucher
+ * audit trail shows when the system considered it expired. Run daily (e.g. via cron)
+ * or manually.
+ *
  * Run: npx ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts
- * Or: npm run job:voucher-expired (after adding script to package.json)
+ * Or: npm run job:voucher-expired
  */
 import { PrismaClient } from '@prisma/client';
 

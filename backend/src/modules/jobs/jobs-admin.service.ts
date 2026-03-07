@@ -2,6 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PgbossService } from './pgboss.service';
 import { QUEUE_NAMES } from './jobs.constants';
 
+/**
+ * Admin API for pg-boss queues and jobs (stats, list, retry, cancel).
+ *
+ * Performance: Job data does not grow forever. pg-boss moves completed/failed/cancelled
+ * jobs to an archive after a period (default ~12h), then purges the archive later. So the
+ * main job table only holds queued, active, and recently completed jobs. getQueueStats() is
+ * lightweight (queue-level counts). findJobs() reads from that bounded table and we cap
+ * the response at 100 jobs per request. For high volume you can tune archive retention in
+ * PgbossService (archiveCompletedAfterSeconds, etc.).
+ */
+
 export interface QueueStatsDto {
   name: string;
   deferredCount: number;
