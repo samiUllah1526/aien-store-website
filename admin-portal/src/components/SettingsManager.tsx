@@ -112,6 +112,9 @@ export function SettingsManager() {
   const [announcement, setAnnouncement] = useState<AnnouncementValue>({ items: [] });
   const [hero, setHero] = useState<HeroValue>({ slides: [] });
 
+  type SettingsTab = 'general' | 'content' | 'footer-social' | 'commerce' | 'seo-marketing';
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -306,6 +309,28 @@ export function SettingsManager() {
         </div>
       )}
 
+      <nav className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/50" aria-label="Settings sections">
+        {[
+          { id: 'general' as const, label: 'General' },
+          { id: 'content' as const, label: 'Content' },
+          { id: 'footer-social' as const, label: 'Footer & Social' },
+          { id: 'commerce' as const, label: 'Commerce' },
+          { id: 'seo-marketing' as const, label: 'SEO & Marketing' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="space-y-8">
+      {activeTab === 'general' && (
+      <>
       {/* General: Logo */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Logo</h2>
@@ -337,7 +362,10 @@ export function SettingsManager() {
           </div>
         </div>
       </section>
+      </> )}
 
+      {activeTab === 'commerce' && (
+      <>
       {/* Delivery */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Delivery charges</h2>
@@ -466,7 +494,10 @@ export function SettingsManager() {
           </button>
         </form>
       </section>
+      </> )}
 
+      {activeTab === 'content' && (
+      <>
       {/* About */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">About page</h2>
@@ -513,83 +544,6 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'about' ? 'Saving…' : 'Save about'}
-          </button>
-        </form>
-      </section>
-
-      {/* Footer */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Footer</h2>
-        <form onSubmit={handleSaveFooter} className="space-y-4">
-          <div>
-            <label htmlFor="footer-tagline" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Tagline
-            </label>
-            <input
-              id="footer-tagline"
-              type="text"
-              value={footer.tagline ?? ''}
-              onChange={(e) => setFooter((f) => ({ ...f, tagline: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <div>
-            <label htmlFor="footer-copyright" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Copyright text
-            </label>
-            <input
-              id="footer-copyright"
-              type="text"
-              value={footer.copyright ?? ''}
-              onChange={(e) => setFooter((f) => ({ ...f, copyright: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <div>
-            <label htmlFor="footer-email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Support email
-            </label>
-            <input
-              id="footer-email"
-              type="email"
-              value={footer.email ?? ''}
-              onChange={(e) => setFooter((f) => ({ ...f, email: e.target.value }))}
-              placeholder="contact@example.com"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
-          </div>
-          <div>
-            <label htmlFor="footer-phone" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Support phone
-            </label>
-            <input
-              id="footer-phone"
-              type="text"
-              value={footer.phone ?? ''}
-              onChange={(e) => setFooter((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="000-0000000"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
-          </div>
-          <div>
-            <label htmlFor="footer-hours" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Support hours
-            </label>
-            <input
-              id="footer-hours"
-              type="text"
-              value={footer.hours ?? ''}
-              onChange={(e) => setFooter((f) => ({ ...f, hours: e.target.value }))}
-              placeholder="MON - SAT | 9am - 5pm"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving === 'footer'}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            {saving === 'footer' ? 'Saving…' : 'Save footer'}
           </button>
         </form>
       </section>
@@ -732,6 +686,86 @@ export function SettingsManager() {
           </button>
         </form>
       </section>
+      </> )}
+
+      {activeTab === 'footer-social' && (
+      <>
+      {/* Footer */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Footer</h2>
+        <form onSubmit={handleSaveFooter} className="space-y-4">
+          <div>
+            <label htmlFor="footer-tagline" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Tagline
+            </label>
+            <input
+              id="footer-tagline"
+              type="text"
+              value={footer.tagline ?? ''}
+              onChange={(e) => setFooter((f) => ({ ...f, tagline: e.target.value }))}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="footer-copyright" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Copyright text
+            </label>
+            <input
+              id="footer-copyright"
+              type="text"
+              value={footer.copyright ?? ''}
+              onChange={(e) => setFooter((f) => ({ ...f, copyright: e.target.value }))}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="footer-email" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Support email
+            </label>
+            <input
+              id="footer-email"
+              type="email"
+              value={footer.email ?? ''}
+              onChange={(e) => setFooter((f) => ({ ...f, email: e.target.value }))}
+              placeholder="contact@example.com"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="footer-phone" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Support phone
+            </label>
+            <input
+              id="footer-phone"
+              type="text"
+              value={footer.phone ?? ''}
+              onChange={(e) => setFooter((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="000-0000000"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="footer-hours" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Support hours
+            </label>
+            <input
+              id="footer-hours"
+              type="text"
+              value={footer.hours ?? ''}
+              onChange={(e) => setFooter((f) => ({ ...f, hours: e.target.value }))}
+              placeholder="MON - SAT | 9am - 5pm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving === 'footer'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'footer' ? 'Saving…' : 'Save footer'}
+          </button>
+        </form>
+      </section>
 
       {/* Social */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -782,7 +816,10 @@ export function SettingsManager() {
           </button>
         </form>
       </section>
+      </> )}
 
+      {activeTab === 'seo-marketing' && (
+      <>
       {/* SEO */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">SEO & meta tags</h2>
@@ -971,6 +1008,8 @@ export function SettingsManager() {
           </button>
         </form>
       </section>
+      </> )}
+      </div>
     </div>
   );
 }
