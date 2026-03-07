@@ -15,6 +15,9 @@ export interface AboutValue {
 export interface FooterValue {
   tagline?: string;
   copyright?: string;
+  email?: string;
+  phone?: string;
+  hours?: string;
 }
 
 export interface SocialValue {

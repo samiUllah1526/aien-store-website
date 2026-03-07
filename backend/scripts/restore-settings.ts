@@ -31,6 +31,9 @@ const defaultSettings = [
     value: {
       tagline: 'Wear the words. Urdu poetry & adab on streetwear.',
       copyright: `© ${currentYear} Adab. All rights reserved.`,
+      email: 'contact@example.com',
+      phone: '000-0000000',
+      hours: 'MON - SAT | 9am - 5pm',
     },
   },
   {
