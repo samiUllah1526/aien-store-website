@@ -14,6 +14,28 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!';
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? 'Admin';
 
+/** Permission name -> optional category for grouping in UI */
+const PERMISSIONS_WITH_CATEGORY: Array<{ name: string; category?: string }> = [
+  { name: 'users:read', category: 'User Management' },
+  { name: 'users:write', category: 'User Management' },
+  { name: 'orders:read', category: 'Orders' },
+  { name: 'orders:write', category: 'Orders' },
+  { name: 'products:read', category: 'Catalog' },
+  { name: 'products:write', category: 'Catalog' },
+  { name: 'categories:read', category: 'Catalog' },
+  { name: 'categories:write', category: 'Catalog' },
+  { name: 'vouchers:read', category: 'Billing' },
+  { name: 'vouchers:write', category: 'Billing' },
+  { name: 'settings:read', category: 'Settings' },
+  { name: 'settings:write', category: 'Settings' },
+  { name: 'emaillogs:read', category: 'Audit' },
+  { name: 'emaillogs:resend', category: 'Audit' },
+  { name: 'jobs:read', category: 'Audit' },
+  { name: 'jobs:retry', category: 'Audit' },
+  { name: 'jobs:cancel', category: 'Audit' },
+  { name: 'superadmin:manage', category: 'Super Admin' },
+];
+
 const PERMISSION_NAMES = [
   'users:read',
   'users:write',
@@ -36,33 +58,54 @@ const PERMISSION_NAMES = [
 
 async function main() {
   const permissions: { id: string; name: string }[] = [];
-  for (const name of PERMISSION_NAMES) {
+  for (const { name, category } of PERMISSIONS_WITH_CATEGORY) {
     const p = await prisma.permission.upsert({
       where: { name },
-      create: { name },
-      update: {},
+      create: { name, category: category ?? null },
+      update: { category: category ?? null },
     });
     permissions.push(p);
   }
 
   const adminRole = await prisma.role.upsert({
     where: { name: 'Admin' },
-    create: { name: 'Admin' },
-    update: {},
+    create: { name: 'Admin', description: 'Admin portal access with configurable permissions' },
+    update: { description: 'Admin portal access with configurable permissions' },
+  });
+
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'Super Admin' },
+    create: {
+      name: 'Super Admin',
+      description: 'Full access: invite users, manage roles and permissions, promote/demote Super Admins',
+    },
+    update: {
+      description: 'Full access: invite users, manage roles and permissions, promote/demote Super Admins',
+    },
   });
 
   await prisma.role.upsert({
     where: { name: 'Customer' },
-    create: { name: 'Customer' },
-    update: {},
+    create: { name: 'Customer', description: 'Storefront customer' },
+    update: { description: 'Storefront customer' },
   });
 
   for (const perm of permissions) {
+    if (perm.name === 'superadmin:manage') continue;
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id },
       },
       create: { roleId: adminRole.id, permissionId: perm.id },
+      update: {},
+    });
+  }
+  for (const perm of permissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: { roleId: superAdminRole.id, permissionId: perm.id },
+      },
+      create: { roleId: superAdminRole.id, permissionId: perm.id },
       update: {},
     });
   }
@@ -80,7 +123,14 @@ async function main() {
       create: { userId: existing.id, roleId: adminRole.id },
       update: {},
     });
-    console.log('Seed: Admin user already exists, ensured Admin role. Email:', ADMIN_EMAIL);
+    await prisma.userRole.upsert({
+      where: {
+        userId_roleId: { userId: existing.id, roleId: superAdminRole.id },
+      },
+      create: { userId: existing.id, roleId: superAdminRole.id },
+      update: {},
+    });
+    console.log('Seed: Admin user already exists, ensured Admin + Super Admin roles. Email:', ADMIN_EMAIL);
   } else {
     const user = await prisma.user.create({
       data: {
@@ -91,11 +141,11 @@ async function main() {
         passwordHash,
         status: 'ACTIVE',
         roles: {
-          create: [{ roleId: adminRole.id }],
+          create: [{ roleId: adminRole.id }, { roleId: superAdminRole.id }],
         },
       },
     });
-    console.log('Seed: Created admin user. Email:', ADMIN_EMAIL);
+    console.log('Seed: Created Super Admin user. Email:', ADMIN_EMAIL);
     console.log('Seed: Login at /admin/login with the above email and your SEED_ADMIN_PASSWORD (or default Admin123!).');
   }
 

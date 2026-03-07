@@ -18,6 +18,7 @@ export const EMAIL_JOB_TYPES = {
   ORDER_STATUS_CHANGE: 'order-status-change',
   WELCOME: 'welcome',
   USER_CREATED: 'user-created',
+  INVITE: 'invite',
 } as const;
 
 export type EmailJobType = (typeof EMAIL_JOB_TYPES)[keyof typeof EMAIL_JOB_TYPES];

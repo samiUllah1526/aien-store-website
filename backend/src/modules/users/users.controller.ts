@@ -16,6 +16,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
@@ -24,7 +25,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 interface RequestWithUser {
-  user?: { userId: string };
+  user?: { userId: string; permissions?: string[] };
 }
 
 @ApiTags('users')
@@ -90,6 +91,33 @@ export class UsersController {
     return ApiResponseDto.ok(data, 'User created');
   }
 
+  @Post('invite')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('superadmin:manage')
+  @ApiBearerAuth('bearer')
+  async invite(@Body() dto: InviteUserDto) {
+    const data = await this.usersService.invite(dto);
+    return ApiResponseDto.ok(data, 'Invitation sent');
+  }
+
+  @Post(':id/promote-super-admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('superadmin:manage')
+  @ApiBearerAuth('bearer')
+  async promoteSuperAdmin(@Param('id', ParseUUIDPipe) id: string) {
+    const data = await this.usersService.promoteSuperAdmin(id);
+    return ApiResponseDto.ok(data, 'User promoted to Super Admin');
+  }
+
+  @Post(':id/demote-super-admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('superadmin:manage')
+  @ApiBearerAuth('bearer')
+  async demoteSuperAdmin(@Param('id', ParseUUIDPipe) id: string) {
+    const data = await this.usersService.demoteSuperAdmin(id);
+    return ApiResponseDto.ok(data, 'User demoted from Super Admin');
+  }
+
   @Put(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('users:write')
@@ -97,14 +125,16 @@ export class UsersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
+    @Req() req: RequestWithUser,
   ) {
-    const data = await this.usersService.update(id, dto);
+    const callerPermissions = (req.user?.permissions as string[] | undefined) ?? [];
+    const data = await this.usersService.update(id, dto, callerPermissions);
     return ApiResponseDto.ok(data, 'User updated');
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission('users:write')
+  @RequirePermission('superadmin:manage')
   @ApiBearerAuth('bearer')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.usersService.remove(id);

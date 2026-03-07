@@ -1,0 +1,26 @@
+<mjml>
+  <mj-head>
+    <mj-title>You're invited to the admin portal</mj-title>
+    <mj-preview>Set your password to access the admin portal – {{companyName}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text color="#333333" font-size="16px" line-height="24px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4" width="600px">
+    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+          You're invited
+        </mj-text>
+        <mj-text>Hi {{name}},</mj-text>
+        <mj-text>You've been invited to join the admin portal. Click the button below to set your password and sign in:</mj-text>
+        <mj-button href="{{setPasswordLink}}" background-color="#2563eb" color="#ffffff" padding-top="24px" padding-bottom="24px">
+          Set password
+        </mj-button>
+        <mj-text font-size="14px" color="#666666" padding-top="16px">This link expires in 1 hour. If you didn't expect this invitation, you can safely ignore this email.</mj-text>
+        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,0 +1,11 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminSettingsShell from '../../../components/AdminSettingsShell.astro';
+import AdminSettingsUsers from '../../../components/admin-settings/AdminSettingsUsers';
+---
+
+<AdminLayout title="Admin Settings - Users">
+  <AdminSettingsShell activeTab="users">
+    <AdminSettingsUsers client:load />
+  </AdminSettingsShell>
+</AdminLayout>

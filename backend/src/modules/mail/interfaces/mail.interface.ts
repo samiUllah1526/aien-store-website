@@ -41,6 +41,16 @@ export interface UserCreatedEmailPayload {
 }
 
 /**
+ * Payload for invite email (Super Admin invited user to set password).
+ */
+export interface InviteEmailPayload {
+  to: string;
+  name: string;
+  /** Full URL to set-password page with token (e.g. admin portal reset-password?token=xxx). */
+  setPasswordLink: string;
+}
+
+/**
  * Payload for password reset email (forgot password flow).
  */
 export interface PasswordResetEmailPayload {
@@ -56,6 +66,7 @@ export interface IMailService {
   sendWelcome(payload: WelcomeEmailPayload): Promise<string>;
   sendUserCreated(payload: UserCreatedEmailPayload): Promise<string>;
   sendPasswordReset(payload: PasswordResetEmailPayload): Promise<string>;
+  sendInvite(payload: InviteEmailPayload): Promise<string>;
 }
 
 /**
