@@ -4,7 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SettingsModule } from '../settings/settings.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { VouchersModule } from '../vouchers/vouchers.module';
-import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 
 @Module({
@@ -20,7 +19,7 @@ import { OrdersService } from './orders.service';
       inject: [ConfigService],
     }),
   ],
-  controllers: [OrdersController],
+  controllers: [],
   providers: [OrdersService],
   exports: [OrdersService],
 })

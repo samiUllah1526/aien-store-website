@@ -29,6 +29,9 @@ if (typeof import.meta !== 'undefined' && (import.meta as { env?: { PROD?: boole
 /** Backend API base URL (no trailing slash) */
 export const apiBaseUrl = envStr('PUBLIC_API_URL', 'http://localhost:3000').replace(/\/$/, '');
 
+/** Store API base: all storefront requests use this (e.g. /store/auth, /store/products). */
+export const storeApiBaseUrl = apiBaseUrl + '/store';
+
 /** Hero video: YouTube, Vimeo, or direct mp4/webm URL */
 export const heroVideoUrl = envStr('PUBLIC_HERO_VIDEO_URL', '/videos/hero.mp4');
 

@@ -5,10 +5,10 @@
  */
 
 import { getStoredToken, setStoredToken, clearStoredTokens } from './auth';
-import { apiBaseUrl, loginRedirectPath } from './config';
+import { adminApiBaseUrl, loginRedirectPath } from './config';
 
 export function getApiBaseUrl(): string {
-  return apiBaseUrl;
+  return adminApiBaseUrl;
 }
 
 export function getAuthToken(): string | null {
@@ -35,7 +35,7 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, string | number | undefined> } = {}
 ): Promise<T> {
   const { params, ...init } = options;
-  const base = apiBaseUrl.replace(/\/$/, '');
+  const base = adminApiBaseUrl.replace(/\/$/, '');
   const url = new URL(path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
@@ -83,9 +83,9 @@ async function request<T>(
   return json as T;
 }
 
-/** Multipart file upload (e.g. POST /media/upload). Returns { success, data: { id } }. */
+/** Multipart file upload (e.g. POST /admin/media/upload). Returns { success, data: { id } }. */
 export async function uploadFile(file: File): Promise<{ id: string }> {
-  const base = apiBaseUrl.replace(/\/$/, '');
+  const base = adminApiBaseUrl.replace(/\/$/, '');
   const url = `${base}/media/upload`;
   const form = new FormData();
   form.append('file', file);

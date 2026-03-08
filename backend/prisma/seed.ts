@@ -16,6 +16,7 @@ const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? 'Admin';
 
 /** Permission name -> optional category for grouping in UI */
 const PERMISSIONS_WITH_CATEGORY: Array<{ name: string; category?: string }> = [
+  { name: 'admin:access', category: 'Admin Portal' },
   { name: 'users:read', category: 'User Management' },
   { name: 'users:write', category: 'User Management' },
   { name: 'orders:read', category: 'Orders' },
@@ -100,6 +101,7 @@ async function main() {
       update: {},
     });
   }
+  // Super Admin gets every permission including admin:access and superadmin:manage
   for (const perm of permissions) {
     await prisma.rolePermission.upsert({
       where: {

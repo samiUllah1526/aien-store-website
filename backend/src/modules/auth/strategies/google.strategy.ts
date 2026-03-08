@@ -12,7 +12,7 @@ export interface GoogleLoginResult {
 }
 
 @Injectable()
-export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+export class GoogleStrategy extends PassportStrategy(Strategy, 'google-store') {
   constructor(
     configService: ConfigService,
     private readonly authService: AuthService,
@@ -20,7 +20,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
     const apiUrl = configService.get<string>('API_URL')?.replace(/\/$/, '');
-    const callbackURL = apiUrl ? `${apiUrl}/auth/google/callback` : 'http://localhost:3000/auth/google/callback';
+    const callbackURL = apiUrl ? `${apiUrl}/store/auth/google/callback` : 'http://localhost:3000/store/auth/google/callback';
     super({
       clientID: clientID ?? '',
       clientSecret: clientSecret ?? '',
@@ -34,6 +34,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     _refreshToken: string,
     profile: { id: string; displayName?: string; name?: { familyName?: string; givenName?: string }; emails?: Array<{ value: string }> },
   ): Promise<GoogleLoginResult> {
-    return this.authService.findOrCreateFromGoogle(profile);
+    return this.authService.findOrCreateFromGoogle(profile, 'store');
   }
 }

@@ -20,6 +20,8 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { StoreModule } from './store/store.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { RolesModule } from './modules/roles/roles.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    StoreModule,
+    AdminModule,
     MediaModule,
     MailModule,
     ProductsModule,

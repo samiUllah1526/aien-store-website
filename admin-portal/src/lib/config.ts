@@ -29,6 +29,9 @@ if (typeof import.meta !== 'undefined' && (import.meta as { env?: { PROD?: boole
 /** Backend API base URL (no trailing slash) */
 export const apiBaseUrl = envStr('PUBLIC_API_URL', 'http://localhost:3000').replace(/\/$/, '');
 
+/** Admin API base: all admin requests use this (e.g. /admin/auth, /admin/users). */
+export const adminApiBaseUrl = apiBaseUrl + '/admin';
+
 /** Admin app display name (sidebar, page titles, login screen) */
 export const appName = envStr('PUBLIC_ADMIN_APP_NAME', 'E-Commerce Admin');
 
