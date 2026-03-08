@@ -2,21 +2,30 @@
   <mj-head>
     <mj-title>Welcome</mj-title>
     <mj-preview>Welcome to {{companyName}}</mj-preview>
+    <mj-font name="Montserrat" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" />
     <mj-attributes>
-      <mj-all font-family="Helvetica, Arial, sans-serif" />
-      <mj-text color="#333333" font-size="16px" line-height="24px" />
+      <mj-all font-family="Montserrat, Arial, sans-serif" />
+      <mj-text color="#1A1A1A" font-size="16px" line-height="26px" />
+      <mj-section padding="20px 0" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4" width="600px">
-    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+  <mj-body background-color="#F3F1ED" width="600px">
+    <mj-section background-color="#2F3A32" padding="16px 24px" vertical-align="middle">
       <mj-column width="100%">
-        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+        <mj-text font-size="18px" font-weight="600" color="#F8F6F2" padding="0" align="left">
+          {{companyName}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#FFFFFF" padding="32px 24px" border-radius="0 0 8px 8px" border-top="3px solid #2F3A32">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="700" color="#1A1A1A" padding-bottom="8px">
           Welcome, {{name}}
         </mj-text>
-        <mj-text>Your account has been created successfully.</mj-text>
-        <mj-text>You can now sign in with your email and password.</mj-text>
-        <mj-text padding-top="24px">If you did not create this account, please ignore this email.</mj-text>
-        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+        <mj-text color="#1A1A1A">Your account has been created successfully.</mj-text>
+        <mj-text color="#1A1A1A">You can now sign in with your email and password.</mj-text>
+        <mj-text color="#8A8A8A" font-size="14px" padding-top="24px">If you did not create this account, please ignore this email.</mj-text>
+        <mj-text font-size="14px" color="#8A8A8A" padding-top="24px">— {{companyName}}</mj-text>
       </mj-column>
     </mj-section>
   </mj-body>

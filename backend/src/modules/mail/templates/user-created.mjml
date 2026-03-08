@@ -2,24 +2,34 @@
   <mj-head>
     <mj-title>Your account has been created</mj-title>
     <mj-preview>An admin has created an account for you.</mj-preview>
+    <mj-font name="Montserrat" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" />
     <mj-attributes>
-      <mj-all font-family="Helvetica, Arial, sans-serif" />
-      <mj-text color="#333333" font-size="16px" line-height="24px" />
+      <mj-all font-family="Montserrat, Arial, sans-serif" />
+      <mj-text color="#1A1A1A" font-size="16px" line-height="26px" />
+      <mj-section padding="20px 0" />
+      <mj-button background-color="#2F3A32" color="#F8F6F2" font-weight="600" border-radius="6px" inner-padding="14px 28px" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4" width="600px">
-    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+  <mj-body background-color="#F3F1ED" width="600px">
+    <mj-section background-color="#2F3A32" padding="16px 24px" vertical-align="middle">
       <mj-column width="100%">
-        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+        <mj-text font-size="18px" font-weight="600" color="#F8F6F2" padding="0" align="left">
+          {{companyName}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#FFFFFF" padding="32px 24px" border-radius="0 0 8px 8px" border-top="3px solid #2F3A32">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="700" color="#1A1A1A" padding-bottom="8px">
           Your account is ready
         </mj-text>
-        <mj-text>Hello {{name}},</mj-text>
-        <mj-text>An administrator has created an account for you. You can sign in using your email and the password that was set for you.</mj-text>
-        <mj-button href="{{loginUrl}}" background-color="#2563eb" color="#ffffff" padding-top="24px">
+        <mj-text color="#1A1A1A">Hello {{name}},</mj-text>
+        <mj-text color="#1A1A1A">An administrator has created an account for you. Use the button below to sign in.</mj-text>
+        <mj-button href="{{loginUrl}}" padding-top="24px" padding-bottom="8px">
           Sign in
         </mj-button>
-        <mj-text font-size="14px" color="#666666" padding-top="24px">If the button doesn't work, copy this link: {{loginUrl}}</mj-text>
-        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+        <mj-text font-size="14px" color="#8A8A8A" padding-top="16px">If the button doesn't work, copy this link: {{loginUrl}}</mj-text>
+        <mj-text font-size="14px" color="#8A8A8A" padding-top="24px">— {{companyName}}</mj-text>
       </mj-column>
     </mj-section>
   </mj-body>

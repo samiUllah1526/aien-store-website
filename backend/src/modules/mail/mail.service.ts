@@ -307,13 +307,19 @@ export class MailService implements IMailService {
   private buildOrderItemsTableHtml(
     items: Array<{ productName: string; quantity: number; unitCents: number }>,
   ): string {
+    const borderColor = '#E8E6E2';
+    const headerBg = '#F3F1ED';
+    const textColor = '#1A1A1A';
+    const mutedColor = '#8A8A8A';
+    const rowStyle = `padding:10px 12px;border-bottom:1px solid ${borderColor};color:${textColor};font-family:Montserrat,Arial,sans-serif;font-size:14px`;
+    const headerStyle = `padding:10px 12px;background-color:${headerBg};color:${textColor};font-family:Montserrat,Arial,sans-serif;font-size:13px;font-weight:600;border-bottom:2px solid ${borderColor}`;
     const rows = items
       .map(
         (i) =>
-          `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">${this.escapeHtml(i.productName)}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${this.formatCurrency(i.unitCents, '')}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${this.formatCurrency(i.quantity * i.unitCents, '')}</td></tr>`,
+          `<tr><td style="${rowStyle}">${this.escapeHtml(i.productName)}</td><td style="${rowStyle};text-align:center">${i.quantity}</td><td style="${rowStyle};text-align:right;color:${mutedColor}">${this.formatCurrency(i.unitCents, '')}</td><td style="${rowStyle};text-align:right;font-weight:600">${this.formatCurrency(i.quantity * i.unitCents, '')}</td></tr>`,
       )
       .join('');
-    return `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:8px"><thead><tr><th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd">Product</th><th style="padding:8px 12px;text-align:center;border-bottom:2px solid #ddd">Qty</th><th style="padding:8px 12px;text-align:right;border-bottom:2px solid #ddd">Unit</th><th style="padding:8px 12px;text-align:right;border-bottom:2px solid #ddd">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;font-family:Montserrat,Arial,sans-serif"><thead><tr><th style="${headerStyle};text-align:left">Product</th><th style="${headerStyle};text-align:center">Qty</th><th style="${headerStyle};text-align:right">Unit</th><th style="${headerStyle};text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   private escapeHtml(s: string): string {
