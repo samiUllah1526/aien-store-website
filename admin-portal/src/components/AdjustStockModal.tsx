@@ -108,15 +108,29 @@ export function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockMod
         onClick={handleBackdropClick}
       >
         <div className="p-6" onClick={(e) => e.stopPropagation()}>
-          <h2
-            id="adjust-stock-title"
-            className="text-lg font-semibold text-slate-900 dark:text-slate-100"
-          >
-            Adjust stock
-          </h2>
-          <p id="adjust-stock-desc" className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            {product.name}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2
+                id="adjust-stock-title"
+                className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+              >
+                Adjust stock
+              </h2>
+              <p id="adjust-stock-desc" className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                {product.name}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
           <div className="mt-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">

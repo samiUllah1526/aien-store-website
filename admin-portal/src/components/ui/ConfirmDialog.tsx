@@ -56,9 +56,22 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
     >
       <div className="w-full max-w-sm rounded-xl bg-white shadow-xl dark:border dark:border-slate-700 dark:bg-slate-800 p-6">
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-          {title}
-        </h2>
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <h2 id="confirm-dialog-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={loading}
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{message}</p>
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300" role="alert">

@@ -195,9 +195,21 @@ export default function AdminSettingsPermissions() {
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="create-permission-title">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-            <h2 id="create-permission-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Create permission
-            </h2>
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="create-permission-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Create permission
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <form onSubmit={submitCreate} className="mt-4 space-y-4">
               <div>
                 <label htmlFor="create-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -344,9 +356,21 @@ export default function AdminSettingsPermissions() {
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-permission-title">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-            <h2 id="edit-permission-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Edit permission
-            </h2>
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="edit-permission-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Edit permission
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Name cannot be changed. Update description and category only.
             </p>

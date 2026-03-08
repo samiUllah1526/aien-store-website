@@ -280,10 +280,23 @@ export function VouchersManager() {
           onClick={(e) => e.target === e.currentTarget && (setFormOpen(null), setEditingVoucher(null))}
         >
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700">
-            <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <h2 id="voucher-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {formOpen === 'add' ? 'Create voucher' : 'Edit voucher'}
               </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormOpen(null);
+                  setEditingVoucher(null);
+                }}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             <div className="p-6">
               <VoucherForm
@@ -539,9 +552,21 @@ function VoucherStatsModal({ voucherId, onClose }: { voucherId: string; onClose:
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="stats-modal-title" className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Voucher analytics
-        </h2>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 id="stats-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Voucher analytics
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         {loading ? (
           <p className="text-slate-600 dark:text-slate-400">Loading…</p>
         ) : stats ? (

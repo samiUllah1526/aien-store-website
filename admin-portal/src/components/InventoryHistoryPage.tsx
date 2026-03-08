@@ -299,9 +299,21 @@ export function InventoryHistoryPage({ productId: productIdProp, initialVariantI
           aria-labelledby="reason-modal-title"
         >
           <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700 p-6">
-            <h2 id="reason-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
-              Reason / reference
-            </h2>
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <h2 id="reason-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Reason / reference
+              </h2>
+              <button
+                type="button"
+                onClick={() => setReasonModal(null)}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap wrap-break-word">
               {reasonModal}
             </p>
