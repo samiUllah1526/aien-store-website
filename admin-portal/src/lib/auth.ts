@@ -1,9 +1,11 @@
 /**
  * Auth helpers for admin portal.
  * Access token stored in localStorage, sent with API requests.
+ * User permissions for show/hide come from the JWT. Full list of permission names is backend-driven (see permissions-api.ts).
  */
 
 import { authTokenKey } from './config';
+import { clearPermissionsCache } from './permissions-api';
 
 export interface JwtPayload {
   sub?: string;
@@ -78,6 +80,12 @@ export function hasPermission(permission: string): boolean {
   return getStoredPermissions().includes(permission);
 }
 
+/** True if the user has any of the given permissions. Permission names should match the backend (from getCachedPermissionNames() or API). */
+export function hasAnyPermission(permissions: string[]): boolean {
+  const userPerms = getStoredPermissions();
+  return permissions.some((p) => userPerms.includes(p));
+}
+
 /** True if the current user has Super Admin capabilities (superadmin:manage). */
 export function isSuperAdmin(): boolean {
   return hasPermission('superadmin:manage');
@@ -91,6 +99,7 @@ export function setStoredToken(accessToken: string): void {
 export function clearStoredTokens(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(authTokenKey);
+  clearPermissionsCache();
 }
 
 /** @deprecated Use clearStoredTokens for full cleanup */

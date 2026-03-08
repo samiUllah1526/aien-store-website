@@ -147,6 +147,14 @@ export class RolesService {
     await this.prisma.role.delete({ where: { id } });
   }
 
+  async listPermissions(): Promise<{ id: string; name: string; category: string | null }[]> {
+    const list = await this.prisma.permission.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, category: true },
+    });
+    return list.map((p) => ({ id: p.id, name: p.name, category: p.category ?? null }));
+  }
+
   async listPermissionsGrouped(): Promise<PermissionGroupDto[]> {
     const permissions = await this.prisma.permission.findMany({
       orderBy: [{ category: 'asc' }, { name: 'asc' }],

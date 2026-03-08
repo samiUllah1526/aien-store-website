@@ -11,7 +11,7 @@ import { MovementsQueryDto } from '../../modules/inventory/dto/movements-query.d
 @ApiTags('admin-inventory')
 @Controller('admin/inventory')
 @UseGuards(JwtAuthGuard, AdminGuard, PermissionsGuard)
-@RequirePermission('products:read')
+@RequirePermission('inventory:read')
 @ApiBearerAuth('bearer')
 export class AdminInventoryController {
   constructor(private readonly inventoryService: InventoryService) {}

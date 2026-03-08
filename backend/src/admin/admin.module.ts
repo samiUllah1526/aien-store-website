@@ -25,6 +25,7 @@ import { AdminVouchersController } from './vouchers/admin-vouchers.controller';
 import { AdminMediaController } from './media/admin-media.controller';
 import { AdminEmailLogsController } from './email-logs/admin-email-logs.controller';
 import { AdminJobsController } from './jobs/admin-jobs.controller';
+import { AdminPermissionsController } from './permissions/admin-permissions.controller';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AdminJobsController } from './jobs/admin-jobs.controller';
     AdminMediaController,
     AdminEmailLogsController,
     AdminJobsController,
+    AdminPermissionsController,
   ],
 })
 export class AdminModule {}

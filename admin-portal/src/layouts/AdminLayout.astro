@@ -8,25 +8,12 @@ const pageTitle = `${title} | ${appName}`;
 const currentPath = Astro.url.pathname;
 import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
-import { adminApiBaseUrl, apiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
+import { getNavItems } from '../lib/permissions';
+import { adminApiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
-// Order: overview → operations (orders, products, inventory) → structure → people & comms → config → help
-const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-  // { href: '/admin/profile', label: 'Profile', icon: 'users' },
-  { href: '/admin/orders', label: 'Orders', icon: 'orders' },
-  { href: '/admin/products', label: 'Products', icon: 'products' },
-  { href: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
-  { href: '/admin/categories', label: 'Categories', icon: 'categories' },
-  { href: '/admin/users', label: 'Users', icon: 'users' },
-  { href: '/admin/admin-settings', label: 'User Management', icon: 'settings', superAdminOnly: true },
-  { href: '/admin/vouchers', label: 'Vouchers', icon: 'vouchers' },
-  { href: '/admin/settings', label: 'Settings', icon: 'settings' },
-  { href: '/admin/email-logs', label: 'Email Logs', icon: 'emaillogs' },
-  { href: '/admin/jobs', label: 'Jobs', icon: 'jobs' },
-  { href: '/admin/docs', label: 'Documentation', icon: 'docs' },
-];
+import PermissionsLoader from '../components/PermissionsLoader';
 
+const navItems = getNavItems();
 const isActive = (href: string) =>
   href === '/admin' ? currentPath === '/admin' || currentPath === '/admin/' : currentPath.startsWith(href);
 ---
@@ -49,6 +36,7 @@ const isActive = (href: string) =>
       window.__API_BASE__ = document.body.dataset.apiBase || adminApiBaseUrl;
     </script>
     <div class="flex h-screen overflow-hidden" id="admin-root">
+      <PermissionsLoader client:load />
       <!-- Mobile sidebar backdrop -->
       <div
         id="sidebar-backdrop"
@@ -80,7 +68,6 @@ const isActive = (href: string) =>
         <nav class="p-3 space-y-0.5" aria-label="Sidebar">
           {navItems.map((item) => {
             const active = isActive(item.href);
-            const superAdminOnly = item.superAdminOnly === true;
             return (
               <a
                 href={item.href}
@@ -89,7 +76,8 @@ const isActive = (href: string) =>
                     ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-slate-700 dark:text-slate-100'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100'
                 }`}
-                {...(superAdminOnly ? { 'data-super-admin-only': 'true' } : {})}
+                {...(item.permission ? { 'data-required-permission': item.permission } : {})}
+                {...(item.superAdminOnly ? { 'data-super-admin-only': 'true' } : {})}
               >
                 <svg
                   class="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
@@ -185,22 +173,29 @@ const isActive = (href: string) =>
           if (e.key === 'Escape') closeSidebar();
         });
 
-        // Hide Admin Settings link for non–Super Admins
+        // Apply permission-based visibility: hide nav items the user cannot access
         (function () {
           try {
             if (typeof localStorage === 'undefined') return;
             var raw = localStorage.getItem(authTokenKey);
-            if (!raw) {
-              document.querySelectorAll('[data-super-admin-only]').forEach(function (el) { el.style.display = 'none'; });
-              return;
+            var permissions = [];
+            if (raw) {
+              var payload = raw.split('.')[1];
+              if (payload) {
+                var decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+                var json = decodeURIComponent(decoded.split('').map(function (c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+                var data = JSON.parse(json);
+                permissions = Array.isArray(data.permissions) ? data.permissions : [];
+              }
             }
-            var payload = raw.split('.')[1];
-            if (!payload) return;
-            var json = decodeURIComponent(atob(payload.replace(/-/g, '+').replace(/_/g, '/')).split('').map(function (c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
-            var data = JSON.parse(json);
-            if (!data.permissions || !data.permissions.includes('superadmin:manage')) {
-              document.querySelectorAll('[data-super-admin-only]').forEach(function (el) { el.style.display = 'none'; });
-            }
+            var hasSuperAdmin = permissions.indexOf('superadmin:manage') !== -1;
+            document.querySelectorAll('[data-required-permission]').forEach(function (el) {
+              var perm = el.getAttribute('data-required-permission');
+              if (perm && permissions.indexOf(perm) === -1) el.style.display = 'none';
+            });
+            document.querySelectorAll('[data-super-admin-only]').forEach(function (el) {
+              if (!hasSuperAdmin) el.style.display = 'none';
+            });
           } catch (e) {}
         })();
       })();

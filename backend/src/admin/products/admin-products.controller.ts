@@ -66,7 +66,7 @@ export class AdminProductsController {
   }
 
   @Patch(':id/stock')
-  @RequirePermission('products:write')
+  @RequirePermission('inventory:write')
   async adjustStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdjustStockDto,
