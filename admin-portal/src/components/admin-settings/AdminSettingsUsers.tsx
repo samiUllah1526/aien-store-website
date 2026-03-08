@@ -296,7 +296,7 @@ export default function AdminSettingsUsers() {
                         {openActionsId === user.id && popoverPosition && typeof document !== 'undefined' &&
                           createPortal(
                             <div
-                              className="fixed z-[100] min-w-[220px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-800"
+                              className="fixed z-100 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-800"
                               style={{ top: popoverPosition.top, left: popoverPosition.left }}
                               role="menu"
                               onClick={(e) => e.stopPropagation()}

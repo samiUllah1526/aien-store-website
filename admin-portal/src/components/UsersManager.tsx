@@ -11,6 +11,11 @@ import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['ACTIVE', 'DISABLED'] as const;
+type StatusOption = (typeof STATUS_OPTIONS)[number];
+
+function toStatusOption(s: string | undefined): StatusOption {
+  return s === 'DISABLED' ? 'DISABLED' : 'ACTIVE';
+}
 
 export function UsersManager() {
   const [mounted, setMounted] = useState(false);
@@ -409,7 +414,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
       name: user?.name ?? '',
       email: user?.email ?? '',
       password: '',
-      status: user?.status ?? 'ACTIVE',
+      status: toStatusOption(user?.status),
       roleIds: user?.roleIds ?? [],
       isEdit: !!user,
     },
@@ -424,7 +429,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
       name: user?.name ?? '',
       email: user?.email ?? '',
       password: '',
-      status: user?.status ?? 'ACTIVE',
+      status: toStatusOption(user?.status),
       roleIds: user?.roleIds ?? [],
       isEdit: !!user,
     });
@@ -434,9 +439,9 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
     form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
-      const displayName = [values.firstName?.trim(), values.lastName?.trim()].filter(Boolean).join(' ').trim() || values.name.trim();
+      const displayName = [values.firstName?.trim(), values.lastName?.trim()].filter(Boolean).join(' ').trim() || (values.name ?? '').trim();
       if (user) {
-        const body: { firstName?: string; lastName?: string; name?: string; password?: string; status?: string; roleIds?: string[] } = {
+        const body: { firstName?: string; lastName?: string; name?: string; password?: string; status?: StatusOption; roleIds?: string[] } = {
           firstName: values.firstName?.trim() || undefined,
           lastName: values.lastName?.trim() || undefined,
           name: displayName,
@@ -575,10 +580,12 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
             <Controller
               control={form.control}
               name="roleIds"
-              render={({ field }) => (
+              render={({ field }) => {
+                const value = field.value ?? [];
+                return (
                 <div className="flex flex-wrap gap-3">
                   {roles.map((role) => {
-                    const selected = field.value.includes(role.id);
+                    const selected = value.includes(role.id);
                     return (
                       <label key={role.id} className="inline-flex items-center gap-2">
                         <input
@@ -587,8 +594,8 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
                           onChange={() =>
                             field.onChange(
                               selected
-                                ? field.value.filter((id: string) => id !== role.id)
-                                : [...field.value, role.id],
+                                ? value.filter((id: string) => id !== role.id)
+                                : [...value, role.id],
                             )
                           }
                           className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400 focus:ring-slate-500"
@@ -601,7 +608,8 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
                     <span className="text-sm text-slate-500 dark:text-slate-400">No roles in the system.</span>
                   )}
                 </div>
-              )}
+              );
+              }}
             />
           </div>
           <div className="flex gap-3 pt-2">
