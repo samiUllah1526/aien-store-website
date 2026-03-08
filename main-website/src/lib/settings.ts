@@ -4,7 +4,7 @@
  */
 
 import {
-  apiBaseUrl,
+  storeApiBaseUrl,
   brandName,
   defaultMetaDescription,
   siteUrl,
@@ -79,7 +79,7 @@ const isDev = typeof import.meta !== 'undefined' && (import.meta as { env?: { DE
 export async function getPublicSettings(): Promise<PublicSettings> {
   if (cached && !isDev) return cached;
   try {
-    const res = await fetch(`${apiBaseUrl}/settings/public`);
+    const res = await fetch(`${storeApiBaseUrl}/settings/public`);
     const json = (await res.json()) as { success?: boolean; data?: unknown };
     if (res.ok && json.success && json.data && typeof json.data === 'object') {
       const data = json.data as Record<string, unknown>;

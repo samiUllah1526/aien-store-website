@@ -14,11 +14,21 @@ export class PermissionsGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
       PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
+      [context.getClass(), context.getHandler()],
     );
-    if (!requiredPermissions?.length) return true;
 
-    const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest();
+    const path = (request.path || request.url || '').replace(/\?.*$/, '').replace(/\/$/, '') || '/';
+    const isAdminRoute = path.startsWith('/admin');
+
+    if (!requiredPermissions?.length) {
+      if (isAdminRoute) {
+        throw new ForbiddenException('No permission required for this admin route');
+      }
+      return true;
+    }
+
+    const { user } = request;
     if (!user?.permissions) {
       throw new ForbiddenException('User permissions not found');
     }

@@ -7,14 +7,17 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
 const SALT_ROUNDS = 10;
-/** Default 24h so admin sessions survive a work day; override with JWT_ACCESS_EXPIRES_SEC. */
+/** Default 24h; override with JWT_ACCESS_EXPIRES_SEC. */
 const ACCESS_EXPIRES_DEFAULT = 86400;
 /** Password reset token validity in seconds (1 hour). */
 const PASSWORD_RESET_EXPIRES_SEC = 3600;
+/** JWT audience: 'store' for storefront, 'admin' for admin portal. */
+export type JwtAudience = 'store' | 'admin';
 
 @Injectable()
 export class AuthService {
   private readonly accessExpiresSec: number;
+  private readonly jwtIssuer: string | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -23,16 +26,28 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {
     this.accessExpiresSec = this.config.get<number>('JWT_ACCESS_EXPIRES_SEC', ACCESS_EXPIRES_DEFAULT);
+    this.jwtIssuer = this.config.get<string>('jwt.issuer') ?? this.config.get<string>('urls.api');
   }
 
-  private buildTokens(user: {
-    id: string;
-    email: string;
-    name: string;
-    permissions: string[];
-    roleNames: string[];
-  }) {
-    const payload = { sub: user.id, email: user.email, name: user.name, permissions: user.permissions, roleNames: user.roleNames };
+  private buildTokens(
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      permissions: string[];
+      roleNames: string[];
+    },
+    audience: JwtAudience,
+  ) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      permissions: user.permissions,
+      roleNames: user.roleNames,
+      aud: audience,
+      iss: this.jwtIssuer,
+    };
     const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessExpiresSec });
     return { accessToken, payload };
   }
@@ -59,13 +74,16 @@ export class AuthService {
         roles: { create: [{ roleId: customerRole.id }] },
       },
     });
-    const { accessToken, payload } = this.buildTokens({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      permissions: [],
-      roleNames: ['Customer'],
-    });
+    const { accessToken, payload } = this.buildTokens(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        permissions: [],
+        roleNames: ['Customer'],
+      },
+      'store',
+    );
     this.emailQueue.enqueueWelcome({ to: user.email, name: user.name }).catch((err) => {
       console.warn('[AuthService] Failed to enqueue welcome email:', err);
     });
@@ -76,7 +94,7 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, audience: JwtAudience = 'store') {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
       where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
@@ -101,13 +119,16 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    const { accessToken, payload } = this.buildTokens({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      permissions,
-      roleNames,
-    });
+    const { accessToken, payload } = this.buildTokens(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        permissions,
+        roleNames,
+      },
+      audience,
+    );
     return {
       accessToken,
       expiresIn: this.accessExpiresSec,
@@ -116,12 +137,15 @@ export class AuthService {
   }
 
   /** Used by Google OAuth: find user by email or googleId, or create a new Customer. Returns same shape as login(). */
-  async findOrCreateFromGoogle(profile: {
-    id: string;
-    displayName?: string;
-    name?: { familyName?: string; givenName?: string };
-    emails?: Array<{ value: string; type?: string }>;
-  }) {
+  async findOrCreateFromGoogle(
+    profile: {
+      id: string;
+      displayName?: string;
+      name?: { familyName?: string; givenName?: string };
+      emails?: Array<{ value: string; type?: string }>;
+    },
+    audience: JwtAudience = 'store',
+  ) {
     const emailRaw = profile.emails?.[0]?.value;
     if (!emailRaw || typeof emailRaw !== 'string') {
       throw new UnauthorizedException('Google account has no email');
@@ -151,13 +175,16 @@ export class AuthService {
       });
       const permissions = this.resolvePermissions(existing);
       const roleNames = existing.roles.map((ur) => ur.role.name);
-      const { accessToken } = this.buildTokens({
-        id: existing.id,
-        email: existing.email,
-        name: existing.name,
-        permissions,
-        roleNames,
-      });
+      const { accessToken } = this.buildTokens(
+        {
+          id: existing.id,
+          email: existing.email,
+          name: existing.name,
+          permissions,
+          roleNames,
+        },
+        audience,
+      );
       return {
         accessToken,
         expiresIn: this.accessExpiresSec,
@@ -186,13 +213,16 @@ export class AuthService {
         roles: { create: [{ roleId: customerRole.id }] },
       },
     });
-    const { accessToken } = this.buildTokens({
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
-      permissions: [],
-      roleNames: ['Customer'],
-    });
+    const { accessToken } = this.buildTokens(
+      {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        permissions: [],
+        roleNames: ['Customer'],
+      },
+      audience,
+    );
     return {
       accessToken,
       expiresIn: this.accessExpiresSec,

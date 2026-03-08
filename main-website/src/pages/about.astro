@@ -3,13 +3,13 @@
  * About: content from site settings (admin-editable). Falls back to defaults if API unavailable.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { aboutMetaDescription, apiBaseUrl, brandName } from '../config';
+import { aboutMetaDescription, storeApiBaseUrl, brandName } from '../config';
 let aboutTitle = brandName;
 let aboutSubtitle = 'Cultural-art collective. Poetry on fabric.';
 let aboutContent = '';
 
 try {
-  const res = await fetch(`${apiBaseUrl}/settings/public`);
+  const res = await fetch(`${storeApiBaseUrl}/settings/public`);
   const json = await res.json();
   if (json?.success && json?.data?.about) {
     const a = json.data.about;

@@ -56,6 +56,8 @@ export default function configuration(env: EnvSource = process.env) {
     jwt: {
       secret: getOr(env, 'JWT_SECRET', 'change-me-in-production'),
       accessExpiresSec: getNumber(env, 'JWT_ACCESS_EXPIRES_SEC', 86400),
+      /** Issuer (iss claim). e.g. API_URL or app name. If set, JWT strategy validates it. */
+      issuer: get(env, 'JWT_ISSUER') || get(env, 'API_URL')?.replace(/\/$/, ''),
     },
 
     urls: {

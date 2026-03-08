@@ -8,7 +8,7 @@ const pageTitle = `${title} | ${appName}`;
 const currentPath = Astro.url.pathname;
 import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
-import { apiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
+import { adminApiBaseUrl, apiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
 // Order: overview → operations (orders, products, inventory) → structure → people & comms → config → help
 const navItems = [
@@ -44,9 +44,9 @@ const isActive = (href: string) =>
       (function(){var d=document.documentElement;var s=localStorage.getItem(themeStorageKey);if(s==='true')d.classList.add('dark');else if(s==='false')d.classList.remove('dark');})();
     </script>
   </head>
-  <body class="h-screen overflow-hidden bg-slate-100 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100" data-api-base={apiBaseUrl}>
-    <script is:inline define:vars={{ apiBaseUrl }}>
-      window.__API_BASE__ = document.body.dataset.apiBase || apiBaseUrl;
+  <body class="h-screen overflow-hidden bg-slate-100 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100" data-api-base={adminApiBaseUrl}>
+    <script is:inline define:vars={{ adminApiBaseUrl }}>
+      window.__API_BASE__ = document.body.dataset.apiBase || adminApiBaseUrl;
     </script>
     <div class="flex h-screen overflow-hidden" id="admin-root">
       <!-- Mobile sidebar backdrop -->

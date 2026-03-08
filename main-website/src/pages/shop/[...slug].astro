@@ -8,7 +8,7 @@ import AddToCart from '../../components/product/AddToCart';
 import ProductImageCarousel from '../../components/product/ProductImageCarousel';
 import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
 import { formatMoney } from '../../lib/formatMoney';
-import { apiBaseUrl, brandName, siteUrl } from '../../config';
+import { storeApiBaseUrl, brandName, siteUrl } from '../../config';
 
 export async function getStaticPaths() {
   const limit = 100;
@@ -17,7 +17,7 @@ export async function getStaticPaths() {
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const url = `${apiBaseUrl}/products?page=${page}&limit=${limit}&sortBy=slug&sortOrder=asc`;
+      const url = `${storeApiBaseUrl}/products?page=${page}&limit=${limit}&sortBy=slug&sortOrder=asc`;
       const res = await fetch(url);
       const json = await res.json();
       if (!res.ok || !json.success || !Array.isArray(json.data)) break;
@@ -41,12 +41,12 @@ if (!slug) {
 
 function toFullImageUrl(url: string): string {
   if (!url) return '';
-  return url.startsWith('http') ? url : `${apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
 try {
-  const productUrl = `${apiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
+  const productUrl = `${storeApiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
   const res = await fetch(productUrl);
   const json = await res.json();
   if (res.ok && json.success && json.data) {
@@ -79,10 +79,10 @@ if (!product) {
 
 const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
 const ogImage = product.images?.[0] ?? product.image;
-const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || apiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
+const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || storeApiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
 
 const productImages = (product.images ?? (product.image ? [product.image] : [])).map((img: string) =>
-  img.startsWith('http') ? img : `${siteUrl || apiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
+  img.startsWith('http') ? img : `${siteUrl || storeApiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
 );
 const productJsonLd = {
   '@context': 'https://schema.org',

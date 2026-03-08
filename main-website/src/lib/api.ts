@@ -1,13 +1,13 @@
 /**
  * API client for the storefront (main website).
- * Uses apiBaseUrl from config (single source of truth).
+ * Uses store API base (apiBaseUrl + /store) for all requests.
  */
 
-import { apiBaseUrl } from '../config';
+import { storeApiBaseUrl } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 export function getApiBaseUrl(): string {
-  return apiBaseUrl;
+  return storeApiBaseUrl;
 }
 
 export function getStoreToken(): string | null {
