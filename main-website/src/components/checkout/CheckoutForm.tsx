@@ -12,6 +12,7 @@ import { useCart, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { api, profileApi, uploadPaymentProof } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import ColorSwatch from '../product/ColorSwatch';
 import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './checkoutSchema';
 
 export interface QuoteLineItem {
@@ -577,8 +578,13 @@ export default function CheckoutForm() {
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{line.productName}</p>
-                            <p className="text-form-hint text-ash">
-                              {cartItem ? `${cartItem.color} / ${cartItem.size} x ` : line.color && line.size ? `${line.color} / ${line.size} x ` : ''}{line.quantity}
+                            <p className="text-form-hint text-ash flex items-center gap-2 flex-wrap">
+                              {(cartItem?.color ?? line.color) ? (
+                                <ColorSwatch color={cartItem?.color ?? line.color ?? 'Default'} size="sm" aria-label={`Color: ${cartItem?.color ?? line.color ?? 'Color'}`} />
+                              ) : null}
+                              <span>
+                                {cartItem ? `${cartItem.size} x ` : line.size ? `${line.size} x ` : ''}{line.quantity}
+                              </span>
                             </p>
                           </div>
                           <p className="text-form-label text-soft-charcoal dark:text-off-white shrink-0">
@@ -592,8 +598,9 @@ export default function CheckoutForm() {
                         <img src={item.image} alt="" className="w-14 h-14 object-cover rounded bg-sand dark:bg-charcoal shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{item.name}</p>
-                          <p className="text-form-hint text-ash">
-                            {item.size} × {item.quantity}
+                          <p className="text-form-hint text-ash flex items-center gap-2 flex-wrap">
+                            {item.color ? <ColorSwatch color={item.color} size="sm" aria-label={`Color: ${item.color}`} /> : null}
+                            <span>{item.size} × {item.quantity}</span>
                           </p>
                         </div>
                         <p className="text-form-label text-soft-charcoal dark:text-off-white shrink-0">

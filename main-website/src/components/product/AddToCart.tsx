@@ -165,7 +165,7 @@ export default function AddToCart({
         disabled={!isPurchasable}
         className="w-full py-3 rounded-lg border border-soft-charcoal dark:border-off-white text-soft-charcoal dark:text-off-white font-medium hover:bg-ash/10 transition-colors duration-300 focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
-        {added ? 'Added — view cart' : isPurchasable ? 'Wear the verse' : 'Out of stock'}
+        {added ? 'Added — view cart' : isPurchasable ? 'Add to cart' : 'Out of stock'}
       </button>
     </div>
   );
