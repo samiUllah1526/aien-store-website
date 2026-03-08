@@ -1,48 +1,26 @@
 /**
- * Category banner: headline + large title + optional SALE band and image.
- * Full-bleed section (edge-to-edge); inner content aligned with site container.
+ * Category banner: image-only, full-bleed (edge-to-edge) like the hero carousel.
  */
 
-import { SITE_CONTAINER_CLASS } from '../layout/SiteContainer';
-
 interface CategoryBannerProps {
-  smallTitle: string;
-  largeTitle: string;
-  saleText?: string;
-  imageSrc?: string;
+  imageSrc: string;
   imageAlt?: string;
 }
 
-export default function CategoryBanner({
-  smallTitle,
-  largeTitle,
-  saleText = 'SALE 30% OFF',
-  imageSrc,
-  imageAlt = '',
-}: CategoryBannerProps) {
+export default function CategoryBanner({ imageSrc, imageAlt = '' }: CategoryBannerProps) {
   return (
-    <section className="w-full overflow-hidden" aria-label={largeTitle}>
-      <div className={`${SITE_CONTAINER_CLASS} flex flex-col md:flex-row md:items-center md:justify-between gap-6 sm:gap-8`}>
-        <div className="flex-1 min-w-0">
-          <p className="font-display text-xs sm:text-sm md:text-base uppercase tracking-widest text-ash">
-            {smallTitle}
-          </p>
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-soft-charcoal dark:text-off-white mt-1 break-words">
-            {largeTitle}
-          </h2>
-          {saleText && (
-            <div className="mt-3 sm:mt-4 overflow-hidden w-full">
-              <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm font-medium uppercase tracking-wider whitespace-nowrap">
-                {Array(8).fill(saleText).join(' · ')}
-              </p>
-            </div>
-          )}
-        </div>
-        {imageSrc && (
-          <div className="flex-shrink-0 w-full md:w-80 lg:w-96 aspect-[4/5] overflow-hidden rounded-lg bg-ash/10 max-w-[18rem] mx-auto md:mx-0 md:max-w-none">
-            <img src={imageSrc} alt={imageAlt} className="w-full h-full object-cover" />
-          </div>
-        )}
+    <section
+      className="relative w-full aspect-video min-h-[280px] max-h-[85vh] overflow-hidden"
+      aria-label={imageAlt || 'Category banner'}
+    >
+      <div className="absolute inset-0">
+        <img
+          src={imageSrc}
+          alt={imageAlt}
+          className="w-full h-full object-cover object-center"
+          fetchPriority="high"
+          draggable={false}
+        />
       </div>
     </section>
   );

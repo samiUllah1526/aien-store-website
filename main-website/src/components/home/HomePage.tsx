@@ -143,9 +143,6 @@ export default function HomePage({ videoSrc = '/videos/hero.mp4', videoPoster, h
           .map((cat) => (
           <div key={cat.id} className="contents">
             <CategoryBanner
-              smallTitle="COLLECTION"
-              largeTitle={cat.name.toUpperCase()}
-              saleText="SALE 30% OFF"
               imageSrc={cat.bannerImageUrl ?? DEFAULT_BANNER_IMAGE}
               imageAlt={cat.name}
             />
