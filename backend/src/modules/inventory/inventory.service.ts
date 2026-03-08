@@ -146,8 +146,8 @@ export class InventoryService {
         type: InventoryMovementType.ADJUSTMENT,
         quantityDelta,
         reference,
-        performedByUserId: performedByUserId ?? undefined,
-        stockAfter,
+        ...(performedByUserId != null && { performedByUserId }),
+        ...(stockAfter !== undefined && { stockAfter }),
       },
     });
   }
