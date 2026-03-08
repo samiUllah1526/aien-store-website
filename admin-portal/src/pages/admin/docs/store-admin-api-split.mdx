@@ -1,0 +1,111 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Store vs Admin API & Access
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Store vs Admin API & Access
+
+This page documents the split between the **storefront API** and the **admin API**, the **admin:access** permission, JWT audience/issuer, guards, and how the frontends use the new paths.
+
+---
+
+## 1. The issue we discussed
+
+We needed to clearly separate:
+
+- **Storefront** — used by the main website: customers browse products, log in with Google, place orders, manage favorites and profile. These should only talk to **store** endpoints and get tokens that are valid for the store only.
+- **Admin portal** — used by staff: manage users, products, orders, settings, etc. These should only talk to **admin** endpoints and require a special permission plus tokens that are valid for the admin API only.
+
+Without this split, a single API base and single token type meant:
+
+- Harder to lock down admin routes (e.g. by audience and permission).
+- Risk of using the same token for both store and admin.
+- No clear way to “default-deny” admin routes (every admin route should require an explicit permission).
+
+So we agreed on:
+
+1. **Path split** — Backend exposes two prefixes: `/store/*` and `/admin/*`. No shared controllers; store and admin each have their own auth, products, orders, etc.
+2. **Admin-only permission** — A permission `admin:access` (category “Admin Portal”) that is required to use any admin route (except login/register/Google/callback/forgot/reset). Only Admin and Super Admin roles get it; Customer never does.
+3. **JWT audience and issuer** — When we issue a token, we set `aud` to `'store'` or `'admin'` and `iss` from config. The store only accepts tokens with `aud: 'store'`; the admin only accepts tokens with `aud: 'admin'`.
+4. **Admin guard** — For any request to `/admin/*`, we allow only specific auth paths without a user; all other `/admin/*` routes require a valid user, `aud === 'admin'`, and the user must have `admin:access`.
+5. **Controller-level permission guard** — On admin, we use a guard that reads `@RequirePermission()` from the controller/handler. If no permission is set for an admin route, we **deny by default** (403).
+6. **Frontends** — Main website uses the **store** base URL for all API calls. Admin portal uses the **admin** base URL for all API calls.
+
+We did **not** implement a dedicated “Access denied” page or a GET `/admin/auth/me` check after login (that can be added later if you want to show a friendly message when someone has no `admin:access`).
+
+---
+
+## 2. Summary of the discussion
+
+- **Goal:** Separate store and admin APIs by path, token audience, and permission so that store users cannot call admin endpoints and admin access is permission-based and default-deny.
+- **Approach:** Two route prefixes (`/store`, `/admin`), separate auth controllers and strategies (e.g. Google for store vs Google for admin), JWT `aud`/`iss`, an AdminGuard for `/admin/*`, and a PermissionsGuard with `@RequirePermission()` and default-deny on admin. Frontends were updated so the main website uses the store base and the admin portal uses the admin base for every request.
+
+---
+
+## 3. What was implemented (simple terms)
+
+### Backend
+
+- **Seed**
+  - New permission: `admin:access` (category “Admin Portal”). Assigned to Admin and Super Admin roles; **never** to Customer.
+- **JWT**
+  - On issue, we set `aud` to `'store'` or `'admin'` and `iss` from config (e.g. `JWT_ISSUER` or `API_URL`). Store login/Google use `'store'`; admin login/Google use `'admin'`. Register (store only) uses `'store'`.
+  - The JWT strategy validates `iss` and passes `aud` on the user object so guards can check it.
+- **AdminGuard**
+  - For `/admin/*`: allow only these without a user: login, register, Google, Google callback, forgot-password, reset-password. All other `/admin/*` require: valid user, `user.aud === 'admin'`, and `user.permissions` includes `admin:access`.
+- **PermissionsGuard**
+  - Reads `@RequirePermission()` from controller and handler (handler overrides). For **admin** routes, if no permission is set → **403 (default-deny)**.
+- **Path split**
+  - **Store:** All store routes live under `src/store/`: store auth, products, orders, categories, profile (users/me + shipping), favorites, settings, media, vouchers.
+  - **Admin:** All admin routes live under `src/admin/`: admin auth, dashboard, users, roles, products, orders, categories, inventory, settings, vouchers, media, email-logs, jobs.
+  - No shared controllers between store and admin; domain modules (e.g. products, orders) only export services; store and admin controllers call those services.
+
+### Main website (store frontend)
+
+- **Config**
+  - `storeApiBaseUrl = apiBaseUrl + '/store'`.
+- **API client**
+  - `getApiBaseUrl()` returns `storeApiBaseUrl`, so all `api.get/post/put/delete` and profile, favorites, orders go to `/store/*`.
+- **Other**
+  - Settings fetch (`/settings/public`), about page, shop page (products list, product by slug, image URLs) use `storeApiBaseUrl` so every request and image URL goes through the store base. Payment proof upload uses the same base (no double `/store`).
+
+### Admin portal
+
+- **Config**
+  - `adminApiBaseUrl = apiBaseUrl + '/admin'`.
+- **API client**
+  - `getApiBaseUrl()` returns `adminApiBaseUrl`. All `request()` and `uploadFile()` use `adminApiBaseUrl`, so every admin request goes to `/admin/*`.
+- **Layout**
+  - `data-api-base` and `window.__API_BASE__` are set to `adminApiBaseUrl` so any script using that gets the admin base.
+
+---
+
+## 4. Flows now
+
+### Store (main website)
+
+1. **Base URL:** All requests use `apiBaseUrl + '/store'` (e.g. `https://api.example.com/store`).
+2. **Login:** User goes to main site → Login → email/password or “Sign in with Google”. Request goes to `/store/auth/login` or `/store/auth/google`. Token issued with `aud: 'store'`.
+3. **Browsing:** Products, categories, landing data come from `/store/products`, `/store/categories`, etc.
+4. **Profile, favorites, orders:** Calls to `/store/profile/shipping`, `/store/favorites`, `/store/orders/me`, etc., with the store token. Backend accepts only tokens with `aud: 'store'`.
+5. **Checkout:** Quote, voucher validate, checkout, payment proof upload go to `/store/orders/...`, `/store/vouchers/validate`, `/store/media/...`.
+
+### Admin portal
+
+1. **Base URL:** All requests use `apiBaseUrl + '/admin'` (e.g. `https://api.example.com/admin`).
+2. **Login:** Staff goes to admin app → Login → email/password or “Sign in with Google”. Request goes to `/admin/auth/login` or `/admin/auth/google`. Token issued with `aud: 'admin'`.
+3. **After login:** Every other request (dashboard, users, products, orders, settings, media, etc.) goes to `/admin/...`. The AdminGuard checks: valid user, `aud === 'admin'`, and `admin:access` in permissions. The PermissionsGuard then checks the specific `@RequirePermission()` for that route; if none is set, the request is denied (403).
+4. **Who can use admin:** Only users whose role has the `admin:access` permission (Admin and Super Admin in the seed). Customers never get this permission, so they cannot use admin even if they have a token.
+
+### Summary table
+
+| Who        | Frontend      | API base              | Token `aud` | Permission needed for non-auth |
+|-----------|----------------|------------------------|-------------|---------------------------------|
+| Customer  | Main website   | `apiBaseUrl + '/store'`| `store`     | N/A (store routes are per-route) |
+| Staff     | Admin portal   | `apiBaseUrl + '/admin'`| `admin`     | `admin:access` + route-specific `@RequirePermission()` |
+
+This keeps store and admin clearly separated by URL, token audience, and permission, with admin default-deny for any route that does not declare a required permission.

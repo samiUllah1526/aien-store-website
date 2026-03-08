@@ -2,6 +2,8 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 
 const docLinks = [
+  // API & access (store vs admin split)
+  { href: '/admin/docs/store-admin-api-split', label: 'Store vs Admin API & access', description: 'Path split (/store vs /admin), admin:access permission, JWT aud/iss, guards, and how store and admin frontends call the API', section: 'api-access' },
   { href: '/admin/docs/configuration', label: 'Configuration & secrets', description: 'Backend env vars, validation, and how to use a secrets manager later' },
   { href: '/admin/docs/google-login', label: 'Google sign-in', description: 'Enable Sign in with Google for admin and store: Google Cloud setup, env vars, and flow' },
   { href: '/admin/docs/deployment', label: 'Deployment', description: 'How main website and admin portal deploy to Cloudflare Pages via GitHub Actions' },
@@ -21,20 +23,44 @@ const docLinks = [
     <p class="text-slate-600 dark:text-slate-400">
       Internal documentation for the admin portal. Use the links below to browse by topic.
     </p>
-    <ul class="space-y-3">
-      {docLinks.map((doc) => (
-        <li>
-          <a
-            href={doc.href}
-            class="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700"
-          >
-            <span class="font-medium text-slate-900 dark:text-slate-100">{doc.label}</span>
-            {doc.description && (
-              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{doc.description}</p>
-            )}
-          </a>
-        </li>
-      ))}
-    </ul>
+
+    <section class="mb-8">
+      <h2 class="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">API & access</h2>
+      <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">Store vs admin path split, permissions, and token flows.</p>
+      <ul class="space-y-3">
+        {docLinks.filter((d) => (d as { section?: string }).section === 'api-access').map((doc) => (
+          <li>
+            <a
+              href={doc.href}
+              class="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700"
+            >
+              <span class="font-medium text-slate-900 dark:text-slate-100">{doc.label}</span>
+              {doc.description && (
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{doc.description}</p>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Other documentation</h2>
+      <ul class="space-y-3">
+        {docLinks.filter((d) => (d as { section?: string }).section !== 'api-access').map((doc) => (
+          <li>
+            <a
+              href={doc.href}
+              class="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700"
+            >
+              <span class="font-medium text-slate-900 dark:text-slate-100">{doc.label}</span>
+              {doc.description && (
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{doc.description}</p>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   </div>
 </AdminLayout>
