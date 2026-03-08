@@ -2,35 +2,45 @@
   <mj-head>
     <mj-title>Order Confirmation</mj-title>
     <mj-preview>Your order {{orderId}} has been received.</mj-preview>
+    <mj-font name="Montserrat" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" />
     <mj-attributes>
-      <mj-all font-family="Helvetica, Arial, sans-serif" />
-      <mj-text color="#333333" font-size="16px" line-height="24px" />
-      <mj-section padding="24px 0" />
+      <mj-all font-family="Montserrat, Arial, sans-serif" />
+      <mj-text color="#1A1A1A" font-size="16px" line-height="26px" />
+      <mj-section padding="20px 0" />
+      <mj-button font-family="Montserrat, Arial, sans-serif" font-weight="600" border-radius="6px" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4" width="600px">
-    <mj-section background-color="#ffffff" padding="32px 24px" border-radius="8px">
+  <mj-body background-color="#F3F1ED" width="600px">
+    <!-- Brand bar -->
+    <mj-section background-color="#2F3A32" padding="16px 24px" vertical-align="middle">
       <mj-column width="100%">
-        <mj-text font-size="24px" font-weight="bold" color="#111111" padding-bottom="8px">
+        <mj-text font-size="18px" font-weight="600" color="#F8F6F2" padding="0" align="left">
+          {{companyName}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#FFFFFF" padding="32px 24px" border-radius="0 0 8px 8px" border-top="3px solid #2F3A32">
+      <mj-column width="100%">
+        <mj-text font-size="24px" font-weight="700" color="#1A1A1A" padding-bottom="8px">
           Order confirmed
         </mj-text>
-        <mj-text>Hello {{customerName}},</mj-text>
-        <mj-text>Thank you for your order. We've received it and will process it shortly.</mj-text>
+        <mj-text color="#1A1A1A">Hello {{customerName}},</mj-text>
+        <mj-text color="#1A1A1A">Thank you for your order. We've received it and will process it shortly.</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section background-color="#ffffff" padding="0 24px 24px" border-radius="8px">
+    <mj-section background-color="#FFFFFF" padding="0 24px 24px" border-radius="0 0 8px 8px">
       <mj-column width="100%">
-        <mj-text font-size="14px" color="#666666">Order ID: <strong>{{orderId}}</strong></mj-text>
-        <mj-text font-size="14px" color="#666666">Date: {{orderDate}}</mj-text>
-        <mj-text font-size="16px" font-weight="bold" padding-top="16px">Order summary</mj-text>
+        <mj-text font-size="14px" color="#8A8A8A">Order ID: <strong style="color:#1A1A1A">{{orderId}}</strong></mj-text>
+        <mj-text font-size="14px" color="#8A8A8A">Date: {{orderDate}}</mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#1A1A1A" padding-top="20px">Order summary</mj-text>
         <mj-raw>{{itemsTable_html}}</mj-raw>
-        <mj-text font-size="16px" font-weight="bold" padding-top="16px">Total: {{totalFormatted}}</mj-text>
+        <mj-text font-size="18px" font-weight="700" color="#2F3A32" padding-top="20px">Total: {{totalFormatted}}</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section background-color="#ffffff" padding="0 24px 32px" border-radius="8px">
+    <mj-section background-color="#FFFFFF" padding="0 24px 32px" border-radius="0 0 8px 8px">
       <mj-column width="100%">
-        <mj-text>If you have any questions, please reply to this email.</mj-text>
-        <mj-text font-size="14px" color="#888888" padding-top="24px">— {{companyName}}</mj-text>
+        <mj-text color="#1A1A1A">If you have any questions, please reply to this email.</mj-text>
+        <mj-text font-size="14px" color="#8A8A8A" padding-top="24px">— {{companyName}}</mj-text>
       </mj-column>
     </mj-section>
   </mj-body>
