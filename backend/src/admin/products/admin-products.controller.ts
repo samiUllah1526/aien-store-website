@@ -77,6 +77,7 @@ export class AdminProductsController {
       dto.quantityDelta,
       dto.reference ?? 'Admin adjustment',
       req.user?.userId,
+      dto.variantId,
     );
     const data = await this.productsService.findOne(id);
     return ApiResponseDto.ok(data, 'Stock updated');

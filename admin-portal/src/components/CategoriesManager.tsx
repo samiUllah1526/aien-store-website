@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { z } from 'zod';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
 import { useDebounce } from '../hooks/useDebounce';
 import type { Category } from '../lib/types';
+import { useZodForm } from '../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 
 function slugFromName(value: string): string {
   return value
@@ -252,68 +255,63 @@ interface CategoryFormModalProps {
   onSuccess: () => void;
 }
 
+const categoryFormSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens only'),
+  description: z.string().optional(),
+  bannerImageUrl: z.string().optional(),
+  showOnLanding: z.boolean().default(false),
+  landingOrder: z.string().optional(),
+  parentId: z.string().optional(),
+});
+
 function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: CategoryFormModalProps) {
-  const [name, setName] = useState(category?.name ?? '');
-  const [slug, setSlug] = useState(category?.slug ?? '');
-  const [description, setDescription] = useState(category?.description ?? '');
-  const [bannerImageUrl, setBannerImageUrl] = useState(category?.bannerImageUrl ?? '');
-  const [showOnLanding, setShowOnLanding] = useState(category?.showOnLanding ?? false);
-  const [landingOrder, setLandingOrder] = useState<string>(category?.landingOrder != null ? String(category.landingOrder) : '');
-  const [parentId, setParentId] = useState<string>(category?.parentId ?? '');
+  const form = useZodForm({
+    schema: categoryFormSchema,
+    defaultValues: {
+      name: category?.name ?? '',
+      slug: category?.slug ?? '',
+      description: category?.description ?? '',
+      bannerImageUrl: category?.bannerImageUrl ?? '',
+      showOnLanding: category?.showOnLanding ?? false,
+      landingOrder: category?.landingOrder != null ? String(category.landingOrder) : '',
+      parentId: category?.parentId ?? '',
+    },
+  });
+  const showOnLanding = form.watch('showOnLanding');
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const rootError = form.formState.errors.root?.serverError?.message;
 
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!category) setSlug(slugFromName(value));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    const slugTrim = slug.trim();
-    if (!name.trim()) {
-      setFormError('Name is required');
-      return;
-    }
-    if (!slugTrim) {
-      setFormError('Slug is required');
-      return;
-    }
-    if (!/^[a-z0-9-]+$/.test(slugTrim)) {
-      setFormError('Slug must be lowercase letters, numbers, and hyphens only');
-      return;
-    }
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
+      const landingOrder = values.landingOrder?.trim();
+      const payload = {
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+        description: values.description?.trim() || undefined,
+        bannerImageUrl: values.bannerImageUrl?.trim() || (category ? null : undefined),
+        showOnLanding: values.showOnLanding,
+        landingOrder: landingOrder ? Number.parseInt(landingOrder, 10) : category ? null : undefined,
+        parentId: values.parentId || null,
+      };
       if (category) {
-        await api.put(`/categories/${category.id}`, {
-          name: name.trim(),
-          slug: slugTrim,
-          description: description.trim() || undefined,
-          bannerImageUrl: bannerImageUrl.trim() || null,
-          showOnLanding,
-          landingOrder: landingOrder === '' ? null : parseInt(landingOrder, 10),
-          parentId: parentId || null,
-        });
+        await api.put(`/categories/${category.id}`, payload);
       } else {
-        await api.post('/categories', {
-          name: name.trim(),
-          slug: slugTrim,
-          description: description.trim() || undefined,
-          bannerImageUrl: bannerImageUrl.trim() || undefined,
-          showOnLanding,
-          landingOrder: landingOrder === '' ? undefined : parseInt(landingOrder, 10),
-          parentId: parentId || null,
-        });
+        await api.post('/categories', payload);
       }
       onSuccess();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Save failed');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -322,9 +320,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
           {category ? 'Edit category' : 'Add category'}
         </h2>
-        {formError && (
+        {rootError && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">
-            {formError}
+            {rootError}
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -336,10 +334,16 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               id="cat-name"
               type="text"
               required
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
+              {...form.register('name', {
+                onChange: (e) => {
+                  if (!category && !form.formState.dirtyFields.slug) {
+                    form.setValue('slug', slugFromName(e.target.value), { shouldValidate: true });
+                  }
+                },
+              })}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
+            {form.formState.errors.name && <p className="mt-1 text-xs text-red-600">{form.formState.errors.name.message}</p>}
           </div>
           <div>
             <label htmlFor="cat-slug" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -349,11 +353,11 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               id="cat-slug"
               type="text"
               required
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              {...form.register('slug')}
               placeholder="e.g. shirts"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             />
+            {form.formState.errors.slug && <p className="mt-1 text-xs text-red-600">{form.formState.errors.slug.message}</p>}
           </div>
           <div>
             <label htmlFor="cat-desc" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -362,8 +366,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             <textarea
               id="cat-desc"
               rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              {...form.register('description')}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
@@ -373,8 +376,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             </label>
             <select
               id="cat-parent"
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
+              {...form.register('parentId')}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">None</option>
@@ -394,8 +396,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             <input
               id="cat-banner"
               type="url"
-              value={bannerImageUrl}
-              onChange={(e) => setBannerImageUrl(e.target.value)}
+              {...form.register('bannerImageUrl')}
               placeholder="https://…"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             />
@@ -404,8 +405,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             <input
               id="cat-show-landing"
               type="checkbox"
-              checked={showOnLanding}
-              onChange={(e) => setShowOnLanding(e.target.checked)}
+              {...form.register('showOnLanding')}
               className="h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
             />
             <label htmlFor="cat-show-landing" className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -421,8 +421,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
                 id="cat-landing-order"
                 type="number"
                 min={0}
-                value={landingOrder}
-                onChange={(e) => setLandingOrder(e.target.value)}
+                {...form.register('landingOrder')}
                 placeholder="0"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
               />

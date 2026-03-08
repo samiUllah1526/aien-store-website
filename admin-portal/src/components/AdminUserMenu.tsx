@@ -3,9 +3,14 @@ import { getStoredUser, clearStoredTokens } from '../lib/auth';
 
 export default function AdminUserMenu() {
   const [open, setOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [user, setUser] = useState<ReturnType<typeof getStoredUser> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const user = getStoredUser();
+  useEffect(() => {
+    setIsHydrated(true);
+    setUser(getStoredUser());
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -30,7 +35,7 @@ export default function AdminUserMenu() {
     window.location.href = '/admin/login';
   };
 
-  if (!user) {
+  if (!isHydrated || !user) {
     return (
       <a
         href="/admin/login"

@@ -6,8 +6,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+/** Maximum quantity per line item in cart. Enforced in UI and should match backend cap. */
+export const MAX_CART_QUANTITY = 99;
+
 export type CartItem = {
   productId: string;
+  variantId: string;
+  color: string;
   name: string;
   slug: string;
   price: number;
@@ -21,8 +26,8 @@ type CartState = {
   items: CartItem[];
   isOpen: boolean;
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
-  removeItem: (productId: string, size: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number) => void;
+  removeItem: (variantId: string) => void;
+  updateQuantity: (variantId: string, quantity: number) => void;
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
@@ -35,38 +40,40 @@ export const useCartStore = create<CartState>()(
       isOpen: false,
   addItem: (item) =>
     set((state) => {
+      const qty = Math.min(item.quantity ?? 1, MAX_CART_QUANTITY);
       const existing = state.items.find(
-        (i) => i.productId === item.productId && i.size === item.size
+        (i) => i.variantId === item.variantId
       );
       if (existing) {
         return {
           items: state.items.map((i) =>
-            i.productId === item.productId && i.size === item.size
-              ? { ...i, quantity: i.quantity + (item.quantity ?? 1) }
+            i.variantId === item.variantId
+              ? { ...i, quantity: Math.min(i.quantity + qty, MAX_CART_QUANTITY) }
               : i
           ),
         };
       }
-      return { items: [...state.items, { ...item, quantity: item.quantity ?? 1 }] };
+      return { items: [...state.items, { ...item, quantity: qty }] };
     }),
-  removeItem: (productId, size) =>
+  removeItem: (variantId) =>
     set((state) => ({
       items: state.items.filter(
-        (i) => !(i.productId === productId && i.size === size)
+        (i) => i.variantId !== variantId
       ),
     })),
-  updateQuantity: (productId, size, quantity) =>
+  updateQuantity: (variantId, quantity) =>
     set((state) => {
-      if (quantity <= 0) {
+      const capped = Math.min(Math.max(0, quantity), MAX_CART_QUANTITY);
+      if (capped <= 0) {
         return {
           items: state.items.filter(
-            (i) => !(i.productId === productId && i.size === size)
+            (i) => i.variantId !== variantId
           ),
         };
       }
       return {
         items: state.items.map((i) =>
-          i.productId === productId && i.size === size ? { ...i, quantity } : i
+          i.variantId === variantId ? { ...i, quantity: capped } : i
         ),
       };
     }),
@@ -76,6 +83,24 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'adab-cart',
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as { items?: Array<Partial<CartItem>> } | undefined;
+        const items = (state?.items ?? []).filter(
+          (item): item is CartItem =>
+            typeof item.productId === 'string' &&
+            typeof item.variantId === 'string' &&
+            typeof item.color === 'string' &&
+            typeof item.size === 'string' &&
+            typeof item.name === 'string' &&
+            typeof item.slug === 'string' &&
+            typeof item.currency === 'string' &&
+            typeof item.image === 'string' &&
+            typeof item.price === 'number' &&
+            typeof item.quantity === 'number',
+        );
+        return { items, isOpen: false };
+      },
       partialize: (state) => ({ items: state.items }),
     }
   )

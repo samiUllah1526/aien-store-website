@@ -1,7 +1,11 @@
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MovementsQueryDto {
+  @IsOptional()
+  @IsUUID(4, { message: 'variantId must be a valid UUID' })
+  variantId?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

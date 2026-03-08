@@ -22,6 +22,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     price: Number(p.price),
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
+    variants: (p.variants as Product['variants']) ?? undefined,
     sizes: (p.sizes as string[] | undefined) ?? undefined,
     inStock: p.inStock !== false,
   };

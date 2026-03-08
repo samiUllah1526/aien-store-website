@@ -1,3 +1,13 @@
+export interface ProductVariant {
+  id: string;
+  color: string;
+  size: string;
+  sku: string | null;
+  stockQuantity: number;
+  priceOverrideCents: number | null;
+  isActive: boolean;
+}
+
 /** Product list item from GET /products */
 export interface ProductListItem {
   id: string;
@@ -6,6 +16,8 @@ export interface ProductListItem {
   price: number;
   currency: string;
   image: string;
+  variants: ProductVariant[];
+  colors: string[];
   sizes: string[];
   featured: boolean;
   /** Current stock level. */
@@ -26,6 +38,8 @@ export interface Product {
   currency: string;
   image: string;
   images: string[];
+  variants: ProductVariant[];
+  colors: string[];
   sizes: string[];
   categories: Array<{ id: string; name: string; slug: string }>;
   category: string | null;
@@ -49,7 +63,15 @@ export interface ProductFormData {
   categoryIds?: string[];
   priceCents: number;
   currency?: string;
-  sizes?: string[];
+  variants: Array<{
+    id?: string;
+    color: string;
+    size: string;
+    sku?: string;
+    stockQuantity: number;
+    priceOverrideCents?: number;
+    isActive?: boolean;
+  }>;
   featured?: boolean;
   mediaIds?: string[];
 }
@@ -69,8 +91,12 @@ export type OrderStatus =
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId: string;
   productName?: string;
   productImage?: string | null;
+  color?: string | null;
+  /** Size at time of order (e.g. S, M, L). Optional. */
+  size?: string | null;
   quantity: number;
   unitCents: number;
 }

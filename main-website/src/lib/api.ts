@@ -176,8 +176,11 @@ export interface OrderDto {
   items: Array<{
     id: string;
     productId: string;
+    variantId: string;
     productName?: string;
     productImage?: string | null;
+    color?: string | null;
+    size?: string | null;
     quantity: number;
     unitCents: number;
   }>;

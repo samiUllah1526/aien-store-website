@@ -30,7 +30,8 @@
     "db:pull": "prisma db pull",
     "db:seed": "prisma db seed",
     "db:restore-settings": "ts-node -r tsconfig-paths/register scripts/restore-settings.ts",
-    "job:voucher-expired": "ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts"
+    "job:voucher-expired": "ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts",
+    "app-reset": "npm run db:migrate:reset && npm run db:seed && npm run db:restore-settings"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",

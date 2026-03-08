@@ -16,7 +16,11 @@ import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './
 
 export interface QuoteLineItem {
   productId: string;
+  variantId: string;
   productName: string;
+  color?: string | null;
+  /** Size when provided in request. Optional. */
+  size?: string | null;
   quantity: number;
   unitCents: number;
   lineTotalCents: number;
@@ -116,7 +120,7 @@ export default function CheckoutForm() {
     setQuoteError(null);
     api
       .post<Quote>('/orders/quote', {
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, color: i.color, size: i.size, quantity: i.quantity })),
         voucherCode: appliedVoucherCode || undefined,
       }, { signal: controller.signal })
       .then((res) => {
@@ -238,7 +242,7 @@ export default function CheckoutForm() {
           shippingPostalCode: data.shippingPostalCode?.trim() || undefined,
           paymentMethod: data.paymentMethod === 'bank' ? 'BANK_DEPOSIT' : 'COD',
           paymentProofMediaId: paymentProofMediaId || undefined,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, color: i.color, size: i.size, quantity: i.quantity })),
           voucherCode: appliedVoucherCode || undefined,
         },
         { headers: { 'Idempotency-Key': idempotencyKeyRef.current } },
@@ -259,7 +263,7 @@ export default function CheckoutForm() {
           })
           .catch(() => {});
       }
-      items.forEach((item) => useCartStore.getState().removeItem(item.productId, item.size));
+      items.forEach((item) => useCartStore.getState().removeItem(item.variantId));
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : String(err);
       const isStockError = /insufficient stock|out of stock|available:\s*0/i.test(rawMsg);
@@ -558,10 +562,12 @@ export default function CheckoutForm() {
             <>
               <ul className="space-y-4 mb-6 max-h-60 overflow-y-auto">
                 {quote
-                  ? quote.items.map((line, i) => {
-                      const cartItem = items[i];
+                  ? quote.items.map((line) => {
+                      const cartItem = items.find(
+                        (c) => c.variantId === line.variantId
+                      );
                       return (
-                        <li key={`${line.productId}-${i}`} className="flex gap-3">
+                        <li key={`${line.variantId}-${line.quantity}`} className="flex gap-3">
                           {cartItem && (
                             <img
                               src={cartItem.image}
@@ -572,7 +578,7 @@ export default function CheckoutForm() {
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{line.productName}</p>
                             <p className="text-form-hint text-ash">
-                              {cartItem ? `${cartItem.size} × ` : ''}{line.quantity}
+                              {cartItem ? `${cartItem.color} / ${cartItem.size} x ` : line.color && line.size ? `${line.color} / ${line.size} x ` : ''}{line.quantity}
                             </p>
                           </div>
                           <p className="text-form-label text-soft-charcoal dark:text-off-white shrink-0">
@@ -582,7 +588,7 @@ export default function CheckoutForm() {
                       );
                     })
                   : items.map((item) => (
-                      <li key={`${item.productId}-${item.size}`} className="flex gap-3">
+                      <li key={item.variantId} className="flex gap-3">
                         <img src={item.image} alt="" className="w-14 h-14 object-cover rounded bg-sand dark:bg-charcoal shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-soft-charcoal dark:text-off-white text-form-label truncate">{item.name}</p>
