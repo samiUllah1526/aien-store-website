@@ -17,6 +17,8 @@ export interface ProductCardVariant {
   stockQuantity: number;
   priceOverrideCents?: number | null;
   isActive: boolean;
+  image?: string;
+  images?: string[];
 }
 
 export interface ProductCardProduct {
@@ -72,7 +74,7 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
       slug: product.slug,
       price: quickAddVariant.priceOverrideCents ?? product.price,
       currency: product.currency,
-      image: product.image,
+      image: quickAddVariant.image || quickAddVariant.images?.[0] || product.image,
       size: defaultSize,
       quantity: 1,
     });

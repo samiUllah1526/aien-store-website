@@ -94,7 +94,7 @@ export const themeStorageKey = envStr('PUBLIC_THEME_STORAGE_KEY', 'aien-theme');
 /** Landing: announcement bar text */
 export const announcementText = envStr('PUBLIC_ANNOUNCEMENT_TEXT', 'FREE DELIVERY ON ORDERS PKR 2000 & ABOVE');
 
-/** Landing: footer contact (Customer Support column) */
+/** Landing: footer contact (Contact Us column) */
 export const footerContact = {
   email: envStr('PUBLIC_FOOTER_EMAIL', 'contact.theclothingbrand@gmail.com'),
   phone: envStr('PUBLIC_FOOTER_PHONE', '000-0000000'),

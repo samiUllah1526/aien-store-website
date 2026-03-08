@@ -6,6 +6,9 @@ export interface ProductVariant {
   stockQuantity: number;
   priceOverrideCents: number | null;
   isActive: boolean;
+  image?: string;
+  images?: string[];
+  mediaIds?: string[];
 }
 
 /** Product list item from GET /products */
@@ -38,6 +41,7 @@ export interface Product {
   currency: string;
   image: string;
   images: string[];
+  mediaIds?: string[];
   variants: ProductVariant[];
   colors: string[];
   sizes: string[];
@@ -71,6 +75,7 @@ export interface ProductFormData {
     stockQuantity: number;
     priceOverrideCents?: number;
     isActive?: boolean;
+    mediaIds?: string[];
   }>;
   featured?: boolean;
   mediaIds?: string[];

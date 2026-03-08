@@ -1,22 +1,26 @@
 interface ProductFormImagesProps {
+  title?: string;
   mediaIds: string[];
   mediaPreviews: Record<string, string>;
   onAddFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: (index: number) => void;
   uploading: boolean;
+  uploadLabel?: string;
 }
 
 export function ProductFormImages({
+  title = 'Images',
   mediaIds,
   mediaPreviews,
   onAddFiles,
   onRemoveImage,
   uploading,
+  uploadLabel = 'Add images',
 }: ProductFormImagesProps) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-        Images
+        {title}
       </label>
       <div className="flex flex-wrap gap-2">
         {mediaIds.map((id, index) => (
@@ -55,7 +59,7 @@ export function ProductFormImages({
           onChange={onAddFiles}
           className="sr-only"
         />
-        {uploading ? 'Uploading…' : 'Add images'}
+        {uploading ? 'Uploading…' : uploadLabel}
       </label>
     </div>
   );

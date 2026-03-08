@@ -24,14 +24,25 @@ export interface Product {
     stockQuantity: number;
     priceOverrideCents?: number | null;
     isActive: boolean;
+    image?: string;
+    images?: string[];
   }>;
   sizes?: string[];
   inStock?: boolean;
 }
 
-function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; variants?: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean }>; sizes?: string[]; inStock?: boolean }): Product {
+function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; variants?: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean; image?: string; images?: string[] }>; sizes?: string[]; inStock?: boolean }): Product {
   const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const firstCategory = p.categories?.[0] ?? p.category ?? '';
+  const variants = (p.variants ?? []).map((variant) => ({
+    ...variant,
+    image: variant.image
+      ? (variant.image.startsWith('http') ? variant.image : `${baseUrl}${variant.image.startsWith('/') ? '' : '/'}${variant.image}`)
+      : '',
+    images: (variant.images ?? []).map((image) =>
+      image.startsWith('http') ? image : `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
+    ),
+  }));
   return {
     id: p.id,
     slug: p.slug,
@@ -40,7 +51,7 @@ function mapApiProductToProduct(p: { id: string; slug: string; name: string; cat
     price: p.price,
     currency: p.currency,
     image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
-    variants: p.variants,
+    variants,
     sizes: p.sizes,
     inStock: p.inStock,
   };

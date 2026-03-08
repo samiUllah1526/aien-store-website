@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, IsUUID } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, IsUUID } from 'class-validator';
 
 export class ProductVariantInputDto {
   @IsOptional()
@@ -30,4 +30,10 @@ export class ProductVariantInputDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  /** Optional media IDs attached to this specific variant (usually color shots). */
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  mediaIds?: string[];
 }

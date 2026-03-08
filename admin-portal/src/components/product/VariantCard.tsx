@@ -2,12 +2,17 @@ import type { UseFormReturn } from 'react-hook-form';
 import type { ProductFormValues } from '../../lib/validation/product';
 import { VariantColorField } from './VariantColorField';
 import { inputVariant, labelVariant, checkboxBase } from './productFormStyles';
+import { ProductFormImages } from './ProductFormImages';
 
 interface VariantCardProps {
   index: number;
   form: UseFormReturn<ProductFormValues>;
   onRemove: () => void;
   canRemove: boolean;
+  mediaPreviews: Record<string, string>;
+  onAddFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveImage: (index: number) => void;
+  uploading: boolean;
 }
 
 const defaultVariant: ProductFormValues['variants'][number] = {
@@ -17,10 +22,22 @@ const defaultVariant: ProductFormValues['variants'][number] = {
   stockQuantity: 0,
   priceOverridePkr: '',
   isActive: true,
+  mediaIds: [],
 };
 
-export function VariantCard({ index, form, onRemove, canRemove }: VariantCardProps) {
+export function VariantCard({
+  index,
+  form,
+  onRemove,
+  canRemove,
+  mediaPreviews,
+  onAddFiles,
+  onRemoveImage,
+  uploading,
+}: VariantCardProps) {
   const { register, setValue, watch } = form;
+  const variantMediaIds = watch(`variants.${index}.mediaIds`) ?? [];
+  const colorError = form.formState.errors.variants?.[index]?.color?.message ?? null;
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/40 p-6 dark:border-slate-700 dark:bg-slate-800/40">
@@ -50,6 +67,8 @@ export function VariantCard({ index, form, onRemove, canRemove }: VariantCardPro
             register={register}
             setValue={setValue}
             watch={watch}
+            trigger={form.trigger}
+            errorMessage={colorError}
           />
         </div>
         <div className="min-w-0">
@@ -119,6 +138,18 @@ export function VariantCard({ index, form, onRemove, canRemove }: VariantCardPro
             Active
           </label>
         </div>
+      </div>
+
+      <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <ProductFormImages
+          title="Variant images"
+          mediaIds={variantMediaIds}
+          mediaPreviews={mediaPreviews}
+          onAddFiles={onAddFiles}
+          onRemoveImage={onRemoveImage}
+          uploading={uploading}
+          uploadLabel="Add variant images"
+        />
       </div>
     </div>
   );

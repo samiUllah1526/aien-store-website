@@ -10,6 +10,12 @@ export class ProductVariantResponseDto {
   stockQuantity: number;
   priceOverrideCents: number | null;
   isActive: boolean;
+  /** Primary image URL for the variant (first of images). */
+  image: string;
+  /** Variant-specific image gallery URLs. */
+  images: string[];
+  /** Variant media IDs, primarily for admin edit flows. */
+  mediaIds: string[];
 }
 
 export class ProductResponseDto {
@@ -21,6 +27,7 @@ export class ProductResponseDto {
   currency: string;
   image: string;
   images: string[];
+  mediaIds: string[];
   variants: ProductVariantResponseDto[];
   colors: string[];
   sizes: string[];
