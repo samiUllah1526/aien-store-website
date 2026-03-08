@@ -4,7 +4,7 @@
  * Auth: access token from localStorage.
  */
 
-import { getStoredToken, clearStoredTokens, isTokenExpired, decodeToken } from './auth';
+import { getStoredToken, clearStoredTokens, decodeToken } from './auth';
 import { adminApiBaseUrl, loginRedirectPath } from './config';
 import { toastError } from './toast';
 import { incrementLoading, decrementLoading } from './loading';
@@ -37,18 +37,7 @@ function normalizeErrorMessage(raw: string | string[] | undefined, fallback: str
   return Array.isArray(raw) ? raw.join(' ') : raw;
 }
 
-/**
- * Avoid forcing logout for transient 401s unless the token is actually expired
- * or backend explicitly indicates token/JWT invalidity.
- */
-function shouldForceLogoutOnUnauthorized(token: string | null, message: string): boolean {
-  if (!token) return true;
-  if (isTokenExpired(token)) return true;
-  const normalized = message.toLowerCase();
-  return /token|jwt|expired|invalid token|invalid signature|invalid issuer|malformed/.test(normalized);
-}
-
-function logUnauthorizedDebug(path: string, message: string, token: string | null, shouldLogout: boolean): void {
+function logUnauthorizedDebug(path: string, message: string, token: string | null): void {
   if (typeof window === 'undefined') return;
   const payload = token ? decodeToken(token) : null;
   const nowSec = Math.floor(Date.now() / 1000);
@@ -56,7 +45,6 @@ function logUnauthorizedDebug(path: string, message: string, token: string | nul
   console.warn('[admin-api] 401 received', {
     path,
     message,
-    shouldLogout,
     hasToken: !!token,
     tokenAud: payload?.aud ?? null,
     tokenIss: payload?.iss ?? null,
@@ -108,12 +96,9 @@ async function request<T>(
 
     if (res.status === 401) {
       const msg = normalizeErrorMessage(json.message, res.statusText || 'Unauthorized');
-      const shouldLogout = shouldForceLogoutOnUnauthorized(token, msg);
-      logUnauthorizedDebug(path, msg, token, shouldLogout);
-      if (shouldLogout) {
-        clearStoredTokens();
-        if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-      }
+      logUnauthorizedDebug(path, msg, token);
+      clearStoredTokens();
+      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
       toastError(msg);
       throw new Error(msg);
     }
@@ -146,12 +131,9 @@ export async function uploadFile(file: File): Promise<{ id: string }> {
     };
     if (res.status === 401) {
       const msg = normalizeErrorMessage(json.message, 'Unauthorized');
-      const shouldLogout = shouldForceLogoutOnUnauthorized(token, msg);
-      logUnauthorizedDebug('/media/upload', msg, token, shouldLogout);
-      if (shouldLogout) {
-        clearStoredTokens();
-        if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-      }
+      logUnauthorizedDebug('/media/upload', msg, token);
+      clearStoredTokens();
+      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
       toastError(msg);
       throw new Error(msg);
     }
