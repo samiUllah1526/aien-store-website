@@ -55,6 +55,7 @@ export class ProductsService {
     stockQuantity: number;
     priceOverrideCents: number | null;
     isActive: boolean;
+    mediaIds?: string[];
   }> {
     if (!input?.length) {
       throw new BadRequestException('At least one variant is required');
@@ -80,6 +81,7 @@ export class ProductsService {
         priceOverrideCents:
           variant.priceOverrideCents != null ? Math.max(0, variant.priceOverrideCents) : null,
         isActive: variant.isActive ?? true,
+        mediaIds: variant.mediaIds,
       };
     });
   }
@@ -94,6 +96,12 @@ export class ProductsService {
     return { colors, sizes, stockQuantity, inStock };
   }
 
+  private collectVariantMediaIds(
+    variants: Array<{ mediaIds?: string[] }>,
+  ): string[] {
+    return [...new Set(variants.flatMap((variant) => variant.mediaIds ?? []))];
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     const existing = await this.prisma.product.findUnique({
       where: { slug: dto.slug },
@@ -101,11 +109,13 @@ export class ProductsService {
     if (existing) {
       throw new ConflictException(`Product with slug "${dto.slug}" already exists`);
     }
-    if (dto.mediaIds?.length) {
-      await this.validateMediaIds(dto.mediaIds);
-    }
     const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
     const variants = this.normalizeVariants(dto.variants);
+    const variantMediaIds = this.collectVariantMediaIds(variants);
+    const allMediaIds = [...new Set([...(dto.mediaIds ?? []), ...variantMediaIds])];
+    if (allMediaIds.length) {
+      await this.validateMediaIds(allMediaIds);
+    }
     const stockQuantity = variants.reduce((sum, v) => sum + v.stockQuantity, 0);
     const derivedSizes = [...new Set(variants.map((v) => v.size))];
     const product = await this.prisma.product.create({
@@ -138,6 +148,25 @@ export class ProductsService {
     });
     if (dto.mediaIds?.length) {
       await this.attachMedia(product.id, dto.mediaIds);
+    }
+    if (variantMediaIds.length) {
+      const createdVariants = await this.prisma.productVariant.findMany({
+        where: { productId: product.id },
+        select: { id: true, color: true, size: true },
+      });
+      const createdVariantByKey = new Map(
+        createdVariants.map((variant) => [
+          `${variant.color.toLowerCase()}__${variant.size.toLowerCase()}`,
+          variant.id,
+        ]),
+      );
+      for (const variant of variants) {
+        if (!variant.mediaIds?.length) continue;
+        const key = `${variant.color.toLowerCase()}__${variant.size.toLowerCase()}`;
+        const variantId = createdVariantByKey.get(key);
+        if (!variantId) continue;
+        await this.attachVariantMedia(variantId, variant.mediaIds);
+      }
     }
     return this.toResponseDto(
       await this.prisma.product.findUniqueOrThrow({
@@ -222,8 +251,16 @@ export class ProductsService {
         throw new ConflictException(`Product with slug "${dto.slug}" already exists`);
       }
     }
-    if (dto.mediaIds !== undefined) {
-      await this.validateMediaIds(dto.mediaIds);
+    const normalizedVariantsForMedia = dto.variants !== undefined ? this.normalizeVariants(dto.variants) : undefined;
+    const variantMediaIds = normalizedVariantsForMedia
+      ? this.collectVariantMediaIds(normalizedVariantsForMedia)
+      : [];
+    const allMediaIds = [
+      ...(dto.mediaIds ?? []),
+      ...variantMediaIds,
+    ];
+    if (allMediaIds.length) {
+      await this.validateMediaIds([...new Set(allMediaIds)]);
     }
     if (dto.categoryIds !== undefined) {
       const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
@@ -236,7 +273,7 @@ export class ProductsService {
     }
 
     if (dto.variants !== undefined) {
-      const normalized = this.normalizeVariants(dto.variants);
+      const normalized = normalizedVariantsForMedia ?? [];
       const existing = await this.prisma.productVariant.findMany({
         where: { productId: id },
         select: { id: true },
@@ -257,6 +294,9 @@ export class ProductsService {
               isActive: variant.isActive,
             },
           });
+          if (variant.mediaIds !== undefined) {
+            await this.syncVariantMedia(variant.id, variant.mediaIds);
+          }
         } else {
           const created = await this.prisma.productVariant.create({
             data: {
@@ -271,6 +311,9 @@ export class ProductsService {
             select: { id: true },
           });
           seenIds.add(created.id);
+          if (variant.mediaIds?.length) {
+            await this.attachVariantMedia(created.id, variant.mediaIds);
+          }
         }
       }
       const toDeactivate = [...existingIds].filter((variantId) => !seenIds.has(variantId));
@@ -336,10 +379,17 @@ export class ProductsService {
       productCategories: { include: { category: true } },
       productMedia: {
         where: { media: { uploadError: { equals: Prisma.DbNull } } },
-        include: { media: { select: { path: true, deliveryUrl: true } } },
+        include: { media: { select: { id: true, path: true, deliveryUrl: true } } },
         orderBy: { sortOrder: Prisma.SortOrder.asc },
       },
       variants: {
+        include: {
+          variantMedia: {
+            where: { media: { uploadError: { equals: Prisma.DbNull } } },
+            include: { media: { select: { id: true, path: true, deliveryUrl: true } } },
+            orderBy: { sortOrder: Prisma.SortOrder.asc },
+          },
+        },
         orderBy: [{ color: Prisma.SortOrder.asc }, { size: Prisma.SortOrder.asc }],
       },
     };
@@ -398,6 +448,24 @@ export class ProductsService {
     });
   }
 
+  private async attachVariantMedia(variantId: string, mediaIds: string[]): Promise<void> {
+    await this.prisma.productVariantMedia.createMany({
+      data: mediaIds.map((mediaId, index) => ({
+        variantId,
+        mediaId,
+        sortOrder: index,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  private async syncVariantMedia(variantId: string, mediaIds: string[]): Promise<void> {
+    await this.prisma.productVariantMedia.deleteMany({ where: { variantId } });
+    if (mediaIds.length > 0) {
+      await this.attachVariantMedia(variantId, mediaIds);
+    }
+  }
+
   private imageUrl(media: { path: string; deliveryUrl: string | null } | null): string {
     if (!media) return '';
     if (media.deliveryUrl) return media.deliveryUrl;
@@ -418,7 +486,7 @@ export class ProductsService {
     createdAt: Date;
     updatedAt: Date;
     productCategories: Array<{ category: { id: string; name: string; slug: string } }>;
-    productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
+    productMedia: Array<{ media: { id: string; path: string; deliveryUrl: string | null } }>;
     variants: Array<{
       id: string;
       color: string;
@@ -427,19 +495,27 @@ export class ProductsService {
       stockQuantity: number;
       priceOverrideCents: number | null;
       isActive: boolean;
+      variantMedia: Array<{ media: { id: string; path: string; deliveryUrl: string | null } }>;
     }>;
   }): ProductResponseDto {
-    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => ({
-      id: variant.id,
-      color: variant.color,
-      size: variant.size,
-      sku: variant.sku,
-      stockQuantity: variant.stockQuantity,
-      priceOverrideCents: variant.priceOverrideCents,
-      isActive: variant.isActive,
-    }));
+    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => {
+      const images = variant.variantMedia.map((vm) => this.imageUrl(vm.media));
+      return {
+        id: variant.id,
+        color: variant.color,
+        size: variant.size,
+        sku: variant.sku,
+        stockQuantity: variant.stockQuantity,
+        priceOverrideCents: variant.priceOverrideCents,
+        isActive: variant.isActive,
+        image: images[0] ?? '',
+        images,
+        mediaIds: variant.variantMedia.map((vm) => vm.media.id),
+      };
+    });
     const { colors, sizes, stockQuantity, inStock } = this.summarizeVariantDimensions(variants);
     const images = p.productMedia.map((pm) => this.imageUrl(pm.media));
+    const mediaIds = p.productMedia.map((pm) => pm.media.id);
     const image = images[0] ?? '';
     const categories = p.productCategories.map((pc) => pc.category);
     const first = categories[0];
@@ -452,6 +528,7 @@ export class ProductsService {
       currency: p.currency,
       image,
       images,
+      mediaIds,
       variants,
       colors,
       sizes,
@@ -476,7 +553,7 @@ export class ProductsService {
     currency: string;
     featured: boolean;
     productCategories: Array<{ category: { name: string } }>;
-    productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
+    productMedia: Array<{ media: { id: string; path: string; deliveryUrl: string | null } }>;
     variants: Array<{
       id: string;
       color: string;
@@ -485,17 +562,24 @@ export class ProductsService {
       stockQuantity: number;
       priceOverrideCents: number | null;
       isActive: boolean;
+      variantMedia: Array<{ media: { id: string; path: string; deliveryUrl: string | null } }>;
     }>;
   }): ProductListResponseDto {
-    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => ({
-      id: variant.id,
-      color: variant.color,
-      size: variant.size,
-      sku: variant.sku,
-      stockQuantity: variant.stockQuantity,
-      priceOverrideCents: variant.priceOverrideCents,
-      isActive: variant.isActive,
-    }));
+    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => {
+      const images = variant.variantMedia.map((vm) => this.imageUrl(vm.media));
+      return {
+        id: variant.id,
+        color: variant.color,
+        size: variant.size,
+        sku: variant.sku,
+        stockQuantity: variant.stockQuantity,
+        priceOverrideCents: variant.priceOverrideCents,
+        isActive: variant.isActive,
+        image: images[0] ?? '',
+        images,
+        mediaIds: variant.variantMedia.map((vm) => vm.media.id),
+      };
+    });
     const { colors, sizes, stockQuantity, inStock } = this.summarizeVariantDimensions(variants);
     const image = p.productMedia[0]?.media
       ? this.imageUrl(p.productMedia[0].media)

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { slugSchema } from './common';
+import { getColorCodeError } from '../../components/product/colorUtils';
 
 export const productVariantSchema = z.object({
   id: z.string().uuid().optional(),
@@ -9,6 +10,7 @@ export const productVariantSchema = z.object({
   stockQuantity: z.coerce.number().int().min(0, 'Stock must be zero or greater'),
   priceOverridePkr: z.string().trim().optional().or(z.literal('')),
   isActive: z.boolean().default(true),
+  mediaIds: z.array(z.string().uuid()).optional(),
 });
 
 export const productFormSchema = z
@@ -37,6 +39,14 @@ export const productFormSchema = z
             message: 'Price override must be a non-negative number',
           });
         }
+      }
+      const colorErr = getColorCodeError(variant.color);
+      if (colorErr) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['variants', index, 'color'],
+          message: colorErr,
+        });
       }
     });
     const keySet = new Set<string>();

@@ -3,15 +3,87 @@
  * Home: static shell. Hero carousel from admin settings when available.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HomePage from '../components/home/HomePage';
-import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroSlides } from '../config';
+import HomePage, { type LandingCategory, type Product } from '../components/home/HomePage';
+import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroSlides, storeApiBaseUrl } from '../config';
 import { getPublicSettings } from '../lib/settings';
+
+const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
+
+function mapProduct(p: Record<string, unknown>): Product {
+  const img = p.image as string;
+  const price = Number(p.price);
+  const compareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
+  return {
+    id: String(p.id),
+    slug: String(p.slug),
+    name: String(p.name),
+    price,
+    currency: String(p.currency ?? 'PKR'),
+    image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
+    urduVerse: (p.urduVerse as string | null) ?? null,
+    urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
+    description: (p.description as string | null) ?? null,
+    sizes: (p.sizes as string[] | undefined) ?? undefined,
+    compareAtPrice: compareAt != null && !Number.isNaN(compareAt) ? compareAt : null,
+  };
+}
+
+async function loadHomeCatalog() {
+  try {
+    const [allRes, landingRes] = await Promise.all([
+      fetch(`${baseUrl}/products?limit=20`),
+      fetch(`${baseUrl}/categories/landing`),
+    ]);
+
+    const allJson = await allRes.json().catch(() => ({}));
+    const shopAll: Product[] = allRes.ok && allJson?.success && Array.isArray(allJson.data)
+      ? allJson.data.map((p: Record<string, unknown>) => mapProduct(p))
+      : [];
+
+    const landingJson = await landingRes.json().catch(() => ({}));
+    const landingCategories: LandingCategory[] = landingRes.ok && landingJson?.success && Array.isArray(landingJson.data)
+      ? landingJson.data
+      : [];
+
+    const productsBySlug: Record<string, Product[]> = {};
+    if (landingCategories.length > 0) {
+      const productResList = await Promise.all(
+        landingCategories.map((c) => fetch(`${baseUrl}/products?category=${encodeURIComponent(c.slug)}&limit=12`)),
+      );
+
+      for (let i = 0; i < landingCategories.length; i++) {
+        const res = productResList[i];
+        const json = await res.json().catch(() => ({}));
+        productsBySlug[landingCategories[i].slug] = res.ok && json?.success && Array.isArray(json.data)
+          ? json.data.map((p: Record<string, unknown>) => mapProduct(p))
+          : [];
+      }
+    }
+
+    return { shopAll, landingCategories, productsBySlug };
+  } catch {
+    return {
+      shopAll: [] as Product[],
+      landingCategories: [] as LandingCategory[],
+      productsBySlug: {} as Record<string, Product[]>,
+    };
+  }
+}
 
 const settings = await getPublicSettings();
 const heroSlidesFromApi = settings.hero?.slides?.length ? settings.hero.slides : [];
 const heroSlidesToUse = heroSlidesFromApi.length > 0 ? heroSlidesFromApi : heroSlides;
+const { shopAll, landingCategories, productsBySlug } = await loadHomeCatalog();
 ---
 
 <BaseLayout title={brandName} description={defaultMetaDescription}>
-  <HomePage client:load videoSrc={heroVideoUrl} videoPoster={heroVideoPoster} heroSlides={heroSlidesToUse} />
+  <HomePage
+    client:load
+    videoSrc={heroVideoUrl}
+    videoPoster={heroVideoPoster}
+    heroSlides={heroSlidesToUse}
+    shopAll={shopAll}
+    landingCategories={landingCategories}
+    productsBySlug={productsBySlug}
+  />
 </BaseLayout>

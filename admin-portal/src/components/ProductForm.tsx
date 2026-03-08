@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import type { Product, ProductFormData } from '../lib/types';
 import { api, uploadFile } from '../lib/api';
@@ -49,9 +49,10 @@ function buildFormDefaultValues(product: Product | null | undefined): Partial<Pr
           priceOverridePkr:
             v.priceOverrideCents != null ? (v.priceOverrideCents / 100).toString() : '',
           isActive: v.isActive,
+          mediaIds: v.mediaIds ?? [],
         }))
       : [defaultVariant],
-    mediaIds: [],
+    mediaIds: product?.mediaIds ?? [],
   };
 }
 
@@ -75,6 +76,7 @@ function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): P
         ? { priceOverrideCents: Math.max(0, Math.round(Number.parseFloat(variant.priceOverridePkr) * 100)) }
         : {}),
       isActive: variant.isActive,
+      mediaIds: variant.mediaIds ?? [],
     })),
     mediaIds: mediaIds.length ? mediaIds : undefined,
   };
@@ -98,6 +100,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const error = form.formState.errors.root?.serverError?.message;
   const mediaIds = form.watch('mediaIds') ?? [];
+
+  useEffect(() => {
+    if (!product) return;
+    setMediaPreviews((prev) => {
+      const next = { ...prev };
+      (product.mediaIds ?? []).forEach((id, index) => {
+        const image = product.images?.[index];
+        if (image) next[id] = image;
+      });
+      (product.variants ?? []).forEach((variant) => {
+        (variant.mediaIds ?? []).forEach((id, index) => {
+          const image = variant.images?.[index];
+          if (image) next[id] = image;
+        });
+      });
+      return next;
+    });
+  }, [product]);
 
   const fetchCategories = useCallback(async ({ search }: { search: string; page: number }) => {
     const res = await api.get<Array<{ id: string; name: string }>>('/categories', search ? { search } : undefined);
@@ -150,6 +170,42 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     [doUpload, form]
   );
 
+  const handleVariantFileSelect = useCallback(
+    async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length) return;
+      form.clearErrors('root.serverError');
+      setUploading(true);
+      try {
+        const results: { id: string; preview?: string }[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const r = await doUpload(files[i]);
+          results.push(r);
+        }
+        const fieldName = `variants.${index}.mediaIds` as const;
+        const current = form.getValues(fieldName) ?? [];
+        form.setValue(fieldName, [...current, ...results.map((r) => r.id)], {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          results.forEach((r) => {
+            if (r.preview) next[r.id] = r.preview;
+          });
+          return next;
+        });
+      } catch (err) {
+        mapApiErrorToForm(err, form.setError);
+      } finally {
+        setUploading(false);
+        setUploadProgress({});
+        e.target.value = '';
+      }
+    },
+    [doUpload, form],
+  );
+
   const removeImage = useCallback(
     (index: number) => {
       const id = mediaIds[index];
@@ -167,6 +223,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       }
     },
     [form, mediaIds]
+  );
+
+  const removeVariantImage = useCallback(
+    (variantIndex: number, imageIndex: number) => {
+      const fieldName = `variants.${variantIndex}.mediaIds` as const;
+      const ids = form.getValues(fieldName) ?? [];
+      const id = ids[imageIndex];
+      form.setValue(
+        fieldName,
+        ids.filter((_, i) => i !== imageIndex),
+        { shouldValidate: true, shouldDirty: true },
+      );
+      if (id) {
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [form],
   );
 
   const handleSubmit = form.handleSubmit(async (values) => {
@@ -253,6 +330,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         onAppend={appendVariant}
         onRemove={variantsFieldArray.remove}
         form={form}
+        mediaPreviews={mediaPreviews}
+        onAddVariantFiles={handleVariantFileSelect}
+        onRemoveVariantImage={removeVariantImage}
+        uploading={uploading}
       />
 
       <Controller
@@ -316,11 +397,19 @@ function VariantsSection({
   onAppend,
   onRemove,
   form,
+  mediaPreviews,
+  onAddVariantFiles,
+  onRemoveVariantImage,
+  uploading,
 }: {
   fields: { id: string }[];
   onAppend: () => void;
   onRemove: (index: number) => void;
   form: UseFormReturn<ProductFormValues>;
+  mediaPreviews: Record<string, string>;
+  onAddVariantFiles: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveVariantImage: (variantIndex: number, imageIndex: number) => void;
+  uploading: boolean;
 }) {
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
@@ -343,6 +432,10 @@ function VariantsSection({
           form={form}
           onRemove={() => onRemove(index)}
           canRemove={fields.length > 1}
+          mediaPreviews={mediaPreviews}
+          onAddFiles={(e) => onAddVariantFiles(index, e)}
+          onRemoveImage={(imageIndex) => onRemoveVariantImage(index, imageIndex)}
+          uploading={uploading}
         />
       ))}
     </div>

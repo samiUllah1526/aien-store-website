@@ -14,6 +14,19 @@ function mapProduct(p: Record<string, unknown>): Product {
   const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const img = p.image as string;
   const firstCat = (p.categories as string[])?.[0] ?? (p.category as string) ?? '';
+  const variants = ((p.variants as Array<Record<string, unknown>> | undefined) ?? []).map((variant) => {
+    const variantImage = String(variant.image ?? '');
+    const variantImagesRaw = (variant.images as string[] | undefined) ?? [];
+    return {
+      ...variant,
+      image: variantImage
+        ? (variantImage.startsWith('http') ? variantImage : `${baseUrl}${variantImage.startsWith('/') ? '' : '/'}${variantImage}`)
+        : '',
+      images: variantImagesRaw.map((image) => (
+        image.startsWith('http') ? image : `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
+      )),
+    };
+  });
   return {
     id: String(p.id),
     slug: String(p.slug),
@@ -22,7 +35,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     price: Number(p.price),
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
-    variants: (p.variants as Product['variants']) ?? undefined,
+    variants: variants as Product['variants'],
     sizes: (p.sizes as string[] | undefined) ?? undefined,
     inStock: p.inStock !== false,
   };

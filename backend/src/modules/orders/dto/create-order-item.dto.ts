@@ -13,8 +13,8 @@ export class CreateOrderItemDto {
   @IsOptional()
   @IsString()
   @MaxLength(50)
-  @Matches(/^[a-zA-Z0-9\s\-_]+$/, {
-    message: 'color can only contain letters, numbers, spaces, hyphen and underscore',
+  @Matches(/^[\x20-\x7E]*$/, {
+    message: 'color contains invalid characters',
   })
   color?: string;
 

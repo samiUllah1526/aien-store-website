@@ -4,8 +4,7 @@
  * philosophical English description, quiet details, subtle Add to Cart.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import AddToCart from '../../components/product/AddToCart';
-import ProductImageCarousel from '../../components/product/ProductImageCarousel';
+import ProductDetailSection from '../../components/product/ProductDetailSection';
 import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
 import { formatMoney } from '../../lib/formatMoney';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../config';
@@ -44,7 +43,7 @@ function toFullImageUrl(url: string): string {
   return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; variants: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean }>; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; variants: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean; image?: string; images?: string[] }>; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
 try {
   const productUrl = `${storeApiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
   const res = await fetch(productUrl);
@@ -53,6 +52,17 @@ try {
     const p = json.data;
     const image = toFullImageUrl(p.image ?? '');
     const images = Array.isArray(p.images) ? p.images.map((img: string) => toFullImageUrl(img)).filter(Boolean) : (image ? [image] : []);
+    const variants = (Array.isArray(p.variants) ? p.variants : []).map((variant: { image?: string; images?: string[] } & Record<string, unknown>) => {
+      const variantImage = toFullImageUrl((variant.image as string) ?? '');
+      const variantImages = Array.isArray(variant.images)
+        ? variant.images.map((img: string) => toFullImageUrl(img)).filter(Boolean)
+        : (variantImage ? [variantImage] : []);
+      return {
+        ...variant,
+        image: variantImage,
+        images: variantImages,
+      };
+    });
     product = {
       id: p.id,
       name: p.name,
@@ -62,7 +72,7 @@ try {
       currency: p.currency,
       image,
       images: images.length > 0 ? images : (image ? [image] : []),
-      variants: Array.isArray(p.variants) ? p.variants : [],
+      variants,
       sizes: p.sizes,
       inStock: p.inStock !== false,
       urduVerse: p.urduVerse ?? null,
@@ -78,11 +88,24 @@ if (!product) {
   return Astro.redirect('/shop');
 }
 
+const defaultVariant =
+  product.variants.find((variant) => variant.isActive && variant.stockQuantity > 0) ??
+  product.variants.find((variant) => variant.isActive) ??
+  null;
+const defaultVariantImages = defaultVariant?.images?.length
+  ? defaultVariant.images
+  : defaultVariant?.image
+    ? [defaultVariant.image]
+    : [];
+const displayImages = defaultVariantImages.length > 0
+  ? [...defaultVariantImages, ...product.images.filter((img) => !defaultVariantImages.includes(img))]
+  : product.images;
+
 const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
-const ogImage = product.images?.[0] ?? product.image;
+const ogImage = displayImages?.[0] ?? product.image;
 const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || storeApiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
 
-const productImages = (product.images ?? (product.image ? [product.image] : [])).map((img: string) =>
+const productImages = (displayImages ?? (product.image ? [product.image] : [])).map((img: string) =>
   img.startsWith('http') ? img : `${siteUrl || storeApiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
 );
 const productJsonLd = {
@@ -109,51 +132,45 @@ const productJsonLd = {
   jsonLd={productJsonLd}
 >
   <article class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-      <div class="w-full">
-        <ProductImageCarousel client:load images={product.images} alt={product.name} />
-      </div>
-      <div class="flex flex-col">
-        {product.urduVerse && (
-          <AnimatedUrduVerse
-            client:load
-            verse={product.urduVerse}
-            transliteration={product.urduVerseTransliteration}
-          />
-        )}
-
-        <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">
-          {product.name}
-        </h1>
-
-        {product.description && (
-          <p class="mt-6 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed max-w-prose">
-            {product.description}
-          </p>
-        )}
-
-        <p class="mt-8 text-ash text-sm">
-          {formatMoney(product.price, product.currency)}
-        </p>
-
-        {product.categories?.length ? (
-          <p class="mt-1 text-ash text-sm">
-            {product.categories.map((c) => c.name).join(', ')}
-          </p>
-        ) : null}
-
-        <AddToCart
+    <ProductDetailSection
+      client:load
+      productId={product.id}
+      name={product.name}
+      slug={product.slug}
+      price={product.price}
+      currency={product.currency}
+      image={product.image}
+      images={product.images}
+      variants={product.variants}
+      inStock={product.inStock}
+    >
+      {product.urduVerse && (
+        <AnimatedUrduVerse
           client:load
-          productId={product.id}
-          name={product.name}
-          slug={product.slug}
-          price={product.price}
-          currency={product.currency}
-          image={product.image}
-          variants={product.variants}
-          inStock={product.inStock}
+          verse={product.urduVerse}
+          transliteration={product.urduVerseTransliteration}
         />
-      </div>
-    </div>
+      )}
+
+      <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">
+        {product.name}
+      </h1>
+
+      {product.description && (
+        <p class="mt-6 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed max-w-prose">
+          {product.description}
+        </p>
+      )}
+
+      <p class="mt-8 text-ash text-sm">
+        {formatMoney(product.price, product.currency)}
+      </p>
+
+      {product.categories?.length ? (
+        <p class="mt-1 text-ash text-sm">
+          {product.categories.map((c) => c.name).join(', ')}
+        </p>
+      ) : null}
+    </ProductDetailSection>
   </article>
 </BaseLayout>

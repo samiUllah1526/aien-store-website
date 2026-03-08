@@ -45,7 +45,7 @@ export default function AppFooter({ copyrightText, tagline, email, phone, hours,
             ) : null}
           </div>
           <div>
-            <h3 className="font-display text-xs uppercase tracking-widest text-off-white/90 mb-4">Shop</h3>
+            <h3 className="font-display font-bold text-xs uppercase tracking-widest text-off-white/90 mb-4">Shop</h3>
             <ul className="space-y-3">
               <li><a href="/shop" className="text-sm text-off-white/70 hover:text-off-white transition-colors">All Products</a></li>
               <li><a href="/shop?category=beggy-tees" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Beggy T-Shirts</a></li>
@@ -54,7 +54,7 @@ export default function AppFooter({ copyrightText, tagline, email, phone, hours,
             </ul>
           </div>
           <div>
-            <h3 className="font-display text-xs uppercase tracking-widest text-off-white/90 mb-4">Support</h3>
+            <h3 className="font-display font-bold text-xs uppercase tracking-widest text-off-white/90 mb-4">Contact Us</h3>
             {hasSupport ? (
               <ul className="space-y-3 text-sm text-off-white/70">
                 {email ? (

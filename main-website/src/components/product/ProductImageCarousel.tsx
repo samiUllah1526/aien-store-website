@@ -3,7 +3,7 @@
  * Clicking a thumbnail updates the main image. Smooth transitions, responsive.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export interface ProductImageCarouselProps {
   /** Full image URLs (from API). At least one recommended. */
@@ -12,16 +12,39 @@ export interface ProductImageCarouselProps {
   alt: string;
   /** Optional class for the outer container. */
   className?: string;
+  /** When set, carousel scrolls to this index (e.g. when variant is selected). */
+  scrollToIndex?: number | null;
 }
 
 export default function ProductImageCarousel({
   images,
   alt,
   className = '',
+  scrollToIndex,
 }: ProductImageCarouselProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const list = images.length > 0 ? images : [];
+  const maxIndex = list.length > 0 ? list.length - 1 : 0;
+  const clamp = (i: number) => Math.min(Math.max(0, i), maxIndex);
+
+  const [selectedIndex, setSelectedIndex] = useState(() => {
+    if (list.length === 0) return 0;
+    return scrollToIndex != null ? clamp(scrollToIndex) : 0;
+  });
   const mainSrc = list[selectedIndex] ?? '';
+
+  // When the images set is replaced (e.g. different product), reset to scrollToIndex or 0.
+  useEffect(() => {
+    const max = list.length > 0 ? list.length - 1 : 0;
+    setSelectedIndex(
+      scrollToIndex != null ? Math.min(Math.max(0, scrollToIndex), max) : 0
+    );
+  }, [images, scrollToIndex]);
+
+  // When parent requests a specific index (e.g. variant selected), scroll to it.
+  useEffect(() => {
+    if (scrollToIndex == null) return;
+    setSelectedIndex(clamp(scrollToIndex));
+  }, [scrollToIndex, maxIndex]);
 
   const goPrev = useCallback(() => {
     setSelectedIndex((i) => (i <= 0 ? list.length - 1 : i - 1));

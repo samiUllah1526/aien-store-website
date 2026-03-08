@@ -1,0 +1,1 @@
+getStaticPaths() builds each product slug page at build time.
