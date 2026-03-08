@@ -1,14 +1,23 @@
 /**
- * Shop page: fetches categories and products client-side. Static shell.
+ * Shop page: full-bleed category banner at top, then product list (no filters).
  */
 
 import { useState, useEffect } from 'react';
 import { api, getApiBaseUrl } from '../../lib/api';
-import ShopGrid, { type CategoryOption } from './ShopGrid';
+import ShopGrid from './ShopGrid';
 import type { Product } from './ShopGrid';
+import CategoryBanner from '../home/CategoryBanner';
 import { showToast } from '../../store/toastStore';
 
 const PAGE_SIZE = 20;
+const DEFAULT_BANNER_IMAGE = 'https://picsum.photos/seed/shop/1920/600';
+
+interface LandingCategory {
+  id: string;
+  name: string;
+  slug: string;
+  bannerImageUrl: string | null;
+}
 
 function mapProduct(p: Record<string, unknown>): Product {
   const baseUrl = getApiBaseUrl().replace(/\/$/, '');
@@ -41,49 +50,31 @@ function mapProduct(p: Record<string, unknown>): Product {
   };
 }
 
-function parseParams(): { category: string; price: string; sort: string; q: string } {
-  if (typeof window === 'undefined') return { category: 'all', price: 'any', sort: 'newest', q: '' };
-  const sp = new URLSearchParams(window.location.search);
+/** Products: all, newest first. No filters. */
+function buildQuery(): Record<string, string | number> {
   return {
-    category: sp.get('category')?.trim() || 'all',
-    price: sp.get('price')?.trim() || 'any',
-    sort: sp.get('sort')?.trim() || 'newest',
-    q: sp.get('q')?.trim() || '',
+    page: 1,
+    limit: PAGE_SIZE,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   };
-}
-
-function buildQuery(category: string, price: string, sort: string, searchQ: string): Record<string, string | number> {
-  const params: Record<string, string | number> = { page: 1, limit: PAGE_SIZE };
-  if (category && category !== 'all') params.category = category;
-  if (searchQ) params.search = searchQ;
-  if (price === 'under-5k') params.maxPriceCents = 5000;
-  else if (price === '5k-6k') { params.minPriceCents = 5000; params.maxPriceCents = 6500; }
-  else if (price === 'over-6k') params.minPriceCents = 6500;
-  if (sort === 'oldest') { params.sortBy = 'createdAt'; params.sortOrder = 'asc'; }
-  else if (sort === 'price-low') { params.sortBy = 'price'; params.sortOrder = 'asc'; }
-  else if (sort === 'price-high') { params.sortBy = 'price'; params.sortOrder = 'desc'; }
-  else if (sort === 'name-az') { params.sortBy = 'name'; params.sortOrder = 'asc'; }
-  else if (sort === 'name-za') { params.sortBy = 'name'; params.sortOrder = 'desc'; }
-  else { params.sortBy = 'createdAt'; params.sortOrder = 'desc'; }
-  return params;
 }
 
 export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
-  const [categories, setCategories] = useState<CategoryOption[]>([{ value: 'all', label: 'All' }]);
+  const [bannerImage, setBannerImage] = useState<string>(DEFAULT_BANNER_IMAGE);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    const { category, price, sort, q } = parseParams();
 
     async function load() {
       setLoading(true);
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
-          api.getList<Record<string, unknown>>('/products', buildQuery(category, price, sort, q)),
-          api.get<Array<{ slug: string; name: string }>>('/categories'),
+        const [productsRes, landingRes] = await Promise.all([
+          api.getList<Record<string, unknown>>('/products', buildQuery()),
+          api.get<LandingCategory[]>('/categories/landing'),
         ]);
         if (cancelled) return;
 
@@ -95,12 +86,15 @@ export default function ShopPage() {
           showToast('Failed to load products');
         }
 
-        const catData = categoriesRes as { success?: boolean; data?: Array<{ slug: string; name: string }> };
-        if (catData?.success && Array.isArray(catData.data)) {
-          setCategories([
-            { value: 'all', label: 'All' },
-            ...catData.data.map((c) => ({ value: (c.slug || '').toLowerCase(), label: c.name || c.slug })),
-          ]);
+        const landingData = landingRes as { success?: boolean; data?: LandingCategory[] };
+        if (landingData?.success && Array.isArray(landingData.data) && landingData.data.length > 0) {
+          const slug = typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('category')?.trim().toLowerCase()
+            : null;
+          const cat = slug
+            ? landingData.data.find((c) => (c.slug || '').toLowerCase() === slug)
+            : landingData.data[0];
+          setBannerImage(cat?.bannerImageUrl ?? DEFAULT_BANNER_IMAGE);
         }
       } catch (err) {
         if (!cancelled) showToast(err instanceof Error ? err.message : 'Failed to load');
@@ -114,34 +108,35 @@ export default function ShopPage() {
 
   if (loading && products.length === 0) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
-        <header className="mb-16">
-          <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
-          <p className="mt-4 text-ash max-w-prose">Return to silence. Hoodies and oversized shirts with poetry on fabric.</p>
-        </header>
-        <p className="text-ash py-12 text-center">Loading…</p>
-      </div>
+      <>
+        <CategoryBanner imageSrc={DEFAULT_BANNER_IMAGE} imageAlt="Shop" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+          <header className="mb-16">
+            <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
+            <p className="mt-4 text-ash max-w-prose">Return to silence. Hoodies and oversized shirts with poetry on fabric.</p>
+          </header>
+          <p className="text-ash py-12 text-center">Loading…</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
-      <header className="mb-16">
-        <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
-        <p className="mt-4 text-ash max-w-prose">
-          Return to silence. Hoodies and oversized shirts with poetry on fabric.
-        </p>
-      </header>
-      <ShopGrid
-        initialProducts={products}
-        total={total}
-        pageSize={PAGE_SIZE}
-        categories={categories}
-        initialCategory={parseParams().category}
-        initialPrice={parseParams().price}
-        initialSort={parseParams().sort}
-        initialSearch={parseParams().q}
-      />
-    </div>
+    <>
+      <CategoryBanner imageSrc={bannerImage} imageAlt="Shop" />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+        <header className="mb-16">
+          <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
+          <p className="mt-4 text-ash max-w-prose">
+            Return to silence. Hoodies and oversized shirts with poetry on fabric.
+          </p>
+        </header>
+        <ShopGrid
+          initialProducts={products}
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      </div>
+    </>
   );
 }
