@@ -18,7 +18,7 @@ export class InventoryController {
    * Use GET /products with stockFilter & sortBy=stockQuantity for the inventory list.
    */
   @Get('products/:productId/movements')
-  @RequirePermission('products:read')
+  @RequirePermission('inventory:read')
   @ApiBearerAuth('bearer')
   async getMovements(
     @Param('productId', ParseUUIDPipe) productId: string,

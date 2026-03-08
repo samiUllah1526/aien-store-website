@@ -3,6 +3,7 @@ import type { ProductListItem, Category } from '../lib/types';
 import { AdjustStockModal } from './AdjustStockModal';
 import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { hasPermission } from '../lib/auth';
 
 const PAGE_SIZE = 15;
 const STOCK_FILTERS = [
@@ -33,6 +34,7 @@ export function InventoryManager() {
   const [adjustProduct, setAdjustProduct] = useState<ProductListItem | null>(null);
 
   const debouncedSearch = useDebounce(searchInput.trim(), 400);
+  const canWriteInventory = hasPermission('inventory:write');
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -288,13 +290,15 @@ export function InventoryManager() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setAdjustProduct(item)}
-                          className="mr-3 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 text-sm font-medium"
-                        >
-                          Adjust
-                        </button>
+                        {canWriteInventory && (
+                          <button
+                            type="button"
+                            onClick={() => setAdjustProduct(item)}
+                            className="mr-3 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 text-sm font-medium"
+                          >
+                            Adjust
+                          </button>
+                        )}
                         <a
                           href={historyUrl(item.id)}
                           target="_blank"

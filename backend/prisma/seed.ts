@@ -17,12 +17,16 @@ const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? 'Admin';
 /** Permission name -> optional category for grouping in UI */
 const PERMISSIONS_WITH_CATEGORY: Array<{ name: string; category?: string }> = [
   { name: 'admin:access', category: 'Admin Portal' },
+  { name: 'dashboard:read', category: 'Admin Portal' },
+  { name: 'docs:read', category: 'Admin Portal' },
   { name: 'users:read', category: 'User Management' },
   { name: 'users:write', category: 'User Management' },
   { name: 'orders:read', category: 'Orders' },
   { name: 'orders:write', category: 'Orders' },
   { name: 'products:read', category: 'Catalog' },
   { name: 'products:write', category: 'Catalog' },
+  { name: 'inventory:read', category: 'Inventory' },
+  { name: 'inventory:write', category: 'Inventory' },
   { name: 'categories:read', category: 'Catalog' },
   { name: 'categories:write', category: 'Catalog' },
   { name: 'vouchers:read', category: 'Billing' },
