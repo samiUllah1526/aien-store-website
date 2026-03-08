@@ -4,7 +4,7 @@
  * Auth: access token from localStorage.
  */
 
-import { getStoredToken, setStoredToken, clearStoredTokens } from './auth';
+import { getStoredToken, clearStoredTokens, isTokenExpired } from './auth';
 import { adminApiBaseUrl, loginRedirectPath } from './config';
 import { toastError } from './toast';
 import { incrementLoading, decrementLoading } from './loading';
@@ -31,6 +31,22 @@ export interface ApiSingleResponse<T> {
 }
 
 const FETCH_TIMEOUT_MS = 15000;
+
+function normalizeErrorMessage(raw: string | string[] | undefined, fallback: string): string {
+  if (!raw) return fallback;
+  return Array.isArray(raw) ? raw.join(' ') : raw;
+}
+
+/**
+ * Avoid forcing logout for transient 401s unless the token is actually expired
+ * or backend explicitly indicates token/JWT invalidity.
+ */
+function shouldForceLogoutOnUnauthorized(token: string | null, message: string): boolean {
+  if (!token) return true;
+  if (isTokenExpired(token)) return true;
+  const normalized = message.toLowerCase();
+  return /token|jwt|expired|invalid token|invalid signature|invalid issuer|malformed/.test(normalized);
+}
 
 async function request<T>(
   path: string,
@@ -73,17 +89,17 @@ async function request<T>(
     const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string | string[]; meta?: unknown };
 
     if (res.status === 401) {
-      clearStoredTokens();
-      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-      const raw = json.message || res.statusText || 'Unauthorized';
-      const msg = Array.isArray(raw) ? raw.join(' ') : raw;
+      const msg = normalizeErrorMessage(json.message, res.statusText || 'Unauthorized');
+      if (shouldForceLogoutOnUnauthorized(token, msg)) {
+        clearStoredTokens();
+        if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
+      }
       toastError(msg);
       throw new Error(msg);
     }
 
     if (!res.ok) {
-      const raw = json.message || res.statusText || `Request failed (${res.status})`;
-      const msg = Array.isArray(raw) ? raw.join(' ') : raw;
+      const msg = normalizeErrorMessage(json.message, res.statusText || `Request failed (${res.status})`);
       toastError(msg);
       throw new Error(msg);
     }
@@ -105,12 +121,17 @@ export async function uploadFile(file: File): Promise<{ id: string }> {
   incrementLoading();
   try {
     const res = await fetch(url, { method: 'POST', body: form, headers });
-    const json = (await res.json().catch(() => ({}))) as ApiSingleResponse<{ id: string }>;
+    const json = (await res.json().catch(() => ({}))) as ApiSingleResponse<{ id: string }> & {
+      message?: string | string[];
+    };
     if (res.status === 401) {
-      clearStoredTokens();
-      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-      toastError('Unauthorized');
-      throw new Error('Unauthorized');
+      const msg = normalizeErrorMessage(json.message, 'Unauthorized');
+      if (shouldForceLogoutOnUnauthorized(token, msg)) {
+        clearStoredTokens();
+        if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
+      }
+      toastError(msg);
+      throw new Error(msg);
     }
     if (!res.ok) {
       const msg = (json.message as string) || res.statusText || 'Upload failed';

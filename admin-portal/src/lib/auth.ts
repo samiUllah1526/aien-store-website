@@ -55,6 +55,14 @@ export function decodeToken(token: string): JwtPayload | null {
   }
 }
 
+/** Returns true when JWT exp is reached (with optional clock skew). */
+export function isTokenExpired(token: string, skewSeconds = 30): boolean {
+  const payload = decodeToken(token);
+  if (!payload || typeof payload.exp !== 'number') return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return nowSec >= payload.exp - skewSeconds;
+}
+
 /** Permissions from the current JWT (for role-based UI). */
 export function getStoredPermissions(): string[] {
   const token = getStoredToken();
