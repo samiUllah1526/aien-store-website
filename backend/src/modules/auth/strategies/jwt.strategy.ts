@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -15,6 +15,7 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+  private readonly logger = new Logger(JwtStrategy.name);
   private readonly expectedIssuer: string | undefined;
 
   constructor(configService: ConfigService) {
@@ -31,10 +32,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: JwtPayload) {
     if (!payload?.sub) {
+      this.logger.warn('Invalid JWT payload: missing sub');
       throw new UnauthorizedException('Invalid token payload');
     }
     if (this.expectedIssuer && payload.iss && payload.iss !== this.expectedIssuer) {
-      throw new UnauthorizedException('Invalid token issuer');
+      this.logger.warn(
+        `Invalid JWT issuer: expected="${this.expectedIssuer}" received="${payload.iss}" sub="${payload.sub}" aud="${payload.aud ?? ''}"`,
+      );
+      throw new UnauthorizedException(`Invalid token issuer (expected ${this.expectedIssuer}, got ${payload.iss})`);
     }
     return {
       userId: payload.sub,
