@@ -12,6 +12,8 @@ import { getNavItems } from '../lib/permissions';
 import { adminApiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
 import PermissionsLoader from '../components/PermissionsLoader';
+import { AdminToaster } from '../components/AdminToaster';
+import { GlobalLoader } from '../components/GlobalLoader';
 
 const navItems = getNavItems();
 const isActive = (href: string) =>
@@ -36,6 +38,8 @@ const isActive = (href: string) =>
       window.__API_BASE__ = document.body.dataset.apiBase || adminApiBaseUrl;
     </script>
     <div class="flex h-screen overflow-hidden" id="admin-root">
+      <AdminToaster client:load />
+      <GlobalLoader client:load />
       <PermissionsLoader client:load />
       <!-- Mobile sidebar backdrop -->
       <div

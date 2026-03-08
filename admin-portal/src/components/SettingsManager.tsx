@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import { api, getApiBaseUrl, uploadFile } from '../lib/api';
 import { uploadMedia } from '../lib/media-upload';
+import { toastSuccess, toastError } from '../lib/toast';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -112,6 +113,8 @@ export function SettingsManager() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [uploadingHeroSlideIndex, setUploadingHeroSlideIndex] = useState<number | null>(null);
+  const heroFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const [general, setGeneral] = useState<GeneralValue>({});
   const aboutForm = useZodForm({ schema: aboutSettingsSchema, defaultValues: { title: '', subtitle: '', content: '' } });
@@ -183,6 +186,7 @@ export function SettingsManager() {
     try {
       await api.put('/settings', { key, value });
       setMessage('Saved.');
+      toastSuccess('Saved.');
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -234,6 +238,38 @@ export function SettingsManager() {
     await saveKey('hero', { slides });
     heroForm.setValue('slides', slides);
   });
+
+  const handleHeroImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const fields = heroArray.fields;
+    if (index < 0 || index >= fields.length) return;
+    setUploadingHeroSlideIndex(index);
+    setError(null);
+    try {
+      let deliveryUrl: string;
+      try {
+        const result = await uploadMedia(file, 'products');
+        deliveryUrl = result.deliveryUrl;
+      } catch {
+        const base = getApiBaseUrl().replace(/\/$/, '');
+        const res = await uploadFile(file);
+        deliveryUrl = `${base}/media/file/${res.id}`;
+      }
+      heroForm.setValue(`slides.${index}.src`, deliveryUrl, { shouldValidate: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setError(msg);
+      toastError(msg);
+    } finally {
+      setUploadingHeroSlideIndex(null);
+    }
+  };
+
+  const triggerHeroFileInput = (index: number) => {
+    heroFileInputRefs.current[index]?.click();
+  };
 
   const handleSaveSocial = socialForm.handleSubmit(async (values) => saveKey('social', values));
 
@@ -628,6 +664,31 @@ export function SettingsManager() {
                     placeholder="https://example.com/image.jpg"
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   />
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      aria-hidden
+                      ref={(el) => {
+                        heroFileInputRefs.current[index] = el;
+                      }}
+                      disabled={uploadingHeroSlideIndex !== null}
+                      onChange={(e) => handleHeroImageUpload(index, e)}
+                    />
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        triggerHeroFileInput(index);
+                      }}
+                      disabled={uploadingHeroSlideIndex !== null}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      {uploadingHeroSlideIndex === index ? 'Uploading…' : 'Upload image'}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 min-w-[120px]">
                   <label htmlFor={`hero-alt-${index}`} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -663,10 +724,10 @@ export function SettingsManager() {
           </button>
           <button
             type="submit"
-            disabled={saving === 'hero'}
+            disabled={saving === 'hero' || uploadingHeroSlideIndex !== null}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
-            {saving === 'hero' ? 'Saving…' : 'Save hero carousel'}
+            {saving === 'hero' ? 'Saving…' : uploadingHeroSlideIndex !== null ? 'Uploading…' : 'Save hero carousel'}
           </button>
         </form>
       </section>

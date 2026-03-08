@@ -6,6 +6,8 @@
 
 import { getStoredToken, setStoredToken, clearStoredTokens } from './auth';
 import { adminApiBaseUrl, loginRedirectPath } from './config';
+import { toastError } from './toast';
+import { incrementLoading, decrementLoading } from './loading';
 
 export function getApiBaseUrl(): string {
   return adminApiBaseUrl;
@@ -52,35 +54,43 @@ async function request<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   let res: Response;
+  incrementLoading();
   try {
-    res = await fetch(url.toString(), { ...init, headers, signal: controller.signal });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error(
-        `Request timed out. Check that the backend is running at ${base} and the API URL is correct.`
-      );
+    try {
+      res = await fetch(url.toString(), { ...init, headers, signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        const msg = `Request timed out. Check that the backend is running at ${base} and the API URL is correct.`;
+        toastError(msg);
+        throw new Error(msg);
+      }
+      if (err instanceof Error) toastError(err.message);
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    throw err;
+    const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string | string[]; meta?: unknown };
+
+    if (res.status === 401) {
+      clearStoredTokens();
+      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
+      const raw = json.message || res.statusText || 'Unauthorized';
+      const msg = Array.isArray(raw) ? raw.join(' ') : raw;
+      toastError(msg);
+      throw new Error(msg);
+    }
+
+    if (!res.ok) {
+      const raw = json.message || res.statusText || `Request failed (${res.status})`;
+      const msg = Array.isArray(raw) ? raw.join(' ') : raw;
+      toastError(msg);
+      throw new Error(msg);
+    }
+    return json as T;
   } finally {
-    clearTimeout(timeoutId);
+    decrementLoading();
   }
-  const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; message?: string | string[]; meta?: unknown };
-
-  if (res.status === 401) {
-    clearStoredTokens();
-    if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-    const raw = json.message || res.statusText || 'Unauthorized';
-    const msg = Array.isArray(raw) ? raw.join(' ') : raw;
-    throw new Error(msg);
-  }
-
-  if (!res.ok) {
-    const raw = json.message || res.statusText || `Request failed (${res.status})`;
-    const msg = Array.isArray(raw) ? raw.join(' ') : raw;
-    throw new Error(msg);
-  }
-  return json as T;
 }
 
 /** Multipart file upload (e.g. POST /admin/media/upload). Returns { success, data: { id } }. */
@@ -92,16 +102,29 @@ export async function uploadFile(file: File): Promise<{ id: string }> {
   const token = getStoredToken();
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(url, { method: 'POST', body: form, headers });
-  const json = (await res.json().catch(() => ({}))) as ApiSingleResponse<{ id: string }>;
-  if (res.status === 401) {
-    clearStoredTokens();
-    if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
-    throw new Error('Unauthorized');
+  incrementLoading();
+  try {
+    const res = await fetch(url, { method: 'POST', body: form, headers });
+    const json = (await res.json().catch(() => ({}))) as ApiSingleResponse<{ id: string }>;
+    if (res.status === 401) {
+      clearStoredTokens();
+      if (typeof window !== 'undefined') window.location.href = loginRedirectPath;
+      toastError('Unauthorized');
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+      const msg = (json.message as string) || res.statusText || 'Upload failed';
+      toastError(msg);
+      throw new Error(msg);
+    }
+    if (!json.data?.id) {
+      toastError('Upload did not return media id');
+      throw new Error('Upload did not return media id');
+    }
+    return json.data;
+  } finally {
+    decrementLoading();
   }
-  if (!res.ok) throw new Error(json.message || res.statusText || 'Upload failed');
-  if (!json.data?.id) throw new Error('Upload did not return media id');
-  return json.data;
 }
 
 export const api = {

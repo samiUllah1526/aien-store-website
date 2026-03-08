@@ -24,6 +24,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.2",
+    "react-hot-toast": "^2.6.0",
     "recharts": "^3.7.0",
     "tailwindcss": "^4.1.18",
     "zod": "^3.25.76"
