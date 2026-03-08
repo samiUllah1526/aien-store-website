@@ -17,7 +17,7 @@ import { AuthService } from './auth.service';
         return {
           secret,
           signOptions: {
-            expiresIn: config.get<number>('JWT_ACCESS_EXPIRES_SEC', 86400),
+            expiresIn: config.get<number>('jwt.accessExpiresSec', 86400),
             algorithm: 'HS256',
           },
         };

@@ -25,7 +25,7 @@ export class AuthService {
     private readonly emailQueue: EmailQueueService,
     private readonly config: ConfigService,
   ) {
-    this.accessExpiresSec = this.config.get<number>('JWT_ACCESS_EXPIRES_SEC', ACCESS_EXPIRES_DEFAULT);
+    this.accessExpiresSec = this.config.get<number>('jwt.accessExpiresSec', ACCESS_EXPIRES_DEFAULT);
     this.jwtIssuer = this.config.get<string>('jwt.issuer') ?? this.config.get<string>('urls.api');
   }
 
