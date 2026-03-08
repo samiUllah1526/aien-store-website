@@ -17,11 +17,19 @@ export interface Product {
   currency: string;
   image: string;
   urduVerse?: string;
+  variants?: Array<{
+    id: string;
+    color: string;
+    size: string;
+    stockQuantity: number;
+    priceOverrideCents?: number | null;
+    isActive: boolean;
+  }>;
   sizes?: string[];
   inStock?: boolean;
 }
 
-function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; sizes?: string[]; inStock?: boolean }): Product {
+function mapApiProductToProduct(p: { id: string; slug: string; name: string; categories?: string[]; category?: string | null; price: number; currency: string; image: string; variants?: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean }>; sizes?: string[]; inStock?: boolean }): Product {
   const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const firstCategory = p.categories?.[0] ?? p.category ?? '';
   return {
@@ -32,6 +40,7 @@ function mapApiProductToProduct(p: { id: string; slug: string; name: string; cat
     price: p.price,
     currency: p.currency,
     image: p.image ? (p.image.startsWith('http') ? p.image : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`) : '',
+    variants: p.variants,
     sizes: p.sizes,
     inStock: p.inStock,
   };

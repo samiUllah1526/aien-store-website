@@ -8,6 +8,16 @@ import { useCart } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { favoritesApi } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
+import { ONE_SIZE_LABEL } from './product/constants';
+
+export interface ProductCardVariant {
+  id: string;
+  color: string;
+  size: string;
+  stockQuantity: number;
+  priceOverrideCents?: number | null;
+  isActive: boolean;
+}
 
 export interface ProductCardProduct {
   id: string;
@@ -16,11 +26,10 @@ export interface ProductCardProduct {
   price: number;
   currency: string;
   image: string;
+  variants?: ProductCardVariant[];
   sizes?: string[];
   inStock?: boolean;
 }
-
-const defaultSizes = ['S', 'M', 'L', 'XL'];
 
 export default function ProductCard({ product }: { product: ProductCardProduct }) {
   const { addItem, openCart } = useCart();
@@ -41,12 +50,14 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
     return () => { cancelled = true; };
   }, [isLoggedIn, product.id]);
 
-  const sizes = product.sizes?.length ? product.sizes : defaultSizes;
-  const defaultSize = sizes[0] ?? 'M';
-  const inStock = product.inStock !== false;
+  const activeVariants = (product.variants ?? []).filter((variant) => variant.isActive);
+  const quickAddVariant =
+    activeVariants.find((variant) => variant.stockQuantity > 0) ?? activeVariants[0];
+  const defaultSize = quickAddVariant?.size ?? product.sizes?.[0] ?? ONE_SIZE_LABEL;
+  const inStock = product.inStock !== false && !!quickAddVariant && quickAddVariant.stockQuantity > 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    if (!inStock) {
+    if (!inStock || !quickAddVariant) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -55,9 +66,11 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
     e.stopPropagation();
     addItem({
       productId: product.id,
+      variantId: quickAddVariant.id,
+      color: quickAddVariant.color,
       name: product.name,
       slug: product.slug,
-      price: product.price,
+      price: quickAddVariant.priceOverrideCents ?? product.price,
       currency: product.currency,
       image: product.image,
       size: defaultSize,

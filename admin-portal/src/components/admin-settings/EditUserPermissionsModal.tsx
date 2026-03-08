@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Controller } from 'react-hook-form';
 import { api } from '../../lib/api';
 import type { User, Role } from '../../lib/types';
 import type { PermissionGroup } from '../../lib/types';
 import { Modal } from '../ui/Modal';
+import { editUserPermissionsSchema } from '../../lib/validation/user';
+import { useZodForm } from '../../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../../lib/forms/mapApiErrorToForm';
 
 interface EditUserPermissionsModalProps {
   user: User;
@@ -12,17 +16,22 @@ interface EditUserPermissionsModalProps {
 }
 
 export function EditUserPermissionsModal({ user, roles, onClose, onSuccess }: EditUserPermissionsModalProps) {
-  const [roleIds, setRoleIds] = useState<string[]>(user.roleIds ?? []);
+  const form = useZodForm({
+    schema: editUserPermissionsSchema,
+    defaultValues: {
+      roleIds: user.roleIds ?? [],
+      permissionIds: user.directPermissionIds ?? [],
+    },
+  });
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
-  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(
-    () => new Set(user.directPermissionIds ?? [])
-  );
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = form.formState.errors.root?.serverError?.message;
 
   useEffect(() => {
-    setRoleIds(user.roleIds ?? []);
-    setSelectedPermissionIds(new Set(user.directPermissionIds ?? []));
+    form.reset({
+      roleIds: user.roleIds ?? [],
+      permissionIds: user.directPermissionIds ?? [],
+    });
   }, [user]);
 
   useEffect(() => {
@@ -31,41 +40,25 @@ export function EditUserPermissionsModal({ user, roles, onClose, onSuccess }: Ed
     }).catch(() => setPermissionGroups([]));
   }, []);
 
-  const toggleRole = (roleId: string) => {
-    setRoleIds((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
-    );
-  };
-
-  const togglePermission = (permissionId: string) => {
-    setSelectedPermissionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(permissionId)) next.delete(permissionId);
-      else next.add(permissionId);
-      return next;
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
-      const directPermissions = Array.from(selectedPermissionIds).map((permissionId) => ({
+      const directPermissions = (values.permissionIds ?? []).map((permissionId) => ({
         permissionId,
         granted: true,
       }));
       await api.put(`/users/${user.id}`, {
-        roleIds,
+        roleIds: values.roleIds,
         directPermissions,
       });
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
   return (
     <Modal open title={`Edit roles & permissions: ${user.name || user.email}`} onClose={onClose}>
@@ -77,94 +70,116 @@ export function EditUserPermissionsModal({ user, roles, onClose, onSuccess }: Ed
         )}
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Roles</label>
-          <div className="flex flex-wrap gap-3">
-            {roles.map((role) => (
-              <label key={role.id} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={roleIds.includes(role.id)}
-                  onChange={() => toggleRole(role.id)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400"
-                />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
-              </label>
-            ))}
-          </div>
+          <Controller
+            control={form.control}
+            name="roleIds"
+            render={({ field }) => (
+              <div className="flex flex-wrap gap-3">
+                {roles.map((role) => {
+                  const roleIds = field.value ?? [];
+                  const checked = roleIds.includes(role.id);
+                  return (
+                    <label key={role.id} className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          field.onChange(
+                            checked ? roleIds.filter((id: string) => id !== role.id) : [...roleIds, role.id],
+                          )
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          />
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Direct permissions (optional)</label>
           <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-            {selectedPermissionIds.size} of {permissionGroups.reduce((n, g) => n + g.permissions.length, 0)} selected
+            {(form.watch('permissionIds') ?? []).length} of {permissionGroups.reduce((n, g) => n + g.permissions.length, 0)} selected
           </p>
-          <div className="max-h-[min(20rem,60vh)] space-y-4 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-600 dark:bg-slate-800/50">
-            {permissionGroups.map((group) => {
-              const groupPermIds = group.permissions.map((p) => p.id);
-              const selectedInGroup = groupPermIds.filter((id) => selectedPermissionIds.has(id)).length;
-              const allSelected = selectedInGroup === group.permissions.length;
-              const toggleGroup = () => {
-                if (allSelected) {
-                  setSelectedPermissionIds((prev) => {
-                    const next = new Set(prev);
-                    groupPermIds.forEach((id) => next.delete(id));
-                    return next;
-                  });
-                } else {
-                  setSelectedPermissionIds((prev) => {
-                    const next = new Set(prev);
-                    groupPermIds.forEach((id) => next.add(id));
-                    return next;
-                  });
-                }
-              };
-              return (
-                <div
-                  key={group.category ?? 'uncategorized'}
-                  className="rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800"
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                      {group.category ?? 'Other'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={toggleGroup}
-                      className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          <Controller
+            control={form.control}
+            name="permissionIds"
+            render={({ field }) => (
+              <div className="max-h-[min(20rem,60vh)] space-y-4 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-600 dark:bg-slate-800/50">
+                {permissionGroups.map((group) => {
+                  const permissionIds = field.value ?? [];
+                  const groupPermIds = group.permissions.map((p) => p.id);
+                  const selectedInGroup = groupPermIds.filter((id) => permissionIds.includes(id)).length;
+                  const allSelected = selectedInGroup === group.permissions.length;
+                  const toggleGroup = () => {
+                    if (allSelected) {
+                      field.onChange(permissionIds.filter((id: string) => !groupPermIds.includes(id)));
+                    } else {
+                      field.onChange([
+                        ...permissionIds.filter((id: string) => !groupPermIds.includes(id)),
+                        ...groupPermIds,
+                      ]);
+                    }
+                  };
+                  return (
+                    <div
+                      key={group.category ?? 'uncategorized'}
+                      className="rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800"
                     >
-                      {allSelected ? 'Deselect all' : 'Select all'}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 p-3 sm:grid-cols-2">
-                    {group.permissions.map((p) => (
-                      <label
-                        key={p.id}
-                        className="flex cursor-pointer items-start gap-2 rounded py-1.5 pr-2 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedPermissionIds.has(p.id)}
-                          onChange={() => togglePermission(p.id)}
-                          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-400"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {p.name}
-                          </span>
-                          {p.description && (
-                            <span
-                              className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400"
-                              title={p.description}
-                            >
-                              {p.description}
-                            </span>
-                          )}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {group.category ?? 'Other'}
                         </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                        <button
+                          type="button"
+                          onClick={toggleGroup}
+                          className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        >
+                          {allSelected ? 'Deselect all' : 'Select all'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 p-3 sm:grid-cols-2">
+                        {group.permissions.map((p) => (
+                          <label
+                            key={p.id}
+                            className="flex cursor-pointer items-start gap-2 rounded py-1.5 pr-2 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={permissionIds.includes(p.id)}
+                              onChange={() =>
+                                field.onChange(
+                                  permissionIds.includes(p.id)
+                                    ? permissionIds.filter((id: string) => id !== p.id)
+                                    : [...permissionIds, p.id],
+                                )
+                              }
+                              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                {p.name}
+                              </span>
+                              {p.description && (
+                                <span
+                                  className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400"
+                                  title={p.description}
+                                >
+                                  {p.description}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          />
         </div>
         <div className="flex gap-3 pt-2">
           <button

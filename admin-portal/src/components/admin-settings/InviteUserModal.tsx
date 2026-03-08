@@ -1,7 +1,11 @@
 import { useState } from 'react';
+import { Controller } from 'react-hook-form';
 import { api } from '../../lib/api';
 import type { Role } from '../../lib/types';
 import { Modal } from '../ui/Modal';
+import { inviteUserSchema } from '../../lib/validation/user';
+import { useZodForm } from '../../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../../lib/forms/mapApiErrorToForm';
 
 interface InviteUserModalProps {
   roles: Role[];
@@ -10,37 +14,35 @@ interface InviteUserModalProps {
 }
 
 export function InviteUserModal({ roles, onClose, onSuccess }: InviteUserModalProps) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [permissionIds, setPermissionIds] = useState<string[]>([]);
+  const form = useZodForm({
+    schema: inviteUserSchema,
+    defaultValues: {
+      name: '',
+      email: '',
+      roleIds: [],
+      permissionIds: [],
+    },
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = form.formState.errors.root?.serverError?.message;
 
-  const toggleRole = (roleId: string) => {
-    setRoleIds((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
       await api.post('/users/invite', {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        roleIds: roleIds.length ? roleIds : undefined,
-        permissionIds: permissionIds.length ? permissionIds : undefined,
+        name: values.name.trim(),
+        email: values.email.trim().toLowerCase(),
+        roleIds: values.roleIds.length ? values.roleIds : undefined,
+        permissionIds: values.permissionIds.length ? values.permissionIds : undefined,
       });
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invite failed');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
   return (
     <Modal open title="Invite user" onClose={onClose}>
@@ -55,8 +57,7 @@ export function InviteUserModal({ roles, onClose, onSuccess }: InviteUserModalPr
           <input
             type="text"
             required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            {...form.register('name')}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
@@ -65,26 +66,38 @@ export function InviteUserModal({ roles, onClose, onSuccess }: InviteUserModalPr
           <input
             type="email"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...form.register('email')}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Role</label>
-          <div className="flex flex-wrap gap-3">
-            {roles.filter((r) => r.name !== 'Customer').map((role) => (
-              <label key={role.id} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={roleIds.includes(role.id)}
-                  onChange={() => toggleRole(role.id)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400"
-                />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
-              </label>
-            ))}
-          </div>
+          <Controller
+            control={form.control}
+            name="roleIds"
+            render={({ field }) => (
+              <div className="flex flex-wrap gap-3">
+                {roles.filter((r) => r.name !== 'Customer').map((role) => {
+                  const checked = field.value.includes(role.id);
+                  return (
+                    <label key={role.id} className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          field.onChange(
+                            checked ? field.value.filter((id: string) => id !== role.id) : [...field.value, role.id],
+                          )
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          />
         </div>
         <div className="flex gap-3 pt-2">
           <button

@@ -126,6 +126,7 @@ export function ProductsManager() {
       priceCents: data.priceCents,
       currency: data.currency,
       featured: data.featured,
+      variants: data.variants,
       mediaIds: data.mediaIds,
     });
     setFormOpen(null);
@@ -142,6 +143,7 @@ export function ProductsManager() {
       priceCents: data.priceCents,
       currency: data.currency,
       featured: data.featured,
+      variants: data.variants,
       mediaIds: data.mediaIds,
     });
     setFormOpen(null);
@@ -558,7 +560,7 @@ export function ProductsManager() {
           aria-modal="true"
           aria-labelledby="form-title"
         >
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700">
             <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <h2 id="form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {formOpen === 'add' ? 'Add product' : 'Edit product'}
@@ -585,6 +587,7 @@ export function ProductsManager() {
             id: adjustStockProduct.id,
             name: adjustStockProduct.name,
             stockQuantity: adjustStockProduct.stockQuantity ?? 0,
+            variants: adjustStockProduct.variants ?? [],
           }}
           onClose={() => setAdjustStockProduct(null)}
           onSuccess={(newStockQuantity) => {

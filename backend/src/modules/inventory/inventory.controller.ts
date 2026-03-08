@@ -25,6 +25,7 @@ export class InventoryController {
     @Query() query: MovementsQueryDto,
   ) {
     const { data, total } = await this.inventoryService.getMovements(productId, {
+      variantId: query.variantId,
       page: query.page,
       limit: query.limit,
     });

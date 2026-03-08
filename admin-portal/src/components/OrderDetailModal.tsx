@@ -9,6 +9,7 @@ import { formatDateTime } from '../lib/format';
 import { formatMoney } from '../lib/formatMoney';
 import type { Order, OrderStatus } from '../lib/types';
 import { getAllowedNextStatuses, isTerminalStatus } from '../lib/orderStatus';
+import { orderCourierSchema, orderStatusUpdateSchema } from '../lib/validation/orders';
 
 const STATUS_OPTIONS: OrderStatus[] = [
   'PENDING',
@@ -125,9 +126,11 @@ export function OrderDetailModal({
 
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return;
+    const parsed = orderStatusUpdateSchema.safeParse({ status: newStatus });
+    if (!parsed.success) return;
     setUpdatingStatus(true);
     try {
-      await api.put<Order>(`/orders/${order.id}`, { status: newStatus });
+      await api.put<Order>(`/orders/${order.id}`, { status: parsed.data.status });
       await fetchOrder(order.id);
       onOrderUpdated?.();
     } finally {
@@ -137,12 +140,17 @@ export function OrderDetailModal({
 
   const handleSaveCourier = async () => {
     if (!order) return;
+    const parsed = orderCourierSchema.safeParse({
+      courierServiceName,
+      trackingId,
+    });
+    if (!parsed.success) return;
     setSavingCourier(true);
     try {
       await api.put<Order>(`/orders/${order.id}`, {
         status: order.status,
-        courierServiceName: courierServiceName.trim() || null,
-        trackingId: trackingId.trim() || null,
+        courierServiceName: parsed.data.courierServiceName?.trim() || null,
+        trackingId: parsed.data.trackingId?.trim() || null,
       });
       await fetchOrder(order.id);
       onOrderUpdated?.();
@@ -398,6 +406,9 @@ export function OrderDetailModal({
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">
                           Product
                         </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">
+                          Variant
+                        </th>
                         <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 dark:text-slate-400">
                           Qty
                         </th>
@@ -428,6 +439,9 @@ export function OrderDetailModal({
                                   {item.productName ?? item.productId}
                                 </span>
                               </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                              {item.color ?? '—'} / {item.size ?? '—'}
                             </td>
                             <td className="px-4 py-3 text-right text-sm text-slate-700 dark:text-slate-300">
                               {item.quantity}

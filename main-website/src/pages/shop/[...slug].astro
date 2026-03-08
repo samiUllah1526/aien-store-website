@@ -44,7 +44,7 @@ function toFullImageUrl(url: string): string {
   return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; variants: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean }>; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
 try {
   const productUrl = `${storeApiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
   const res = await fetch(productUrl);
@@ -62,6 +62,7 @@ try {
       currency: p.currency,
       image,
       images: images.length > 0 ? images : (image ? [image] : []),
+      variants: Array.isArray(p.variants) ? p.variants : [],
       sizes: p.sizes,
       inStock: p.inStock !== false,
       urduVerse: p.urduVerse ?? null,
@@ -149,7 +150,7 @@ const productJsonLd = {
           price={product.price}
           currency={product.currency}
           image={product.image}
-          sizes={product.sizes ?? []}
+          variants={product.variants}
           inStock={product.inStock}
         />
       </div>

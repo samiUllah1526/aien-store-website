@@ -1,9 +1,14 @@
 export interface OrderItemResponseDto {
   id: string;
   productId: string;
+  variantId: string;
   productName?: string;
   /** First product image path for admin display (e.g. /media/file/...) */
   productImage?: string | null;
+  /** Color snapshot at order time. */
+  color?: string | null;
+  /** Size at time of order (e.g. S, M, L). Optional. */
+  size?: string | null;
   quantity: number;
   unitCents: number;
 }

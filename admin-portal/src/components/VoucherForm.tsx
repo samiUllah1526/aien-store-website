@@ -1,7 +1,11 @@
 import { useState } from 'react';
+import { Controller } from 'react-hook-form';
 import { api } from '../lib/api';
 import type { Voucher, VoucherFormData } from '../lib/types';
 import { SearchableMultiSelect } from './SearchableMultiSelect';
+import { useZodForm } from '../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
+import { voucherFormSchema } from '../lib/validation/voucher';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -25,38 +29,26 @@ interface VoucherFormProps {
 }
 
 export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
-  const [code, setCode] = useState(voucher?.code ?? '');
-  const [type, setType] = useState<VoucherFormData['type']>(voucher?.type ?? 'PERCENTAGE');
-  const [value, setValue] = useState(
-    voucher ? (voucher.type === 'FIXED_AMOUNT' ? String(Math.floor(voucher.value / 100)) : String(voucher.value)) : ''
-  );
-  const [minOrderValueCents, setMinOrderValueCents] = useState(
-    voucher ? String(Math.floor(voucher.minOrderValueCents / 100)) : ''
-  );
-  const [maxDiscountCents, setMaxDiscountCents] = useState(
-    voucher?.maxDiscountCents != null ? String(Math.floor(voucher.maxDiscountCents / 100)) : ''
-  );
-  const [startDate, setStartDate] = useState(
-    voucher?.startDate ? voucher.startDate.slice(0, 16) : ''
-  );
-  const [expiryDate, setExpiryDate] = useState(
-    voucher?.expiryDate ? voucher.expiryDate.slice(0, 16) : ''
-  );
-  const [usageLimitGlobal, setUsageLimitGlobal] = useState(
-    voucher?.usageLimitGlobal != null ? String(voucher.usageLimitGlobal) : ''
-  );
-  const [usageLimitPerUser, setUsageLimitPerUser] = useState(
-    voucher?.usageLimitPerUser != null ? String(voucher.usageLimitPerUser) : ''
-  );
-  const [applicableProductIds, setApplicableProductIds] = useState<string[]>(
-    voucher?.applicableProductIds ?? []
-  );
-  const [applicableCategoryIds, setApplicableCategoryIds] = useState<string[]>(
-    voucher?.applicableCategoryIds ?? []
-  );
-  const [isActive, setIsActive] = useState(voucher?.isActive ?? true);
+  const form = useZodForm({
+    schema: voucherFormSchema,
+    defaultValues: {
+      code: voucher?.code ?? '',
+      type: voucher?.type ?? 'PERCENTAGE',
+      value: voucher ? (voucher.type === 'FIXED_AMOUNT' ? String(Math.floor(voucher.value / 100)) : String(voucher.value)) : '',
+      minOrderValuePkr: voucher ? String(Math.floor(voucher.minOrderValueCents / 100)) : '',
+      maxDiscountPkr: voucher?.maxDiscountCents != null ? String(Math.floor(voucher.maxDiscountCents / 100)) : '',
+      startDate: voucher?.startDate ? voucher.startDate.slice(0, 16) : '',
+      expiryDate: voucher?.expiryDate ? voucher.expiryDate.slice(0, 16) : '',
+      usageLimitGlobal: voucher?.usageLimitGlobal != null ? String(voucher.usageLimitGlobal) : '',
+      usageLimitPerUser: voucher?.usageLimitPerUser != null ? String(voucher.usageLimitPerUser) : '',
+      applicableProductIds: voucher?.applicableProductIds ?? [],
+      applicableCategoryIds: voucher?.applicableCategoryIds ?? [],
+      isActive: voucher?.isActive ?? true,
+    },
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = form.formState.errors.root?.serverError?.message;
+  const type = form.watch('type');
 
   const fetchCategories = async ({ search, page }: { search: string; page: number }) => {
     const r = await api.get<Array<{ id: string; name: string }>>('/categories', search ? { search } : undefined);
@@ -77,53 +69,36 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
   };
 
   const handleGenerateCode = () => {
-    setCode(generateCode());
+    form.setValue('code', generateCode(), { shouldValidate: true });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
-      const val = parseInt(value, 10);
-      if (Number.isNaN(val) || val < 0) {
-        setError('Value must be a positive number');
-        return;
-      }
-      if (type === 'PERCENTAGE' && (val < 1 || val > 100)) {
-        setError('Percentage must be between 1 and 100');
-        return;
-      }
-      if (type === 'FIXED_AMOUNT' && val < 1) {
-        setError('Fixed amount must be positive');
-        return;
-      }
-      const start = startDate ? new Date(startDate) : new Date();
-      const expiry = expiryDate ? new Date(expiryDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      if (expiry <= start) {
-        setError('Expiry date must be after start date');
-        return;
-      }
+      const val = Number.parseInt(values.value || '0', 10);
+      const start = values.startDate ? new Date(values.startDate) : new Date();
+      const expiry = values.expiryDate ? new Date(values.expiryDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       await onSubmit({
-        code: code.trim().toUpperCase(),
-        type,
-        value: type === 'PERCENTAGE' ? val : type === 'FIXED_AMOUNT' ? val * 100 : 0,
-        minOrderValueCents: minOrderValueCents ? parseInt(minOrderValueCents, 10) * 100 : 0,
-        maxDiscountCents: maxDiscountCents ? parseInt(maxDiscountCents, 10) * 100 : undefined,
+        code: values.code.trim().toUpperCase(),
+        type: values.type,
+        value: values.type === 'PERCENTAGE' ? val : values.type === 'FIXED_AMOUNT' ? val * 100 : 0,
+        minOrderValueCents: values.minOrderValuePkr ? Number.parseInt(values.minOrderValuePkr, 10) * 100 : 0,
+        maxDiscountCents: values.maxDiscountPkr ? Number.parseInt(values.maxDiscountPkr, 10) * 100 : undefined,
         startDate: start.toISOString(),
         expiryDate: expiry.toISOString(),
-        usageLimitGlobal: usageLimitGlobal ? parseInt(usageLimitGlobal, 10) : undefined,
-        usageLimitPerUser: usageLimitPerUser ? parseInt(usageLimitPerUser, 10) : undefined,
-        applicableProductIds: applicableProductIds.length ? applicableProductIds : undefined,
-        applicableCategoryIds: applicableCategoryIds.length ? applicableCategoryIds : undefined,
-        isActive,
+        usageLimitGlobal: values.usageLimitGlobal ? Number.parseInt(values.usageLimitGlobal, 10) : undefined,
+        usageLimitPerUser: values.usageLimitPerUser ? Number.parseInt(values.usageLimitPerUser, 10) : undefined,
+        applicableProductIds: values.applicableProductIds.length ? values.applicableProductIds : undefined,
+        applicableCategoryIds: values.applicableCategoryIds.length ? values.applicableCategoryIds : undefined,
+        isActive: values.isActive,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save voucher');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
   const inputClass =
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
@@ -142,8 +117,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
         <div className="flex gap-2">
           <input
             type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            {...form.register('code')}
             placeholder="SUMMER20"
             className={inputClass}
             required
@@ -162,8 +136,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           Type <span className="text-red-500">*</span>
         </label>
         <select
-          value={type}
-          onChange={(e) => setType(e.target.value as VoucherFormData['type'])}
+          {...form.register('type')}
           className={inputClass}
         >
           {VOUCHER_TYPES.map((t) => (
@@ -183,8 +156,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
               type="number"
               min={type === 'PERCENTAGE' ? 1 : 1}
               max={type === 'PERCENTAGE' ? 100 : undefined}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+              {...form.register('value')}
               placeholder={type === 'PERCENTAGE' ? 'e.g. 20' : 'e.g. 500'}
               className={inputClass}
               required
@@ -202,8 +174,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
         <input
           type="number"
           min="0"
-          value={minOrderValueCents}
-          onChange={(e) => setMinOrderValueCents(e.target.value)}
+          {...form.register('minOrderValuePkr')}
           placeholder="0"
           className={inputClass}
         />
@@ -216,8 +187,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           <input
             type="number"
             min="0"
-            value={maxDiscountCents}
-            onChange={(e) => setMaxDiscountCents(e.target.value)}
+            {...form.register('maxDiscountPkr')}
             placeholder="No cap"
             className={inputClass}
           />
@@ -230,8 +200,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           </label>
           <input
             type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            {...form.register('startDate')}
             className={inputClass}
             required
           />
@@ -242,8 +211,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           </label>
           <input
             type="datetime-local"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
+            {...form.register('expiryDate')}
             className={inputClass}
             required
           />
@@ -257,8 +225,7 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           <input
             type="number"
             min="1"
-            value={usageLimitGlobal}
-            onChange={(e) => setUsageLimitGlobal(e.target.value)}
+            {...form.register('usageLimitGlobal')}
             placeholder="Unlimited"
             className={inputClass}
           />
@@ -270,35 +237,45 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
           <input
             type="number"
             min="1"
-            value={usageLimitPerUser}
-            onChange={(e) => setUsageLimitPerUser(e.target.value)}
+            {...form.register('usageLimitPerUser')}
             placeholder="Unlimited"
             className={inputClass}
           />
         </div>
       </div>
-      <SearchableMultiSelect
-        label="Eligible categories (empty = all)"
-        placeholder="Search categories…"
-        emptyMessage="No categories"
-        selectedIds={applicableCategoryIds}
-        onSelectedIdsChange={setApplicableCategoryIds}
-        fetchItems={fetchCategories}
+      <Controller
+        control={form.control}
+        name="applicableCategoryIds"
+        render={({ field }) => (
+          <SearchableMultiSelect
+            label="Eligible categories (empty = all)"
+            placeholder="Search categories…"
+            emptyMessage="No categories"
+            selectedIds={field.value}
+            onSelectedIdsChange={field.onChange}
+            fetchItems={fetchCategories}
+          />
+        )}
       />
-      <SearchableMultiSelect
-        label="Eligible products (empty = all)"
-        placeholder="Search products…"
-        emptyMessage="No products"
-        selectedIds={applicableProductIds}
-        onSelectedIdsChange={setApplicableProductIds}
-        fetchItems={fetchProducts}
+      <Controller
+        control={form.control}
+        name="applicableProductIds"
+        render={({ field }) => (
+          <SearchableMultiSelect
+            label="Eligible products (empty = all)"
+            placeholder="Search products…"
+            emptyMessage="No products"
+            selectedIds={field.value}
+            onSelectedIdsChange={field.onChange}
+            fetchItems={fetchProducts}
+          />
+        )}
       />
       <div>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
+            {...form.register('isActive')}
             className="rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
           />
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">

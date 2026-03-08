@@ -349,6 +349,7 @@ export function InventoryManager() {
             id: adjustProduct.id,
             name: adjustProduct.name,
             stockQuantity: adjustProduct.stockQuantity ?? 0,
+            variants: adjustProduct.variants ?? [],
           }}
           onClose={() => setAdjustProduct(null)}
           onSuccess={(newQty) => {

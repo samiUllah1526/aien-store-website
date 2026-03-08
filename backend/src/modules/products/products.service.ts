@@ -8,8 +8,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
-import { ProductResponseDto, ProductListResponseDto } from './dto/product-response.dto';
+import {
+  ProductResponseDto,
+  ProductListResponseDto,
+  ProductVariantResponseDto,
+} from './dto/product-response.dto';
 import { Prisma } from '@prisma/client';
+import { ProductVariantInputDto } from './dto/product-variant-input.dto';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,6 +47,53 @@ export class ProductsService {
     return validIds;
   }
 
+  private normalizeVariants(input: ProductVariantInputDto[]): Array<{
+    id?: string;
+    color: string;
+    size: string;
+    sku: string | null;
+    stockQuantity: number;
+    priceOverrideCents: number | null;
+    isActive: boolean;
+  }> {
+    if (!input?.length) {
+      throw new BadRequestException('At least one variant is required');
+    }
+    const keys = new Set<string>();
+    return input.map((variant, idx) => {
+      const color = variant.color?.trim();
+      const size = variant.size?.trim();
+      if (!color || !size) {
+        throw new BadRequestException(`Variant #${idx + 1} must include color and size`);
+      }
+      const key = `${color.toLowerCase()}__${size.toLowerCase()}`;
+      if (keys.has(key)) {
+        throw new BadRequestException(`Duplicate variant combination: ${color} / ${size}`);
+      }
+      keys.add(key);
+      return {
+        ...(variant.id ? { id: variant.id } : {}),
+        color,
+        size,
+        sku: variant.sku?.trim() ? variant.sku.trim() : null,
+        stockQuantity: Math.max(0, variant.stockQuantity ?? 0),
+        priceOverrideCents:
+          variant.priceOverrideCents != null ? Math.max(0, variant.priceOverrideCents) : null,
+        isActive: variant.isActive ?? true,
+      };
+    });
+  }
+
+  private summarizeVariantDimensions(
+    variants: Array<{ color: string; size: string; stockQuantity: number; isActive: boolean }>,
+  ): { colors: string[]; sizes: string[]; stockQuantity: number; inStock: boolean } {
+    const colors = [...new Set(variants.map((v) => v.color))];
+    const sizes = [...new Set(variants.map((v) => v.size))];
+    const stockQuantity = variants.reduce((sum, v) => sum + Math.max(0, v.stockQuantity), 0);
+    const inStock = variants.some((v) => v.isActive && v.stockQuantity > 0);
+    return { colors, sizes, stockQuantity, inStock };
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     const existing = await this.prisma.product.findUnique({
       where: { slug: dto.slug },
@@ -53,6 +105,9 @@ export class ProductsService {
       await this.validateMediaIds(dto.mediaIds);
     }
     const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
+    const variants = this.normalizeVariants(dto.variants);
+    const stockQuantity = variants.reduce((sum, v) => sum + v.stockQuantity, 0);
+    const derivedSizes = [...new Set(variants.map((v) => v.size))];
     const product = await this.prisma.product.create({
       data: {
         name: dto.name,
@@ -60,10 +115,21 @@ export class ProductsService {
         description: dto.description ?? null,
         priceCents: dto.priceCents,
         currency: dto.currency ?? 'PKR',
-        sizes: (dto.sizes ?? []) as object,
+        sizes: derivedSizes as object,
+        stockQuantity,
         featured: dto.featured ?? false,
         urduVerse: dto.urduVerse ?? null,
         urduVerseTransliteration: dto.urduVerseTransliteration ?? null,
+        variants: {
+          create: variants.map((variant) => ({
+            color: variant.color,
+            size: variant.size,
+            sku: variant.sku,
+            stockQuantity: variant.stockQuantity,
+            priceOverrideCents: variant.priceOverrideCents,
+            isActive: variant.isActive,
+          })),
+        },
         productCategories: categoryIds.length
           ? { create: categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -168,6 +234,65 @@ export class ProductsService {
         });
       }
     }
+
+    if (dto.variants !== undefined) {
+      const normalized = this.normalizeVariants(dto.variants);
+      const existing = await this.prisma.productVariant.findMany({
+        where: { productId: id },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((v) => v.id));
+      const seenIds = new Set<string>();
+      for (const variant of normalized) {
+        if (variant.id && existingIds.has(variant.id)) {
+          seenIds.add(variant.id);
+          await this.prisma.productVariant.update({
+            where: { id: variant.id },
+            data: {
+              color: variant.color,
+              size: variant.size,
+              sku: variant.sku,
+              stockQuantity: variant.stockQuantity,
+              priceOverrideCents: variant.priceOverrideCents,
+              isActive: variant.isActive,
+            },
+          });
+        } else {
+          const created = await this.prisma.productVariant.create({
+            data: {
+              productId: id,
+              color: variant.color,
+              size: variant.size,
+              sku: variant.sku,
+              stockQuantity: variant.stockQuantity,
+              priceOverrideCents: variant.priceOverrideCents,
+              isActive: variant.isActive,
+            },
+            select: { id: true },
+          });
+          seenIds.add(created.id);
+        }
+      }
+      const toDeactivate = [...existingIds].filter((variantId) => !seenIds.has(variantId));
+      if (toDeactivate.length) {
+        await this.prisma.productVariant.updateMany({
+          where: { id: { in: toDeactivate } },
+          data: { isActive: false, stockQuantity: 0 },
+        });
+      }
+      const allVariants = await this.prisma.productVariant.findMany({
+        where: { productId: id },
+        select: { size: true, stockQuantity: true },
+      });
+      await this.prisma.product.update({
+        where: { id },
+        data: {
+          sizes: [...new Set(allVariants.map((v) => v.size))] as object,
+          stockQuantity: allVariants.reduce((sum, v) => sum + v.stockQuantity, 0),
+        },
+      });
+    }
+
     const updated = await this.prisma.product.update({
       where: { id },
       data: {
@@ -176,7 +301,6 @@ export class ProductsService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.priceCents !== undefined && { priceCents: dto.priceCents }),
         ...(dto.currency !== undefined && { currency: dto.currency }),
-        ...(dto.sizes !== undefined && { sizes: dto.sizes as object }),
         ...(dto.featured !== undefined && { featured: dto.featured }),
         ...(dto.urduVerse !== undefined && { urduVerse: dto.urduVerse }),
         ...(dto.urduVerseTransliteration !== undefined && {
@@ -215,6 +339,9 @@ export class ProductsService {
         include: { media: { select: { path: true, deliveryUrl: true } } },
         orderBy: { sortOrder: Prisma.SortOrder.asc },
       },
+      variants: {
+        orderBy: [{ color: Prisma.SortOrder.asc }, { size: Prisma.SortOrder.asc }],
+      },
     };
   }
 
@@ -239,11 +366,11 @@ export class ProductsService {
     }
     if (query.featured === 'true') where.featured = true;
     if (query.featured === 'false') where.featured = false;
-    if (query.stockFilter === 'in_stock') where.stockQuantity = { gt: 0 };
-    if (query.stockFilter === 'out_of_stock') where.stockQuantity = 0;
+    if (query.stockFilter === 'in_stock') where.variants = { some: { isActive: true, stockQuantity: { gt: 0 } } };
+    if (query.stockFilter === 'out_of_stock') where.variants = { none: { isActive: true, stockQuantity: { gt: 0 } } };
     if (query.stockFilter === 'low_stock') {
       const max = query.lowStockMax ?? 5;
-      where.stockQuantity = { gte: 1, lte: max };
+      where.variants = { some: { isActive: true, stockQuantity: { gte: 1, lte: max } } };
     }
     return where;
   }
@@ -285,17 +412,33 @@ export class ProductsService {
     description: string | null;
     priceCents: number;
     currency: string;
-    sizes: unknown;
     featured: boolean;
-    stockQuantity: number;
     urduVerse: string | null;
     urduVerseTransliteration: string | null;
     createdAt: Date;
     updatedAt: Date;
     productCategories: Array<{ category: { id: string; name: string; slug: string } }>;
     productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
+    variants: Array<{
+      id: string;
+      color: string;
+      size: string;
+      sku: string | null;
+      stockQuantity: number;
+      priceOverrideCents: number | null;
+      isActive: boolean;
+    }>;
   }): ProductResponseDto {
-    const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
+    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => ({
+      id: variant.id,
+      color: variant.color,
+      size: variant.size,
+      sku: variant.sku,
+      stockQuantity: variant.stockQuantity,
+      priceOverrideCents: variant.priceOverrideCents,
+      isActive: variant.isActive,
+    }));
+    const { colors, sizes, stockQuantity, inStock } = this.summarizeVariantDimensions(variants);
     const images = p.productMedia.map((pm) => this.imageUrl(pm.media));
     const image = images[0] ?? '';
     const categories = p.productCategories.map((pc) => pc.category);
@@ -309,6 +452,8 @@ export class ProductsService {
       currency: p.currency,
       image,
       images,
+      variants,
+      colors,
       sizes,
       categories,
       category: first?.name ?? null,
@@ -316,8 +461,8 @@ export class ProductsService {
       featured: p.featured,
       urduVerse: p.urduVerse,
       urduVerseTransliteration: p.urduVerseTransliteration,
-      stockQuantity: p.stockQuantity,
-      inStock: p.stockQuantity > 0,
+      stockQuantity,
+      inStock,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     };
@@ -329,13 +474,29 @@ export class ProductsService {
     slug: string;
     priceCents: number;
     currency: string;
-    sizes: unknown;
     featured: boolean;
-    stockQuantity: number;
     productCategories: Array<{ category: { name: string } }>;
     productMedia: Array<{ media: { path: string; deliveryUrl: string | null } }>;
+    variants: Array<{
+      id: string;
+      color: string;
+      size: string;
+      sku: string | null;
+      stockQuantity: number;
+      priceOverrideCents: number | null;
+      isActive: boolean;
+    }>;
   }): ProductListResponseDto {
-    const sizes = Array.isArray(p.sizes) ? (p.sizes as string[]) : [];
+    const variants: ProductVariantResponseDto[] = p.variants.map((variant) => ({
+      id: variant.id,
+      color: variant.color,
+      size: variant.size,
+      sku: variant.sku,
+      stockQuantity: variant.stockQuantity,
+      priceOverrideCents: variant.priceOverrideCents,
+      isActive: variant.isActive,
+    }));
+    const { colors, sizes, stockQuantity, inStock } = this.summarizeVariantDimensions(variants);
     const image = p.productMedia[0]?.media
       ? this.imageUrl(p.productMedia[0].media)
       : '';
@@ -347,10 +508,12 @@ export class ProductsService {
       price: p.priceCents,
       currency: p.currency,
       image,
+      variants,
+      colors,
       sizes,
       featured: p.featured,
-      stockQuantity: p.stockQuantity,
-      inStock: p.stockQuantity > 0,
+      stockQuantity,
+      inStock,
       categories,
     };
   }

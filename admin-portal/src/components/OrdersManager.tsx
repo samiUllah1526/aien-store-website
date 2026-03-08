@@ -6,6 +6,7 @@ import { formatMoney } from '../lib/formatMoney';
 import { OrderDetailModal } from './OrderDetailModal';
 import type { Order, OrderStatus } from '../lib/types';
 import { getAllowedNextStatuses, isTerminalStatus } from '../lib/orderStatus';
+import { orderStatusUpdateSchema } from '../lib/validation/orders';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS: OrderStatus[] = [
@@ -87,10 +88,12 @@ export function OrdersManager() {
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    const parsed = orderStatusUpdateSchema.safeParse({ status: newStatus });
+    if (!parsed.success) return;
     setUpdateError(null);
     setUpdatingId(orderId);
     try {
-      await api.put<Order>(`/orders/${orderId}`, { status: newStatus });
+      await api.put<Order>(`/orders/${orderId}`, { status: parsed.data.status });
       fetchOrders();
     } catch (err) {
       setUpdateError(err instanceof Error ? err.message : 'Failed to update status');
@@ -129,7 +132,7 @@ export function OrdersManager() {
       />
       {proofImageUrl && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 p-4"
           onClick={() => setProofImageUrl(null)}
           role="dialog"
           aria-modal="true"
@@ -401,7 +404,9 @@ export function OrdersManager() {
                       <ul className="space-y-2">
                         {order.items.map((item) => {
                           const imgSrc = item.productImage
-                            ? `${getApiBaseUrl().replace(/\/$/, '')}${item.productImage.startsWith('/') ? '' : '/'}${item.productImage}`
+                            ? item.productImage.startsWith('http')
+                              ? item.productImage
+                              : `${getApiBaseUrl().replace(/\/$/, '')}${item.productImage.startsWith('/') ? '' : '/'}${item.productImage}`
                             : null;
                           return (
                             <li key={item.id} className="flex items-center gap-2">
@@ -413,7 +418,8 @@ export function OrdersManager() {
                                 />
                               )}
                               <span>
-                                {item.productName ?? item.productId} × {item.quantity}
+                                {item.productName ?? item.productId}
+                                {item.color || item.size ? ` (${item.color ?? '—'} / ${item.size ?? '—'})` : ''} × {item.quantity}
                               </span>
                             </li>
                           );

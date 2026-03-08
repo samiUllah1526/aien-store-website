@@ -252,9 +252,10 @@ model Product {
   description           String?   @map("description")
   priceCents            Int       @map("price_cents")
   currency              String    @default("PKR") @map("currency")
+  /** Deprecated: variant dimensions are stored in product_variants. */
   sizes                 Json?     @map("sizes")
   featured              Boolean   @default(false) @map("featured")
-  /** Current sellable quantity. Never negative. Deduct on order create, restore on cancel. */
+  /** Deprecated: total stock is derived from variants. */
   stockQuantity         Int       @default(0) @map("stock_quantity")
   urduVerse             String?   @map("urdu_verse")
   urduVerseTransliteration String? @map("urdu_verse_transliteration")
@@ -263,11 +264,34 @@ model Product {
 
   productCategories   ProductCategory[]
   productMedia         ProductMedia[]
+  variants             ProductVariant[]
   orderItems           OrderItem[]
   userFavorites        UserFavorite[] @relation("ProductFavorites")
   inventoryMovements   InventoryMovement[]
 
   @@map("products")
+}
+
+model ProductVariant {
+  id                 String   @id @default(uuid()) @db.Uuid
+  productId          String   @map("product_id") @db.Uuid
+  color              String   @map("color")
+  size               String   @map("size")
+  sku                String?  @unique @map("sku")
+  stockQuantity      Int      @default(0) @map("stock_quantity")
+  priceOverrideCents Int?     @map("price_override_cents")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product            Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([productId, color, size])
+  @@index([productId])
+  @@index([productId, isActive])
+  @@map("product_variants")
 }
 
 model UserFavorite {
@@ -446,6 +470,10 @@ model OrderItem {
   id        String   @id @default(uuid()) @db.Uuid
   orderId   String   @map("order_id") @db.Uuid
   productId String   @map("product_id") @db.Uuid
+  variantId String   @map("variant_id") @db.Uuid
+  /** Snapshot values at order-time for fulfilment display. */
+  color     String?  @map("color")
+  size      String?  @map("size")
   quantity  Int      @map("quantity")
   unitCents Int      @map("unit_cents")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -453,7 +481,9 @@ model OrderItem {
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
 
+  @@index([variantId])
   @@map("order_items")
 }
 
@@ -471,6 +501,7 @@ enum InventoryMovementType {
 model InventoryMovement {
   id                 String                @id @default(uuid()) @db.Uuid
   productId          String                @map("product_id") @db.Uuid
+  variantId          String?               @map("variant_id") @db.Uuid
   orderId            String?               @map("order_id") @db.Uuid
   type               InventoryMovementType @map("type")
   /** Positive = stock in, negative = stock out. */
@@ -484,9 +515,11 @@ model InventoryMovement {
   updatedAt          DateTime              @updatedAt @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   performedBy User? @relation("InventoryMovementPerformedBy", fields: [performedByUserId], references: [id], onDelete: SetNull)
 
   @@index([productId])
+  @@index([variantId])
   @@index([orderId])
   @@map("inventory_movements")
 }

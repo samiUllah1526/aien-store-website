@@ -25,6 +25,7 @@ import { CURRENCIES } from '../../common/constants/currency';
 import { SettingsService } from '../settings/settings.service';
 import { VouchersService } from '../vouchers/vouchers.service';
 import { VoucherAuditService } from '../vouchers/voucher-audit.service';
+import { MAX_ORDER_ITEM_QUANTITY } from './dto/create-order-item.dto';
 
 @Injectable()
 export class OrdersService {
@@ -47,11 +48,12 @@ export class OrdersService {
   /**
    * Single source of truth for order totals. Computes from DB only; no client-supplied amounts.
    * Used by both quote() and create() so there is no room for calculation drift or integrity issues.
+   * Variant-first: all item pricing/stock is resolved from product_variants.
    */
   async computeOrderFromItems(
-    items: Array<{ productId: string; quantity: number }>,
+    items: Array<{ productId: string; variantId: string; quantity: number; color?: string | null; size?: string | null }>,
   ): Promise<{
-    orderItemsData: Array<{ productId: string; quantity: number; unitCents: number }>;
+    orderItemsData: Array<{ productId: string; variantId: string; quantity: number; unitCents: number; color?: string | null; size?: string | null }>;
     quoteItems: QuoteLineItemDto[];
     subtotalCents: number;
     currency: string;
@@ -59,18 +61,27 @@ export class OrdersService {
     if (!items?.length) {
       throw new BadRequestException('Order must have at least one item');
     }
-    const productIds = items.map((i) => i.productId);
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: { id: true, priceCents: true, currency: true, name: true },
+    const variantIds = [...new Set(items.map((i) => i.variantId))];
+    const variants = await this.prisma.productVariant.findMany({
+      where: { id: { in: variantIds } },
+      select: {
+        id: true,
+        productId: true,
+        color: true,
+        size: true,
+        stockQuantity: true,
+        isActive: true,
+        priceOverrideCents: true,
+        product: { select: { id: true, priceCents: true, currency: true, name: true } },
+      },
     });
-    const productMap = new Map(products.map((p) => [p.id, p]));
-    const missing = productIds.filter((id) => !productMap.has(id));
+    const variantMap = new Map(variants.map((v) => [v.id, v]));
+    const missing = variantIds.filter((id) => !variantMap.has(id));
     if (missing.length) {
-      throw new BadRequestException(`Products not found: ${missing.join(', ')}`);
+      throw new BadRequestException(`Variants not found: ${missing.join(', ')}`);
     }
 
-    const currencies = [...new Set(items.map((item) => productMap.get(item.productId)!.currency))];
+    const currencies = [...new Set(items.map((item) => variantMap.get(item.variantId)!.product.currency))];
     if (currencies.length > 1) {
       throw new BadRequestException(
         'All items must be in the same currency. Please create separate orders for different currencies.',
@@ -84,25 +95,56 @@ export class OrdersService {
     const currency = 'PKR';
 
     let subtotalCents = 0;
-    const orderItemsData: Array<{ productId: string; quantity: number; unitCents: number }> = [];
+    const orderItemsData: Array<{ productId: string; variantId: string; quantity: number; unitCents: number; color?: string | null; size?: string | null }> = [];
     const quoteItems: QuoteLineItemDto[] = [];
+    const requestedByVariant = new Map<string, number>();
+    for (const item of items) {
+      const clamped = Math.min(Math.max(1, Number(item.quantity) || 1), MAX_ORDER_ITEM_QUANTITY);
+      requestedByVariant.set(item.variantId, (requestedByVariant.get(item.variantId) ?? 0) + clamped);
+    }
 
     for (const item of items) {
-      const product = productMap.get(item.productId)!;
-      const unitCents = product.priceCents;
-      const lineTotalCents = unitCents * item.quantity;
+      const variant = variantMap.get(item.variantId)!;
+      if (variant.productId !== item.productId) {
+        throw new BadRequestException(`Variant ${item.variantId} does not belong to product ${item.productId}`);
+      }
+      if (!variant.isActive) {
+        throw new BadRequestException(`Variant ${variant.color}/${variant.size} is inactive`);
+      }
+      const quantity = Math.min(
+        Math.max(1, Number(item.quantity) || 1),
+        MAX_ORDER_ITEM_QUANTITY,
+      );
+      const requiredQty = requestedByVariant.get(item.variantId) ?? quantity;
+      if (variant.stockQuantity < requiredQty) {
+        throw new BadRequestException(
+          `Insufficient stock for "${variant.product.name}" (${variant.color}/${variant.size}). Available: ${variant.stockQuantity}, requested: ${requiredQty}.`,
+        );
+      }
+      const unitCents = variant.priceOverrideCents ?? variant.product.priceCents;
+      const lineTotalCents = unitCents * quantity;
       subtotalCents += lineTotalCents;
+      const rawColor = typeof item.color === 'string' ? item.color.trim().slice(0, 50) : '';
+      const color = rawColor.length > 0 ? rawColor : variant.color;
+      const rawSize = typeof item.size === 'string' ? item.size.trim().slice(0, 50) : '';
+      const size = rawSize.length > 0 ? rawSize : variant.size;
       orderItemsData.push({
         productId: item.productId,
-        quantity: item.quantity,
+        variantId: item.variantId,
+        quantity,
         unitCents,
+        color,
+        size,
       });
       quoteItems.push({
         productId: item.productId,
-        productName: product.name,
-        quantity: item.quantity,
+        variantId: item.variantId,
+        productName: variant.product.name,
+        quantity,
         unitCents,
         lineTotalCents,
+        color,
+        size,
       });
     }
 
@@ -111,7 +153,7 @@ export class OrdersService {
 
   /** Returns server-computed quote (no order created). All amounts from DB. */
   async quote(
-    items: Array<{ productId: string; quantity: number }>,
+    items: Array<{ productId: string; variantId: string; quantity: number; color?: string | null; size?: string | null }>,
     voucherCode?: string,
   ): Promise<QuoteResponseDto> {
     const { quoteItems, subtotalCents, currency } = await this.computeOrderFromItems(items);
@@ -569,8 +611,11 @@ export class OrdersService {
     items: Array<{
       id: string;
       productId: string;
+      variantId: string;
       quantity: number;
       unitCents: number;
+      color?: string | null;
+      size?: string | null;
         product: {
         id: string;
         name: string;
@@ -583,8 +628,11 @@ export class OrdersService {
     const items: OrderItemResponseDto[] = order.items.map((i) => ({
       id: i.id,
       productId: i.productId,
+      variantId: i.variantId,
       productName: i.product.name,
       productImage: this.productImagePath(i.product),
+      color: i.color ?? null,
+      size: i.size ?? null,
       quantity: i.quantity,
       unitCents: i.unitCents,
     }));

@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useZodForm } from '../../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../../lib/forms/mapApiErrorToForm';
+import { permissionCreateSchema, permissionEditSchema } from '../../lib/validation/settings';
 import { api } from '../../lib/api';
 import { isSuperAdmin } from '../../lib/auth';
 import type { PermissionGroup, PermissionDetail } from '../../lib/types';
@@ -8,19 +11,20 @@ export default function AdminSettingsPermissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createDescription, setCreateDescription] = useState('');
-  const [createCategory, setCreateCategory] = useState('');
   const [createCategoryDropdownOpen, setCreateCategoryDropdownOpen] = useState(false);
   const [createCategoryInputValue, setCreateCategoryInputValue] = useState('');
   const createCategoryDropdownRef = useRef<HTMLDivElement>(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDescription, setEditDescription] = useState('');
-  const [editCategory, setEditCategory] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
+  const createForm = useZodForm({
+    schema: permissionCreateSchema,
+    defaultValues: { name: '', description: '', category: '' },
+  });
+  const editForm = useZodForm({
+    schema: permissionEditSchema,
+    defaultValues: { description: '', category: '' },
+  });
 
   const superAdmin = isSuperAdmin();
 
@@ -37,68 +41,57 @@ export default function AdminSettingsPermissions() {
   }, [refetch]);
 
   const openCreate = () => {
-    setCreateName('');
-    setCreateDescription('');
-    setCreateCategory('');
+    createForm.reset({ name: '', description: '', category: '' });
     setCreateCategoryInputValue('');
     setCreateCategoryDropdownOpen(false);
-    setCreateError(null);
+    createForm.clearErrors();
     setCreateOpen(true);
   };
 
-  const submitCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = createName.trim().toLowerCase();
-    if (!name) {
-      setCreateError('Name is required (e.g. resource:action)');
-      return;
-    }
-    if (!/^[a-z0-9]+:[a-z0-9]+$/.test(name)) {
-      setCreateError('Name must use format resource:action (e.g. users:read, products:write)');
-      return;
-    }
+  const submitCreate = createForm.handleSubmit(async (values) => {
     setCreateSubmitting(true);
-    setCreateError(null);
+    createForm.clearErrors('root.serverError');
     try {
       await api.post<PermissionDetail>('/roles/permissions', {
-        name,
-        description: createDescription.trim() || undefined,
-        category: createCategory.trim() || undefined,
+        name: values.name,
+        description: values.description?.trim() || undefined,
+        category: values.category?.trim() || undefined,
       });
       await refetch();
       setCreateOpen(false);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create permission');
+      mapApiErrorToForm(err, createForm.setError);
     } finally {
       setCreateSubmitting(false);
     }
-  };
+  });
 
   const openEdit = (id: string, description: string | null, category: string | null) => {
     setEditingId(id);
-    setEditDescription(description ?? '');
-    setEditCategory(category ?? '');
-    setEditError(null);
+    editForm.reset({
+      description: description ?? '',
+      category: category ?? '',
+    });
+    editForm.clearErrors();
   };
 
-  const submitEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitEdit = editForm.handleSubmit(async (values) => {
     if (!editingId) return;
     setEditSubmitting(true);
-    setEditError(null);
+    editForm.clearErrors('root.serverError');
     try {
       await api.patch<PermissionDetail>(`/roles/permissions/${editingId}`, {
-        description: editDescription.trim() || undefined,
-        category: editCategory.trim() || undefined,
+        description: values.description?.trim() || undefined,
+        category: values.category?.trim() || undefined,
       });
       await refetch();
       setEditingId(null);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to update permission');
+      mapApiErrorToForm(err, editForm.setError);
     } finally {
       setEditSubmitting(false);
     }
-  };
+  });
 
   const existingCategories = Array.from(
     new Set(groups.map((g) => g.category).filter((c): c is string => c != null))
@@ -112,11 +105,11 @@ export default function AdminSettingsPermissions() {
     const handle = (e: MouseEvent) => {
       if (el.contains(e.target as Node)) return;
       setCreateCategoryDropdownOpen(false);
-      setCreateCategoryInputValue(createCategory);
+      setCreateCategoryInputValue(createForm.watch('category') ?? '');
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [createOpen, createCategoryDropdownOpen, createCategory]);
+  }, [createOpen, createCategoryDropdownOpen, createForm]);
 
   if (!superAdmin) {
     return (
@@ -213,8 +206,7 @@ export default function AdminSettingsPermissions() {
                 <input
                   id="create-name"
                   type="text"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
+                  {...createForm.register('name')}
                   placeholder="e.g. users:read, products:write"
                   className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                   autoFocus
@@ -231,8 +223,7 @@ export default function AdminSettingsPermissions() {
                 <input
                   id="create-description"
                   type="text"
-                  value={createDescription}
-                  onChange={(e) => setCreateDescription(e.target.value)}
+                  {...createForm.register('description')}
                   placeholder="Optional"
                   className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                   disabled={createSubmitting}
@@ -246,20 +237,21 @@ export default function AdminSettingsPermissions() {
                   <input
                     id="create-category"
                     type="text"
-                    value={createCategoryDropdownOpen ? createCategoryInputValue : createCategory}
+                    value={createCategoryDropdownOpen ? createCategoryInputValue : (createForm.watch('category') ?? '')}
                     onChange={(e) => {
                       setCreateCategoryInputValue(e.target.value);
+                      createForm.setValue('category', e.target.value, { shouldValidate: true });
                       setCreateCategoryDropdownOpen(true);
                     }}
                     onFocus={() => {
-                      setCreateCategoryInputValue(createCategory);
+                      setCreateCategoryInputValue(createForm.watch('category') ?? '');
                       setCreateCategoryDropdownOpen(true);
                     }}
                     onBlur={() => {
                       // Delay so option click registers
                       setTimeout(() => {
                         setCreateCategoryDropdownOpen(false);
-                        setCreateCategoryInputValue(createCategory);
+                        setCreateCategoryInputValue(createForm.watch('category') ?? '');
                       }, 150);
                     }}
                     placeholder="Search or add category…"
@@ -283,7 +275,7 @@ export default function AdminSettingsPermissions() {
                             className="cursor-pointer px-3 py-2 text-sm text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
                             onMouseDown={(e) => {
                               e.preventDefault();
-                              setCreateCategory(c);
+                              createForm.setValue('category', c, { shouldValidate: true });
                               setCreateCategoryInputValue(c);
                               setCreateCategoryDropdownOpen(false);
                             }}
@@ -301,7 +293,7 @@ export default function AdminSettingsPermissions() {
                             onMouseDown={(e) => {
                               e.preventDefault();
                               const newCat = createCategoryInputValue.trim();
-                              setCreateCategory(newCat);
+                              createForm.setValue('category', newCat, { shouldValidate: true });
                               setCreateCategoryInputValue(newCat);
                               setCreateCategoryDropdownOpen(false);
                             }}
@@ -321,9 +313,9 @@ export default function AdminSettingsPermissions() {
                   )}
                 </div>
               </div>
-              {createError && (
+              {createForm.formState.errors.root?.serverError?.message && (
                 <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-                  {createError}
+                  {createForm.formState.errors.root?.serverError?.message}
                 </p>
               )}
               <div className="flex justify-end gap-2 pt-2">
@@ -366,8 +358,7 @@ export default function AdminSettingsPermissions() {
                 <input
                   id="edit-description"
                   type="text"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
+                  {...editForm.register('description')}
                   placeholder="Optional"
                   className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                   disabled={editSubmitting}
@@ -381,8 +372,7 @@ export default function AdminSettingsPermissions() {
                   id="edit-category"
                   type="text"
                   list="edit-category-list"
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
+                  {...editForm.register('category')}
                   placeholder="e.g. Products, Users"
                   className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                   disabled={editSubmitting}
@@ -393,9 +383,9 @@ export default function AdminSettingsPermissions() {
                   ))}
                 </datalist>
               </div>
-              {editError && (
+              {editForm.formState.errors.root?.serverError?.message && (
                 <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-                  {editError}
+                  {editForm.formState.errors.root?.serverError?.message}
                 </p>
               )}
               <div className="flex justify-end gap-2 pt-2">
