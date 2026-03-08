@@ -34,6 +34,7 @@ const Icons = {
 };
 
 export default function AdminSettingsUsers() {
+  const [mounted, setMounted] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [total, setTotal] = useState(0);
@@ -56,6 +57,10 @@ export default function AdminSettingsUsers() {
   } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const superAdmin = isSuperAdmin();
 
@@ -189,6 +194,19 @@ export default function AdminSettingsUsers() {
       { variant: 'danger', confirmLabel: 'Remove user' }
     );
   };
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 p-12 text-center">
+          <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+      </div>
+    );
+  }
 
   if (!superAdmin) {
     return (

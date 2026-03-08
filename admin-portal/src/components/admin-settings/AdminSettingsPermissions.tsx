@@ -7,6 +7,7 @@ import { isSuperAdmin } from '../../lib/auth';
 import type { PermissionGroup, PermissionDetail } from '../../lib/types';
 
 export default function AdminSettingsPermissions() {
+  const [mounted, setMounted] = useState(false);
   const [groups, setGroups] = useState<PermissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,10 @@ export default function AdminSettingsPermissions() {
   });
 
   const superAdmin = isSuperAdmin();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const refetch = useCallback(() => {
     return api
@@ -110,6 +115,19 @@ export default function AdminSettingsPermissions() {
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [createOpen, createCategoryDropdownOpen, createForm]);
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 p-12 text-center">
+          <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+      </div>
+    );
+  }
 
   if (!superAdmin) {
     return (

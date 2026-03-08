@@ -13,6 +13,7 @@ const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['ACTIVE', 'DISABLED'] as const;
 
 export function UsersManager() {
+  const [mounted, setMounted] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [total, setTotal] = useState(0);
@@ -25,6 +26,10 @@ export function UsersManager() {
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const canRead = hasPermission('users:read');
   const canWrite = hasPermission('users:write');
@@ -82,6 +87,22 @@ export function UsersManager() {
     e.preventDefault();
     setPage(1);
   };
+
+  // Defer permission-dependent UI until after mount to avoid hydration mismatch (SSR has no localStorage).
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="p-12 text-center">
+            <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!canRead) {
     return (

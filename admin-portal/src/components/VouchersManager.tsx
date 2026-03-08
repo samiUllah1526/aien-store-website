@@ -50,8 +50,13 @@ export function VouchersManager() {
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [statsModalId, setStatsModalId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const debouncedSearch = useDebounce(searchInput.trim(), 400);
 
@@ -162,6 +167,21 @@ export function VouchersManager() {
       setError(err instanceof Error ? err.message : 'Failed to update status');
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="p-12 text-center">
+            <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!canRead) {
     return (
