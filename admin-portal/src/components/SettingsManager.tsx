@@ -140,7 +140,6 @@ export function SettingsManager() {
       setAnnouncement((data['announcement'] as AnnouncementValue) ?? { items: [] });
       setHero((data['hero'] as HeroValue) ?? { slides: [] });
     } catch (err) {
-      console.log("settingserror=>>>>", err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
       setSettings(null);
       setPublicSettings(null);

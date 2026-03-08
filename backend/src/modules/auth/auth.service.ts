@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -115,6 +115,9 @@ export class AuthService {
     }
     const permissions = this.resolvePermissions(user);
     const roleNames = user.roles.map((ur) => ur.role.name);
+    if (audience === 'admin' && !permissions.includes('admin:access')) {
+      throw new ForbiddenException('You do not have access to the admin portal.');
+    }
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
@@ -175,6 +178,9 @@ export class AuthService {
       });
       const permissions = this.resolvePermissions(existing);
       const roleNames = existing.roles.map((ur) => ur.role.name);
+      if (audience === 'admin' && !permissions.includes('admin:access')) {
+        throw new ForbiddenException('You do not have access to the admin portal.');
+      }
       const { accessToken } = this.buildTokens(
         {
           id: existing.id,
@@ -190,6 +196,9 @@ export class AuthService {
         expiresIn: this.accessExpiresSec,
         user: { id: existing.id, email: existing.email, name: existing.name, permissions, roleNames },
       };
+    }
+    if (audience === 'admin') {
+      throw new ForbiddenException('You do not have access to the admin portal.');
     }
     const customerRole = await this.prisma.role.findFirst({ where: { name: 'Customer' } });
     if (!customerRole) {
