@@ -119,13 +119,13 @@ export function SettingsManager() {
     setLoading(true);
     setError(null);
     try {
-      const [res, pubRes] = await Promise.all([
+      const [res, displayRes] = await Promise.all([
         api.get<SettingsMap>('/settings'),
-        api.get<PublicSettings>('/settings/public'),
+        api.get<PublicSettings>('/settings/display'),
       ]);
       const data = res.data ?? {};
       setSettings(data);
-      setPublicSettings(pubRes.data ?? null);
+      setPublicSettings(displayRes.data ?? null);
       setGeneral((data['general'] as GeneralValue) ?? {});
       setAbout((data['about'] as AboutValue) ?? {});
       setFooter((data['footer'] as FooterValue) ?? {});

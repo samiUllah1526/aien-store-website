@@ -15,6 +15,13 @@ import { RequirePermission } from '../../modules/auth/decorators/require-permiss
 export class AdminSettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
+  @Get('display')
+  @RequirePermission('settings:read')
+  async getDisplay() {
+    const data = await this.settingsService.getPublic();
+    return ApiResponseDto.ok(data);
+  }
+
   @Get()
   @RequirePermission('settings:read')
   async getAll() {
