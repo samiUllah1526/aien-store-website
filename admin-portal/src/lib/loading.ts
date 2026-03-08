@@ -8,7 +8,7 @@ const LOADING_EVENT = 'admin-loading-change';
 
 /** Minimum time (ms) to show the loader so fast requests don't flash. */
 // 5 seconds -> 5 * 1000 = 5000
-const MIN_LOADING_DISPLAY_MS = 1000 / 2;
+const MIN_LOADING_DISPLAY_MS = 400;
 
 let count = 0;
 const startTimes: number[] = [];
