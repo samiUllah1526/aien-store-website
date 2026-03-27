@@ -15,6 +15,7 @@ pnpm-debug.log*
 
 # environment variables (never commit real secrets)
 .env
+# environment variables
 !.env.example
 
 # editor / IDE
