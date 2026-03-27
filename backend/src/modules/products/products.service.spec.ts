@@ -20,7 +20,19 @@ const mockProduct = {
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
   productCategories: [],
-  productMedia: [{ media: { path: 'products/abc.jpg' } }],
+  productMedia: [{ media: { id: 'm1', path: 'products/abc.jpg', deliveryUrl: null } }],
+  variants: [
+    {
+      id: 'v1',
+      color: 'Black',
+      size: 'M',
+      sku: 'SKU-1',
+      stockQuantity: 5,
+      priceOverrideCents: null,
+      isActive: true,
+      variantMedia: [],
+    },
+  ],
 };
 
 describe('ProductsService', () => {
@@ -37,6 +49,8 @@ describe('ProductsService', () => {
     };
     media: { findMany: jest.Mock };
     productMedia: { createMany: jest.Mock; deleteMany: jest.Mock };
+    productVariantMedia: { createMany: jest.Mock; deleteMany: jest.Mock };
+    productVariant: { findMany: jest.Mock; update: jest.Mock; create: jest.Mock; updateMany: jest.Mock };
     productCategory: { deleteMany: jest.Mock; createMany: jest.Mock };
     category: { findUnique: jest.Mock };
   };
@@ -54,6 +68,8 @@ describe('ProductsService', () => {
       },
       media: { findMany: jest.fn() },
       productMedia: { createMany: jest.fn(), deleteMany: jest.fn() },
+      productVariantMedia: { createMany: jest.fn(), deleteMany: jest.fn() },
+      productVariant: { findMany: jest.fn(), update: jest.fn(), create: jest.fn(), updateMany: jest.fn() },
       productCategory: { deleteMany: jest.fn(), createMany: jest.fn() },
       category: { findUnique: jest.fn() },
     };
@@ -74,6 +90,7 @@ describe('ProductsService', () => {
         name: 'Test Product',
         slug: 'test-product',
         priceCents: 4200,
+        variants: [{ color: 'Black', size: 'M', stockQuantity: 5 }],
       };
       prisma.product.findUnique.mockResolvedValue(null);
       prisma.product.create.mockResolvedValue({ ...mockProduct, id: mockProduct.id });
@@ -104,7 +121,7 @@ describe('ProductsService', () => {
     it('throws ConflictException when slug exists', async () => {
       prisma.product.findUnique.mockResolvedValue({ id: 'existing' });
       await expect(
-        service.create({ name: 'A', slug: 'existing-slug', priceCents: 100 }),
+        service.create({ name: 'A', slug: 'existing-slug', priceCents: 100, variants: [{ color: 'Black', size: 'M', stockQuantity: 1 }] }),
       ).rejects.toThrow(ConflictException);
       expect(prisma.product.create).not.toHaveBeenCalled();
     });
@@ -117,6 +134,7 @@ describe('ProductsService', () => {
           name: 'A',
           slug: 'new-slug',
           priceCents: 100,
+          variants: [{ color: 'Black', size: 'M', stockQuantity: 1 }],
           mediaIds: ['missing-media-id'],
         }),
       ).rejects.toThrow(BadRequestException);

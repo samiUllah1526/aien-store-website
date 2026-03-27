@@ -1,0 +1,142 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Variant API Contract (Strict)
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Variant API Contract (Strict)
+
+This document is the **source of truth** for product variants across backend, storefront, and admin.
+
+If any request/response shape below changes, update this page and all affected DTOs/types in the same PR.
+
+---
+
+## Non-negotiable invariants
+
+- Product purchase logic is **variant-first** (`variantId` is required for quote/checkout).
+- `variantId` must belong to `productId` (validated server-side).
+- Price is resolved on server from DB:
+  - `unitCents = variant.priceOverrideCents ?? product.priceCents`
+- Inventory is deducted/restored per variant only.
+- `product.stockQuantity` is derived aggregate from variants (not source of truth).
+- Admin stock adjustment on multi-variant product requires `variantId`.
+
+---
+
+## Product contracts
+
+### Create/Update product (`POST /admin/products`, `PUT /admin/products/:id`)
+
+Required payload fields (simplified):
+
+```json
+{
+  "name": "Baggy Shirt",
+  "slug": "baggy-shirt",
+  "priceCents": 499900,
+  "currency": "PKR",
+  "variants": [
+    {
+      "id": "optional-on-update",
+      "color": "Black",
+      "size": "M",
+      "sku": "BAGGY-BLK-M",
+      "stockQuantity": 12,
+      "priceOverrideCents": 479900,
+      "isActive": true
+    }
+  ]
+}
+```
+
+### Product response (`GET /store/products*`, `GET /admin/products*`)
+
+Must include:
+
+- `variants[]` with `{ id, color, size, sku, stockQuantity, priceOverrideCents, isActive }`
+- `colors[]` (derived unique list)
+- `sizes[]` (derived unique list)
+- `stockQuantity` and `inStock` derived from variants
+
+---
+
+## Checkout contracts (store)
+
+### Quote (`POST /store/orders/quote`)
+
+`items[]` shape:
+
+```json
+{
+  "productId": "uuid",
+  "variantId": "uuid",
+  "color": "Black",
+  "size": "M",
+  "quantity": 1
+}
+```
+
+### Checkout (`POST /store/orders/checkout`)
+
+Same `items[]` shape as quote.
+
+### Quote and order item responses
+
+Each line item must include:
+
+- `productId`
+- `variantId`
+- `color` (snapshot)
+- `size` (snapshot)
+- `quantity`
+- `unitCents`
+
+---
+
+## Inventory contracts
+
+### Admin stock adjust (`PATCH /admin/products/:id/stock`)
+
+Payload:
+
+```json
+{
+  "variantId": "uuid-when-product-has-multiple-variants",
+  "quantityDelta": -2,
+  "reference": "Damage write-off"
+}
+```
+
+### Inventory history (`GET /admin/inventory/products/:productId/movements`)
+
+Supported query params:
+
+- `page`
+- `limit`
+- `variantId` (optional filter)
+
+Each movement row includes:
+
+- `variantId`
+- `variantColor`
+- `variantSize`
+- `quantityDelta`
+- `stockBefore`
+- `stockAfter`
+- audit fields (`type`, `reference`, performer info, timestamps)
+
+---
+
+## Regression checklist (must pass before merge)
+
+- Create product with 2+ variants from admin form.
+- Storefront product page can select color/size and adds correct `variantId` to cart.
+- Quote + checkout payload sends `variantId`.
+- Order in admin displays `color / size`.
+- Stock deduction reduces only selected variant.
+- Admin movement history filter by `variantId` works.
+

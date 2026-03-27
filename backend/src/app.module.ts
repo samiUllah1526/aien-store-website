@@ -19,6 +19,9 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { StoreModule } from './store/store.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -33,6 +36,8 @@ import { JobsModule } from './modules/jobs/jobs.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    StoreModule,
+    AdminModule,
     MediaModule,
     MailModule,
     ProductsModule,
@@ -47,6 +52,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
     FavoritesModule,
     ProfileModule,
     JobsModule,
+    RolesModule,
   ],
 })
 export class AppModule {}

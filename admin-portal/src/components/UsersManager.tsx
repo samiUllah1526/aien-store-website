@@ -1,14 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Controller } from 'react-hook-form';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
 import { useDebounce } from '../hooks/useDebounce';
 import { formatDateTime } from '../lib/format';
 import type { User, Role } from '../lib/types';
+import { userFormSchema } from '../lib/validation/user';
+import { useZodForm } from '../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['ACTIVE', 'DISABLED'] as const;
+type StatusOption = (typeof STATUS_OPTIONS)[number];
+
+function toStatusOption(s: string | undefined): StatusOption {
+  return s === 'DISABLED' ? 'DISABLED' : 'ACTIVE';
+}
 
 export function UsersManager() {
+  const [mounted, setMounted] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [total, setTotal] = useState(0);
@@ -21,6 +31,10 @@ export function UsersManager() {
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const canRead = hasPermission('users:read');
   const canWrite = hasPermission('users:write');
@@ -78,6 +92,22 @@ export function UsersManager() {
     e.preventDefault();
     setPage(1);
   };
+
+  // Defer permission-dependent UI until after mount to avoid hydration mismatch (SSR has no localStorage).
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="p-12 text-center">
+            <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!canRead) {
     return (
@@ -165,6 +195,7 @@ export function UsersManager() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Sign-in</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                 {canWrite && (
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -191,6 +222,9 @@ export function UsersManager() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
@@ -221,6 +255,7 @@ export function UsersManager() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Email</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Roles</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Sign-in</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Last login</th>
                   {canWrite && (
                     <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">Actions</th>
@@ -251,6 +286,30 @@ export function UsersManager() {
                       >
                         {user.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {user.hasGoogleLogin && user.hasPassword && (
+                          <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" title="Can sign in with Google or password">
+                            Google + Password
+                          </span>
+                        )}
+                        {user.hasGoogleLogin && !user.hasPassword && (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" title="Can only sign in with Google">
+                            Google only
+                          </span>
+                        )}
+                        {user.hasPassword && !user.hasGoogleLogin && (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200" title="Can sign in with email/password only">
+                            Password only
+                          </span>
+                        )}
+                        {!user.hasPassword && !user.hasGoogleLogin && (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-600 dark:text-slate-400" title="No sign-in method (invite pending or legacy)">
+                            —
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{formatDateTime(user.lastLoginAt)}</td>
                     {canWrite && (
@@ -347,79 +406,68 @@ interface UserFormModalProps {
 }
 
 function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) {
-  const [firstName, setFirstName] = useState(user?.firstName ?? user?.name?.split(' ')[0] ?? '');
-  const [lastName, setLastName] = useState(user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '');
-  const [name, setName] = useState(user?.name ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState<string>(user?.status ?? 'ACTIVE');
-  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
-    () => new Set(user?.roleIds ?? [])
-  );
+  const form = useZodForm({
+    schema: userFormSchema,
+    defaultValues: {
+      firstName: user?.firstName ?? user?.name?.split(' ')[0] ?? '',
+      lastName: user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '',
+      name: user?.name ?? '',
+      email: user?.email ?? '',
+      password: '',
+      status: toStatusOption(user?.status),
+      roleIds: user?.roleIds ?? [],
+      isEdit: !!user,
+    },
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = form.formState.errors.root?.serverError?.message;
 
   useEffect(() => {
-    setFirstName(user?.firstName ?? user?.name?.split(' ')[0] ?? '');
-    setLastName(user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '');
-    setName(user?.name ?? '');
-    setEmail(user?.email ?? '');
-    setPassword('');
-    setStatus(user?.status ?? 'ACTIVE');
-    setSelectedRoleIds(new Set(user?.roleIds ?? []));
+    form.reset({
+      firstName: user?.firstName ?? user?.name?.split(' ')[0] ?? '',
+      lastName: user?.lastName ?? (user?.name?.split(' ').slice(1).join(' ') || '') ?? '',
+      name: user?.name ?? '',
+      email: user?.email ?? '',
+      password: '',
+      status: toStatusOption(user?.status),
+      roleIds: user?.roleIds ?? [],
+      isEdit: !!user,
+    });
   }, [user]);
 
-  const toggleRole = (roleId: string) => {
-    setSelectedRoleIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(roleId)) next.delete(roleId);
-      else next.add(roleId);
-      return next;
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!user && password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-    if (user && password && password.length < 8) {
-      setError('Password must be at least 8 characters if provided');
-      return;
-    }
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
-      const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ').trim() || name.trim();
+      const displayName = [values.firstName?.trim(), values.lastName?.trim()].filter(Boolean).join(' ').trim() || (values.name ?? '').trim();
       if (user) {
-        const body: { firstName?: string; lastName?: string; name?: string; password?: string; status?: string; roleIds?: string[] } = {
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
+        const body: { firstName?: string; lastName?: string; name?: string; password?: string; status?: StatusOption; roleIds?: string[] } = {
+          firstName: values.firstName?.trim() || undefined,
+          lastName: values.lastName?.trim() || undefined,
           name: displayName,
-          status,
-          roleIds: Array.from(selectedRoleIds),
+          status: values.status,
+          roleIds: values.roleIds,
         };
-        if (password) body.password = password;
+        if (values.password) body.password = values.password;
         await api.put<User>(`/users/${user.id}`, body);
       } else {
         await api.post<User>('/users', {
           name: displayName,
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
-          email,
-          password,
-          status,
-          roleIds: Array.from(selectedRoleIds),
+          firstName: values.firstName?.trim() || undefined,
+          lastName: values.lastName?.trim() || undefined,
+          email: values.email,
+          password: values.password,
+          status: values.status,
+          roleIds: values.roleIds,
         });
       }
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
 
   return (
     <div
@@ -429,10 +477,35 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
       aria-labelledby="user-form-title"
     >
       <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:border dark:border-slate-700 dark:bg-slate-800">
-        <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <h2 id="user-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {user ? 'Edit user' : 'Add user'}
           </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+          {user && (user.hasPassword || user.hasGoogleLogin) && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {user.hasGoogleLogin && user.hasPassword && (
+                <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Google + Password</span>
+              )}
+              {user.hasGoogleLogin && !user.hasPassword && (
+                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Google only</span>
+              )}
+              {user.hasPassword && !user.hasGoogleLogin && (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200">Password only</span>
+              )}
+            </div>
+          )}
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
@@ -446,8 +519,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
               <input
                 id="user-first-name"
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                {...form.register('firstName')}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
               />
             </div>
@@ -458,8 +530,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
               <input
                 id="user-last-name"
                 type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                {...form.register('lastName')}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
               />
             </div>
@@ -472,8 +543,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
               id="user-email"
               type="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+                {...form.register('email')}
               disabled={!!user}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
             />
@@ -486,8 +556,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
             <input
               id="user-password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+                {...form.register('password')}
               required={!user}
               minLength={8}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
@@ -496,8 +565,7 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Status</label>
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              {...form.register('status')}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             >
               {STATUS_OPTIONS.map((s) => (
@@ -509,22 +577,40 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
           </div>
           <div>
             <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Roles</span>
-            <div className="flex flex-wrap gap-3">
-              {roles.map((role) => (
-                <label key={role.id} className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedRoleIds.has(role.id)}
-                    onChange={() => toggleRole(role.id)}
-                    className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400 focus:ring-slate-500"
-                  />
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
-                </label>
-              ))}
-              {roles.length === 0 && (
-                <span className="text-sm text-slate-500 dark:text-slate-400">No roles in the system.</span>
-              )}
-            </div>
+            <Controller
+              control={form.control}
+              name="roleIds"
+              render={({ field }) => {
+                const value = field.value ?? [];
+                return (
+                <div className="flex flex-wrap gap-3">
+                  {roles.map((role) => {
+                    const selected = value.includes(role.id);
+                    return (
+                      <label key={role.id} className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() =>
+                            field.onChange(
+                              selected
+                                ? value.filter((id: string) => id !== role.id)
+                                : [...value, role.id],
+                            )
+                          }
+                          className="h-4 w-4 rounded border-slate-300 text-slate-600 dark:text-slate-400 focus:ring-slate-500"
+                        />
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
+                      </label>
+                    );
+                  })}
+                  {roles.length === 0 && (
+                    <span className="text-sm text-slate-500 dark:text-slate-400">No roles in the system.</span>
+                  )}
+                </div>
+              );
+              }}
+            />
           </div>
           <div className="flex gap-3 pt-2">
             <button

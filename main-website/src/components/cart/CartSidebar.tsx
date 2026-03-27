@@ -5,7 +5,9 @@
 
 import { useEffect } from 'react';
 import { useCart } from '../../store/cartStore';
+import { MAX_CART_QUANTITY } from '../../store/cartStore';
 import { formatMoney } from '../../lib/formatMoney';
+import ColorSwatch from '../product/ColorSwatch';
 
 export default function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalItems, totalAmount, cartCurrency, hasMixedCurrencies } =
@@ -24,18 +26,18 @@ export default function CartSidebar() {
   return (
     <>
       <div
-        className="fixed inset-0 bg-charcoal/40 z-40 transition-opacity duration-300"
+        className="fixed inset-0 bg-charcoal/40 z-[100] transition-opacity duration-300"
         aria-hidden
         onClick={closeCart}
       />
       <aside
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-50 flex flex-col animate-fade-in rounded-l-xl"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-[101] flex flex-col shadow-xl sm:rounded-l-xl"
         role="dialog"
         aria-label="Shopping cart"
       >
-        <div className="flex items-center justify-between p-4 border-b border-ash/20">
-          <div>
-            <h2 className="font-display text-xl text-soft-charcoal dark:text-off-white">Cart</h2>
+        <div className="flex items-center justify-between p-4 sm:p-4 border-b border-ash/20">
+          <div className="min-w-0">
+            <h2 className="font-display text-lg sm:text-xl text-soft-charcoal dark:text-off-white">Cart</h2>
             <p className="text-sm text-ash mt-0.5">
               {totalItems} {totalItems === 1 ? 'item' : 'items'}
             </p>
@@ -43,7 +45,7 @@ export default function CartSidebar() {
           <button
             type="button"
             onClick={closeCart}
-            className="p-2 text-soft-charcoal dark:text-off-white hover:text-ash transition-colors focus-ring rounded"
+            className="p-2.5 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-ash transition-colors focus-ring rounded"
             aria-label="Close cart"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +60,7 @@ export default function CartSidebar() {
             <ul className="space-y-4">
               {items.map((item) => (
                 <li
-                  key={`${item.productId}-${item.size}`}
+                  key={item.variantId}
                   className="flex gap-3 pb-4 border-b border-ash/20 last:border-0"
                 >
                   <img
@@ -69,35 +71,37 @@ export default function CartSidebar() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-soft-charcoal dark:text-off-white truncate">{item.name}</p>
                     <p className="text-sm text-ash">
-                      {item.size} × {item.quantity}
+                      <ColorSwatch color={item.color} size="sm" aria-label={`Color: ${item.color}`} />
+                      {' / '}{item.size} × {item.quantity}
                     </p>
                     <p className="text-sm text-soft-charcoal dark:text-off-white font-medium mt-1">
                       {formatMoney(item.price * item.quantity, item.currency)}
                     </p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() =>
-                          updateQuantity(item.productId, item.size, item.quantity - 1)
+                          updateQuantity(item.variantId, item.quantity - 1)
                         }
-                        className="w-7 h-7 rounded border border-ash/40 text-soft-charcoal dark:text-off-white hover:bg-ash/20 text-sm"
+                        className="min-w-[2.75rem] min-h-[2.75rem] w-9 h-9 flex items-center justify-center rounded border border-ash/40 text-soft-charcoal dark:text-off-white hover:bg-ash/20 text-sm font-medium"
                       >
                         −
                       </button>
-                      <span className="w-6 text-center text-sm text-soft-charcoal dark:text-off-white">{item.quantity}</span>
+                      <span className="w-7 text-center text-sm text-soft-charcoal dark:text-off-white flex items-center justify-center">{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() =>
-                          updateQuantity(item.productId, item.size, item.quantity + 1)
+                          updateQuantity(item.variantId, Math.min(item.quantity + 1, MAX_CART_QUANTITY))
                         }
-                        className="w-7 h-7 rounded border border-ash/40 text-soft-charcoal dark:text-off-white hover:bg-ash/20 text-sm"
+                        disabled={item.quantity >= MAX_CART_QUANTITY}
+                        className="min-w-[2.75rem] min-h-[2.75rem] w-9 h-9 flex items-center justify-center rounded border border-ash/40 text-soft-charcoal dark:text-off-white hover:bg-ash/20 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         +
                       </button>
                       <button
                         type="button"
-                        onClick={() => removeItem(item.productId, item.size)}
-                        className="ml-2 text-sm text-ash hover:text-soft-charcoal dark:hover:text-off-white"
+                        onClick={() => removeItem(item.variantId)}
+                        className="min-h-[2.75rem] flex items-center px-2 text-sm text-ash hover:text-soft-charcoal dark:hover:text-off-white"
                       >
                         Remove
                       </button>

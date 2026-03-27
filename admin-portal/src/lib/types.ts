@@ -1,3 +1,16 @@
+export interface ProductVariant {
+  id: string;
+  color: string;
+  size: string;
+  sku: string | null;
+  stockQuantity: number;
+  priceOverrideCents: number | null;
+  isActive: boolean;
+  image?: string;
+  images?: string[];
+  mediaIds?: string[];
+}
+
 /** Product list item from GET /products */
 export interface ProductListItem {
   id: string;
@@ -6,6 +19,8 @@ export interface ProductListItem {
   price: number;
   currency: string;
   image: string;
+  variants: ProductVariant[];
+  colors: string[];
   sizes: string[];
   featured: boolean;
   /** Current stock level. */
@@ -26,6 +41,9 @@ export interface Product {
   currency: string;
   image: string;
   images: string[];
+  mediaIds?: string[];
+  variants: ProductVariant[];
+  colors: string[];
   sizes: string[];
   categories: Array<{ id: string; name: string; slug: string }>;
   category: string | null;
@@ -49,7 +67,16 @@ export interface ProductFormData {
   categoryIds?: string[];
   priceCents: number;
   currency?: string;
-  sizes?: string[];
+  variants: Array<{
+    id?: string;
+    color: string;
+    size: string;
+    sku?: string;
+    stockQuantity: number;
+    priceOverrideCents?: number;
+    isActive?: boolean;
+    mediaIds?: string[];
+  }>;
   featured?: boolean;
   mediaIds?: string[];
 }
@@ -69,8 +96,12 @@ export type OrderStatus =
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId: string;
   productName?: string;
   productImage?: string | null;
+  color?: string | null;
+  /** Size at time of order (e.g. S, M, L). Optional. */
+  size?: string | null;
   quantity: number;
   unitCents: number;
 }
@@ -131,6 +162,13 @@ export interface User {
   lastLoginAt: string | null;
   roleIds: string[];
   roles: UserRoleDto[];
+  permissions?: string[];
+  isSuperAdmin?: boolean;
+  directPermissionIds?: string[];
+  /** True if user can sign in with email/password. */
+  hasPassword?: boolean;
+  /** True if user has linked Google sign-in. */
+  hasGoogleLogin?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +176,33 @@ export interface User {
 export interface Role {
   id: string;
   name: string;
+  description?: string | null;
+}
+
+/** Role with counts (GET /roles). */
+export interface RoleDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  userCount: number;
+  permissionCount: number;
+  permissionIds: string[];
+}
+
+/** Permissions grouped by category (GET /roles/permissions/grouped). */
+export interface PermissionGroup {
+  category: string | null;
+  permissions: Array<{ id: string; name: string; description: string | null }>;
+}
+
+/** Single permission as returned by POST /roles/permissions and PATCH /roles/permissions/:id */
+export interface PermissionDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +214,9 @@ export interface Category {
   name: string;
   slug: string;
   description: string | null;
+  bannerImageUrl: string | null;
+  showOnLanding: boolean;
+  landingOrder: number | null;
   parentId: string | null;
   createdAt: string;
   updatedAt: string;

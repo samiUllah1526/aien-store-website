@@ -34,6 +34,15 @@ export class CategoriesController {
     return ApiResponseDto.ok(data);
   }
 
+  /** Public: categories to show on storefront landing page (with banner + product count). Must be before :id. */
+  @Get('landing')
+  @Public()
+  @ApiOperation({ summary: 'Landing categories (public)', security: [] })
+  async findLanding() {
+    const data = await this.categoriesService.findLandingCategories();
+    return ApiResponseDto.ok(data);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('categories:read')

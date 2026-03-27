@@ -27,6 +27,9 @@ export class CategoriesService {
         name: dto.name,
         slug: dto.slug,
         description: dto.description ?? null,
+        bannerImageUrl: dto.bannerImageUrl ?? null,
+        showOnLanding: dto.showOnLanding ?? false,
+        landingOrder: dto.landingOrder ?? null,
         parentId: dto.parentId ?? null,
       },
     });
@@ -38,6 +41,9 @@ export class CategoriesService {
       name: string;
       slug: string;
       description: string | null;
+      bannerImageUrl: string | null;
+      showOnLanding: boolean;
+      landingOrder: number | null;
       parentId: string | null;
       createdAt: Date;
       updatedAt: Date;
@@ -64,9 +70,40 @@ export class CategoriesService {
       name: c.name,
       slug: c.slug,
       description: c.description,
+      bannerImageUrl: c.bannerImageUrl,
+      showOnLanding: c.showOnLanding,
+      landingOrder: c.landingOrder,
       parentId: c.parentId,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
+      productCount: c._count.productCategories,
+    }));
+  }
+
+  /** Public: categories to show on storefront landing, with banner and product count. */
+  async findLandingCategories(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      description: string | null;
+      bannerImageUrl: string | null;
+      landingOrder: number | null;
+      productCount: number;
+    }>
+  > {
+    const categories = await this.prisma.category.findMany({
+      where: { showOnLanding: true },
+      orderBy: [{ landingOrder: 'asc' }, { name: 'asc' }],
+      include: { _count: { select: { productCategories: true } } },
+    });
+    return categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      bannerImageUrl: c.bannerImageUrl,
+      landingOrder: c.landingOrder,
       productCount: c._count.productCategories,
     }));
   }
@@ -114,6 +151,9 @@ export class CategoriesService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.slug !== undefined && { slug: dto.slug }),
         ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.bannerImageUrl !== undefined && { bannerImageUrl: dto.bannerImageUrl }),
+        ...(dto.showOnLanding !== undefined && { showOnLanding: dto.showOnLanding }),
+        ...(dto.landingOrder !== undefined && { landingOrder: dto.landingOrder }),
         ...(dto.parentId !== undefined && { parentId: dto.parentId }),
       },
     });

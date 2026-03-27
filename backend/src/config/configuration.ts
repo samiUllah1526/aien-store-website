@@ -56,12 +56,22 @@ export default function configuration(env: EnvSource = process.env) {
     jwt: {
       secret: getOr(env, 'JWT_SECRET', 'change-me-in-production'),
       accessExpiresSec: getNumber(env, 'JWT_ACCESS_EXPIRES_SEC', 86400),
+      /** Issuer (iss claim). e.g. API_URL or app name. If set, JWT strategy validates it. */
+      issuer: get(env, 'JWT_ISSUER') || get(env, 'API_URL')?.replace(/\/$/, ''),
     },
 
     urls: {
       app: get(env, 'APP_URL')?.replace(/\/$/, '') ?? 'https://example.com',
       admin: get(env, 'ADMIN_URL')?.replace(/\/$/, ''),
       adminLogin: get(env, 'ADMIN_LOGIN_URL')?.replace(/\/$/, ''),
+      /** Backend public URL (for OAuth callback). e.g. https://api.example.com */
+      api: get(env, 'API_URL')?.replace(/\/$/, ''),
+    },
+
+    /** Google OAuth (optional). Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable. */
+    google: {
+      clientId: get(env, 'GOOGLE_CLIENT_ID'),
+      clientSecret: get(env, 'GOOGLE_CLIENT_SECRET'),
     },
 
     mail: {

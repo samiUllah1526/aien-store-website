@@ -1,0 +1,51 @@
+---
+/**
+ * Admin Settings wrapper: tabs (Users, Roles, Permissions) on top, content below.
+ * Use with AdminLayout so main nav is still visible.
+ */
+interface Props {
+  activeTab: 'users' | 'roles' | 'permissions';
+}
+
+const { activeTab } = Astro.props;
+---
+
+<div class="space-y-0">
+  <nav class="border-b border-slate-200 dark:border-slate-700" aria-label="Admin settings tabs">
+    <div class="flex gap-0">
+      <a
+        href="/admin/admin-settings/users"
+        class={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          activeTab === 'users'
+            ? 'border-slate-800 text-slate-900 dark:border-slate-200 dark:text-slate-100'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        Users
+      </a>
+      <a
+        href="/admin/admin-settings/roles"
+        class={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          activeTab === 'roles'
+            ? 'border-slate-800 text-slate-900 dark:border-slate-200 dark:text-slate-100'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        Roles
+      </a>
+      <a
+        href="/admin/admin-settings/permissions"
+        class={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          activeTab === 'permissions'
+            ? 'border-slate-800 text-slate-900 dark:border-slate-200 dark:text-slate-100'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        Permissions
+      </a>
+    </div>
+  </nav>
+  <div class="pt-6">
+    <slot />
+  </div>
+</div>

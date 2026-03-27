@@ -14,6 +14,33 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!';
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? 'Admin';
 
+/** Permission name -> optional category for grouping in UI */
+const PERMISSIONS_WITH_CATEGORY: Array<{ name: string; category?: string }> = [
+  { name: 'admin:access', category: 'Admin Portal' },
+  { name: 'dashboard:read', category: 'Admin Portal' },
+  { name: 'docs:read', category: 'Admin Portal' },
+  { name: 'users:read', category: 'User Management' },
+  { name: 'users:write', category: 'User Management' },
+  { name: 'orders:read', category: 'Orders' },
+  { name: 'orders:write', category: 'Orders' },
+  { name: 'products:read', category: 'Catalog' },
+  { name: 'products:write', category: 'Catalog' },
+  { name: 'inventory:read', category: 'Inventory' },
+  { name: 'inventory:write', category: 'Inventory' },
+  { name: 'categories:read', category: 'Catalog' },
+  { name: 'categories:write', category: 'Catalog' },
+  { name: 'vouchers:read', category: 'Billing' },
+  { name: 'vouchers:write', category: 'Billing' },
+  { name: 'settings:read', category: 'Settings' },
+  { name: 'settings:write', category: 'Settings' },
+  { name: 'emaillogs:read', category: 'Audit' },
+  { name: 'emaillogs:resend', category: 'Audit' },
+  { name: 'jobs:read', category: 'Audit' },
+  { name: 'jobs:retry', category: 'Audit' },
+  { name: 'jobs:cancel', category: 'Audit' },
+  { name: 'superadmin:manage', category: 'Super Admin' },
+];
+
 const PERMISSION_NAMES = [
   'users:read',
   'users:write',
@@ -36,33 +63,55 @@ const PERMISSION_NAMES = [
 
 async function main() {
   const permissions: { id: string; name: string }[] = [];
-  for (const name of PERMISSION_NAMES) {
+  for (const { name, category } of PERMISSIONS_WITH_CATEGORY) {
     const p = await prisma.permission.upsert({
       where: { name },
-      create: { name },
-      update: {},
+      create: { name, category: category ?? null },
+      update: { category: category ?? null },
     });
     permissions.push(p);
   }
 
   const adminRole = await prisma.role.upsert({
     where: { name: 'Admin' },
-    create: { name: 'Admin' },
-    update: {},
+    create: { name: 'Admin', description: 'Admin portal access with configurable permissions' },
+    update: { description: 'Admin portal access with configurable permissions' },
+  });
+
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'Super Admin' },
+    create: {
+      name: 'Super Admin',
+      description: 'Full access: invite users, manage roles and permissions, promote/demote Super Admins',
+    },
+    update: {
+      description: 'Full access: invite users, manage roles and permissions, promote/demote Super Admins',
+    },
   });
 
   await prisma.role.upsert({
     where: { name: 'Customer' },
-    create: { name: 'Customer' },
-    update: {},
+    create: { name: 'Customer', description: 'Storefront customer' },
+    update: { description: 'Storefront customer' },
   });
 
   for (const perm of permissions) {
+    if (perm.name === 'superadmin:manage') continue;
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id },
       },
       create: { roleId: adminRole.id, permissionId: perm.id },
+      update: {},
+    });
+  }
+  // Super Admin gets every permission including admin:access and superadmin:manage
+  for (const perm of permissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: { roleId: superAdminRole.id, permissionId: perm.id },
+      },
+      create: { roleId: superAdminRole.id, permissionId: perm.id },
       update: {},
     });
   }
@@ -80,7 +129,14 @@ async function main() {
       create: { userId: existing.id, roleId: adminRole.id },
       update: {},
     });
-    console.log('Seed: Admin user already exists, ensured Admin role. Email:', ADMIN_EMAIL);
+    await prisma.userRole.upsert({
+      where: {
+        userId_roleId: { userId: existing.id, roleId: superAdminRole.id },
+      },
+      create: { userId: existing.id, roleId: superAdminRole.id },
+      update: {},
+    });
+    console.log('Seed: Admin user already exists, ensured Admin + Super Admin roles. Email:', ADMIN_EMAIL);
   } else {
     const user = await prisma.user.create({
       data: {
@@ -91,11 +147,11 @@ async function main() {
         passwordHash,
         status: 'ACTIVE',
         roles: {
-          create: [{ roleId: adminRole.id }],
+          create: [{ roleId: adminRole.id }, { roleId: superAdminRole.id }],
         },
       },
     });
-    console.log('Seed: Created admin user. Email:', ADMIN_EMAIL);
+    console.log('Seed: Created Super Admin user. Email:', ADMIN_EMAIL);
     console.log('Seed: Login at /admin/login with the above email and your SEED_ADMIN_PASSWORD (or default Admin123!).');
   }
 
@@ -103,15 +159,37 @@ async function main() {
     { name: 'Shirts', slug: 'shirts', description: 'T-shirts, casual and formal shirts' },
     { name: 'Accessories', slug: 'accessories', description: 'Bags, caps, and accessories' },
     { name: 'Footwear', slug: 'footwear', description: 'Shoes and sandals' },
+    {
+      name: 'Beggy Tees',
+      slug: 'beggy-tees',
+      description: 'Premium oversized tees',
+      bannerImageUrl: 'https://picsum.photos/seed/tees/600/750',
+      showOnLanding: true,
+      landingOrder: 0,
+    },
+    {
+      name: 'Hoodies',
+      slug: 'hoodies',
+      description: 'Premium hoodies',
+      bannerImageUrl: 'https://picsum.photos/seed/hoodie/600/750',
+      showOnLanding: true,
+      landingOrder: 1,
+    },
   ];
   for (const cat of exampleCategories) {
     await prisma.category.upsert({
       where: { slug: cat.slug },
       create: cat,
-      update: { name: cat.name, description: cat.description ?? undefined },
+      update: {
+        name: cat.name,
+        description: (cat as { description?: string }).description ?? undefined,
+        bannerImageUrl: (cat as { bannerImageUrl?: string }).bannerImageUrl ?? undefined,
+        showOnLanding: (cat as { showOnLanding?: boolean }).showOnLanding ?? undefined,
+        landingOrder: (cat as { landingOrder?: number }).landingOrder ?? undefined,
+      },
     });
   }
-  console.log('Seed: Ensured 3 example categories (shirts, accessories, footwear).');
+  console.log('Seed: Ensured example categories (shirts, accessories, footwear, beggy-tees, hoodies).');
 
   const currentYear = new Date().getFullYear();
   const defaultSettings = [
@@ -130,6 +208,9 @@ async function main() {
       value: {
         tagline: 'Wear the words. Urdu poetry & adab on streetwear.',
         copyright: `© ${currentYear} Adab. All rights reserved.`,
+        email: 'contact.theclothingbrand@gmail.com',
+        phone: '000-0000000',
+        hours: 'MON - SAT | 9am - 5pm',
       },
     },
     {
@@ -167,6 +248,25 @@ async function main() {
         enabled: false,
       },
     },
+    {
+      key: 'announcement',
+      value: {
+        items: [
+          { text: 'FREE DELIVERY ON ORDERS PKR 2000 & ABOVE', visible: true },
+          { text: 'New drops every week — wear the words.', visible: true },
+        ],
+      },
+    },
+    {
+      key: 'hero',
+      value: {
+        slides: [
+          { src: 'https://picsum.photos/seed/hero1/1920/1080', alt: 'Hero 1' },
+          { src: 'https://picsum.photos/seed/hero2/1920/1080', alt: 'Hero 2' },
+          { src: 'https://picsum.photos/seed/hero3/1920/1080', alt: 'Hero 3' },
+        ],
+      },
+    },
   ] as const;
   for (const { key, value } of defaultSettings) {
     await prisma.siteSetting.upsert({
@@ -175,7 +275,7 @@ async function main() {
       update: {},
     });
   }
-  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing).');
+  console.log('Seed: Ensured default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement, hero).');
 }
 
 main()

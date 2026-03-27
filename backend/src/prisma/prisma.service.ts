@@ -16,7 +16,10 @@ export class PrismaService
       );
     }
     const adapter = new PrismaPg({ connectionString: url });
-    super({ adapter });
+    super({
+      adapter,
+      ...(process.env.PRISMA_LOG_QUERY === 'true' && { log: ['query'] }),
+    });
   }
 
   async onModuleInit() {

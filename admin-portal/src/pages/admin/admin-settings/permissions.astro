@@ -1,0 +1,11 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminSettingsShell from '../../../components/AdminSettingsShell.astro';
+import AdminSettingsPermissions from '../../../components/admin-settings/AdminSettingsPermissions';
+---
+
+<AdminLayout title="Admin Settings - Permissions">
+  <AdminSettingsShell activeTab="permissions">
+    <AdminSettingsPermissions client:load />
+  </AdminSettingsShell>
+</AdminLayout>

@@ -6,6 +6,7 @@
  */
 
 import { getApiBaseUrl, getAuthToken } from './api';
+import { incrementLoading, decrementLoading } from './loading';
 
 export type StorageProviderType = 'local' | 'cloudinary' | 's3';
 
@@ -89,56 +90,62 @@ export async function uploadMedia(
   folder: 'products' | 'payment-proofs',
   options?: UploadOptions,
 ): Promise<UploadResult> {
-  const params = await getSignedParams(folder);
-  const err = validateFile(file, params.validation);
-  if (err) throw new Error(err);
+  incrementLoading();
+  try {
+    const params = await getSignedParams(folder);
+    const err = validateFile(file, params.validation);
+    if (err) throw new Error(err);
 
-  const formData = new FormData();
-  formData.append('file', file);
-  Object.entries(params.params).forEach(([k, v]) => formData.append(k, v));
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.entries(params.params).forEach(([k, v]) => formData.append(k, v));
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+    const result = await new Promise<UploadResult>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable && options?.onProgress) {
-        options.onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    });
-
-    xhr.addEventListener('load', async () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText) as Record<string, unknown>;
-          const { id } = await registerUpload(folder, {
-            provider: params.provider,
-            providerResponse: response,
-            filename: file.name,
-          });
-          const deliveryUrl =
-            (response.secure_url as string) || (response.url as string) || '';
-          resolve({ id, deliveryUrl });
-        } catch (e) {
-          reject(e instanceof Error ? e : new Error('Upload failed'));
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && options?.onProgress) {
+          options.onProgress(Math.round((e.loaded / e.total) * 100));
         }
-      } else {
-        let msg = `Upload failed (${xhr.status})`;
-        try {
-          const errJson = JSON.parse(xhr.responseText) as { error?: { message?: string } };
-          msg = errJson.error?.message || msg;
-        } catch {
-          // ignore
+      });
+
+      xhr.addEventListener('load', async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText) as Record<string, unknown>;
+            const { id } = await registerUpload(folder, {
+              provider: params.provider,
+              providerResponse: response,
+              filename: file.name,
+            });
+            const deliveryUrl =
+              (response.secure_url as string) || (response.url as string) || '';
+            resolve({ id, deliveryUrl });
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error('Upload failed'));
+          }
+        } else {
+          let msg = `Upload failed (${xhr.status})`;
+          try {
+            const errJson = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+            msg = errJson.error?.message || msg;
+          } catch {
+            // ignore
+          }
+          reject(new Error(msg));
         }
-        reject(new Error(msg));
-      }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Network error')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+
+      xhr.open('POST', params.uploadUrl);
+      xhr.send(formData);
     });
-
-    xhr.addEventListener('error', () => reject(new Error('Network error')));
-    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
-
-    xhr.open('POST', params.uploadUrl);
-    xhr.send(formData);
-  });
+    return result;
+  } finally {
+    decrementLoading();
+  }
 }
 
 /** Check if remote upload is available. */

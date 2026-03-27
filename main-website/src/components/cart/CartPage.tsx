@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useCart, useCartStore } from '../../store/cartStore';
+import { useCart, useCartStore, MAX_CART_QUANTITY } from '../../store/cartStore';
 import { formatMoney } from '../../lib/formatMoney';
+import ColorSwatch from '../product/ColorSwatch';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, totalItems, totalAmount, cartCurrency, hasMixedCurrencies } = useCart();
@@ -35,7 +36,7 @@ export default function CartPage() {
     <div className="space-y-6">
       <ul className="divide-y divide-sand dark:divide-charcoal-light">
         {items.map((item) => (
-          <li key={`${item.productId}-${item.size}`} className="py-6 flex gap-4">
+          <li key={item.variantId} className="py-6 flex gap-4">
             <img
               src={item.image}
               alt=""
@@ -44,12 +45,13 @@ export default function CartPage() {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-ink dark:text-cream">{item.name}</p>
               <p className="text-sm text-charcoal/70 dark:text-cream/70">
-                {item.size} × {item.quantity} — {formatMoney(item.price * item.quantity, item.currency)}
+                <ColorSwatch color={item.color} size="sm" aria-label={`Color: ${item.color}`} />
+                {' / '}{item.size} × {item.quantity} — {formatMoney(item.price * item.quantity, item.currency)}
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1)}
+                  onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                   className="w-8 h-8 rounded border border-sand dark:border-charcoal-light text-charcoal dark:text-cream hover:bg-sand dark:hover:bg-charcoal-light text-sm"
                 >
                   −
@@ -57,14 +59,15 @@ export default function CartPage() {
                 <span className="w-6 text-center text-sm text-charcoal dark:text-cream">{item.quantity}</span>
                 <button
                   type="button"
-                  onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1)}
-                  className="w-8 h-8 rounded border border-sand dark:border-charcoal-light text-charcoal dark:text-cream hover:bg-sand dark:hover:bg-charcoal-light text-sm"
+                  onClick={() => updateQuantity(item.variantId, Math.min(item.quantity + 1, MAX_CART_QUANTITY))}
+                  disabled={item.quantity >= MAX_CART_QUANTITY}
+                  className="w-8 h-8 rounded border border-sand dark:border-charcoal-light text-charcoal dark:text-cream hover:bg-sand dark:hover:bg-charcoal-light text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   +
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeItem(item.productId, item.size)}
+                  onClick={() => removeItem(item.variantId)}
                   className="ml-2 text-sm text-charcoal/70 dark:text-cream/70 hover:text-emerald"
                 >
                   Remove

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -7,14 +7,17 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
 const SALT_ROUNDS = 10;
-/** Default 24h so admin sessions survive a work day; override with JWT_ACCESS_EXPIRES_SEC. */
+/** Default 24h; override with JWT_ACCESS_EXPIRES_SEC. */
 const ACCESS_EXPIRES_DEFAULT = 86400;
 /** Password reset token validity in seconds (1 hour). */
 const PASSWORD_RESET_EXPIRES_SEC = 3600;
+/** JWT audience: 'store' for storefront, 'admin' for admin portal. */
+export type JwtAudience = 'store' | 'admin';
 
 @Injectable()
 export class AuthService {
   private readonly accessExpiresSec: number;
+  private readonly jwtIssuer: string | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -22,17 +25,29 @@ export class AuthService {
     private readonly emailQueue: EmailQueueService,
     private readonly config: ConfigService,
   ) {
-    this.accessExpiresSec = this.config.get<number>('JWT_ACCESS_EXPIRES_SEC', ACCESS_EXPIRES_DEFAULT);
+    this.accessExpiresSec = this.config.get<number>('jwt.accessExpiresSec', ACCESS_EXPIRES_DEFAULT);
+    this.jwtIssuer = this.config.get<string>('jwt.issuer') ?? this.config.get<string>('urls.api');
   }
 
-  private buildTokens(user: {
-    id: string;
-    email: string;
-    name: string;
-    permissions: string[];
-    roleNames: string[];
-  }) {
-    const payload = { sub: user.id, email: user.email, name: user.name, permissions: user.permissions, roleNames: user.roleNames };
+  private buildTokens(
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      permissions: string[];
+      roleNames: string[];
+    },
+    audience: JwtAudience,
+  ) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      permissions: user.permissions,
+      roleNames: user.roleNames,
+      aud: audience,
+      iss: this.jwtIssuer,
+    };
     const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessExpiresSec });
     return { accessToken, payload };
   }
@@ -59,13 +74,16 @@ export class AuthService {
         roles: { create: [{ roleId: customerRole.id }] },
       },
     });
-    const { accessToken, payload } = this.buildTokens({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      permissions: [],
-      roleNames: ['Customer'],
-    });
+    const { accessToken, payload } = this.buildTokens(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        permissions: [],
+        roleNames: ['Customer'],
+      },
+      'store',
+    );
     this.emailQueue.enqueueWelcome({ to: user.email, name: user.name }).catch((err) => {
       console.warn('[AuthService] Failed to enqueue welcome email:', err);
     });
@@ -76,7 +94,7 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, audience: JwtAudience = 'store') {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
       where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
@@ -88,27 +106,136 @@ export class AuthService {
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Invalid credentials');
     }
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('This account uses Google sign-in. Sign in with Google.');
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
     const permissions = this.resolvePermissions(user);
     const roleNames = user.roles.map((ur) => ur.role.name);
+    if (audience === 'admin' && !permissions.includes('admin:access')) {
+      throw new ForbiddenException('You do not have access to the admin portal.');
+    }
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    const { accessToken, payload } = this.buildTokens({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      permissions,
-      roleNames,
-    });
+    const { accessToken, payload } = this.buildTokens(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        permissions,
+        roleNames,
+      },
+      audience,
+    );
     return {
       accessToken,
       expiresIn: this.accessExpiresSec,
       user: { id: user.id, email: user.email, name: user.name, permissions, roleNames },
+    };
+  }
+
+  /** Used by Google OAuth: find user by email or googleId, or create a new Customer. Returns same shape as login(). */
+  async findOrCreateFromGoogle(
+    profile: {
+      id: string;
+      displayName?: string;
+      name?: { familyName?: string; givenName?: string };
+      emails?: Array<{ value: string; type?: string }>;
+    },
+    audience: JwtAudience = 'store',
+  ) {
+    const emailRaw = profile.emails?.[0]?.value;
+    if (!emailRaw || typeof emailRaw !== 'string') {
+      throw new UnauthorizedException('Google account has no email');
+    }
+    const email = emailRaw.trim().toLowerCase();
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: { equals: email, mode: 'insensitive' } },
+          { googleId: profile.id },
+        ],
+      },
+      include: {
+        roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+        directPermissions: { include: { permission: true } },
+      },
+    });
+    if (existing) {
+      if (existing.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Account is disabled');
+      }
+      const updateData: { lastLoginAt: Date; googleId?: string } = { lastLoginAt: new Date() };
+      if (!existing.googleId) updateData.googleId = profile.id;
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: updateData,
+      });
+      const permissions = this.resolvePermissions(existing);
+      const roleNames = existing.roles.map((ur) => ur.role.name);
+      if (audience === 'admin' && !permissions.includes('admin:access')) {
+        throw new ForbiddenException('You do not have access to the admin portal.');
+      }
+      const { accessToken } = this.buildTokens(
+        {
+          id: existing.id,
+          email: existing.email,
+          name: existing.name,
+          permissions,
+          roleNames,
+        },
+        audience,
+      );
+      return {
+        accessToken,
+        expiresIn: this.accessExpiresSec,
+        user: { id: existing.id, email: existing.email, name: existing.name, permissions, roleNames },
+      };
+    }
+    if (audience === 'admin') {
+      throw new ForbiddenException('You do not have access to the admin portal.');
+    }
+    const customerRole = await this.prisma.role.findFirst({ where: { name: 'Customer' } });
+    if (!customerRole) {
+      throw new UnauthorizedException('Customer role not found; run database seed.');
+    }
+    const givenName = profile.name?.givenName?.trim() ?? '';
+    const familyName = profile.name?.familyName?.trim() ?? '';
+    const name =
+      [givenName, familyName].filter(Boolean).join(' ').trim() ||
+      profile.displayName?.trim() ||
+      email;
+    const newUser = await this.prisma.user.create({
+      data: {
+        name,
+        firstName: givenName || null,
+        lastName: familyName || null,
+        email,
+        passwordHash: null,
+        googleId: profile.id,
+        status: 'ACTIVE',
+        roles: { create: [{ roleId: customerRole.id }] },
+      },
+    });
+    const { accessToken } = this.buildTokens(
+      {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        permissions: [],
+        roleNames: ['Customer'],
+      },
+      audience,
+    );
+    return {
+      accessToken,
+      expiresIn: this.accessExpiresSec,
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, permissions: [], roleNames: ['Customer'] },
     };
   }
 

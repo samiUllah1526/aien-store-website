@@ -15,6 +15,9 @@ export interface AboutValue {
 export interface FooterValue {
   tagline?: string;
   copyright?: string;
+  email?: string;
+  phone?: string;
+  hours?: string;
 }
 
 export interface SocialValue {
@@ -56,11 +59,34 @@ export interface MarketingValue {
   enabled?: boolean;
 }
 
+export interface AnnouncementItem {
+  text: string;
+  /** If false, hidden on website but kept in admin. Default true. */
+  visible?: boolean;
+}
+
+export interface AnnouncementValue {
+  items?: AnnouncementItem[];
+}
+
+export interface HeroSlideValue {
+  src: string;
+  alt?: string;
+}
+
+export interface HeroValue {
+  slides?: HeroSlideValue[];
+}
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
+  /** Announcement bar items (multiple messages). */
+  announcement: AnnouncementValue;
+  /** Hero carousel image slides (home page). */
+  hero: HeroValue;
   /** Delivery charges in cents. 0 = free delivery. */
   deliveryChargesCents: number;
   /** Bank account details shown at checkout for Bank Deposit. */
@@ -111,7 +137,7 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery, banking, seo, marketing] = await Promise.all([
+    const [general, about, footer, social, delivery, banking, seo, marketing, announcement, hero] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
@@ -120,6 +146,8 @@ export class SettingsService {
       this.getByKey('banking'),
       this.getByKey('seo'),
       this.getByKey('marketing'),
+      this.getByKey('announcement'),
+      this.getByKey('hero'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -138,6 +166,23 @@ export class SettingsService {
       about: (about as AboutValue) ?? {},
       footer: (footer as FooterValue) ?? {},
       social: (social as SocialValue) ?? {},
+      announcement: (() => {
+        const raw = (announcement as AnnouncementValue) ?? { items: [] };
+        const items = (raw.items ?? []).filter((item) => item.visible !== false);
+        return { items };
+      })(),
+      hero: (() => {
+        const raw = (hero as HeroValue) ?? { slides: [] };
+        const slides = Array.isArray(raw.slides)
+          ? (raw.slides as HeroSlideValue[])
+              .filter((s) => s && typeof s.src === 'string' && (s.src as string).trim() !== '')
+              .map((s) => ({
+                src: (s.src as string).trim(),
+                alt: typeof s.alt === 'string' ? (s.alt as string).trim() || undefined : undefined,
+              }))
+          : [];
+        return { slides };
+      })(),
       deliveryChargesCents,
       banking: bankingVal
         ? {

@@ -16,6 +16,37 @@ type AuthState = {
   isLoggedIn: () => boolean;
 };
 
+function decodeJwtPayload(token: string): { name?: string; email?: string } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    const padded = pad ? base64 + '='.repeat(4 - pad) : base64;
+    const json = decodeURIComponent(
+      atob(padded)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(json) as { name?: string; email?: string };
+  } catch {
+    return null;
+  }
+}
+
+/** Name and initial derived from the stored JWT (for display in header). */
+export function getStoredUserDisplay(): { name: string; initial: string } | null {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  const name = payload.name?.trim() || payload.email || 'Account';
+  const initial = (name.charAt(0) || '?').toUpperCase();
+  return { name, initial };
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({

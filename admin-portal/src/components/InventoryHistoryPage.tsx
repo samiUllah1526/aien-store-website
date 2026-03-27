@@ -3,6 +3,9 @@ import { api } from '../lib/api';
 
 export interface InventoryMovementRow {
   id: string;
+  variantId: string | null;
+  variantColor: string | null;
+  variantSize: string | null;
   type: string;
   quantityDelta: number;
   reference: string | null;
@@ -49,10 +52,20 @@ function getProductIdFromUrl(): string {
 
 interface InventoryHistoryPageProps {
   productId: string;
+  initialVariantId?: string;
 }
 
-export function InventoryHistoryPage({ productId: productIdProp }: InventoryHistoryPageProps) {
+type ProductVariantSummary = {
+  id: string;
+  color: string;
+  size: string;
+  isActive: boolean;
+};
+
+export function InventoryHistoryPage({ productId: productIdProp, initialVariantId = '' }: InventoryHistoryPageProps) {
   const productId = productIdProp?.trim() || getProductIdFromUrl();
+  const [variants, setVariants] = useState<ProductVariantSummary[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(initialVariantId.trim());
 
   const [productName, setProductName] = useState<string>('');
   const [items, setItems] = useState<InventoryMovementRow[]>([]);
@@ -70,14 +83,15 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
       setError(null);
       try {
         const [productRes, movementsRes] = await Promise.all([
-          api.get<{ name: string }>(`/products/${productId}`),
+          api.get<{ name: string; variants?: ProductVariantSummary[] }>(`/products/${productId}`),
           api.getList<InventoryMovementRow>(
             `/inventory/products/${productId}/movements`,
-            { page: 1, limit: PAGE_SIZE },
+            { page: 1, limit: PAGE_SIZE, ...(selectedVariantId ? { variantId: selectedVariantId } : {}) },
           ),
         ]);
         if (cancelled) return;
         setProductName(productRes.data?.name ?? 'Product');
+        setVariants(productRes.data?.variants ?? []);
         setItems(movementsRes.data ?? []);
         setTotal(movementsRes.meta?.total ?? 0);
       } catch (err) {
@@ -91,14 +105,14 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
       }
     })();
     return () => { cancelled = true; };
-  }, [productId]);
+  }, [productId, selectedVariantId]);
 
   const loadPage = async (pageNum: number) => {
     setLoading(true);
     try {
       const res = await api.getList<InventoryMovementRow>(
         `/inventory/products/${productId}/movements`,
-        { page: pageNum, limit: PAGE_SIZE },
+        { page: pageNum, limit: PAGE_SIZE, ...(selectedVariantId ? { variantId: selectedVariantId } : {}) },
       );
       setItems(res.data ?? []);
       setTotal(res.meta?.total ?? 0);
@@ -143,6 +157,35 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
         <p className="text-sm text-slate-600 dark:text-slate-400">
           <a href="/admin/inventory" className="underline hover:no-underline">← Back to Inventory</a>
         </p>
+        {variants.length > 0 && (
+          <div className="max-w-sm">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Variant filter
+            </label>
+            <select
+              value={selectedVariantId}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedVariantId(value);
+                setPage(1);
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  if (value) url.searchParams.set('variantId', value);
+                  else url.searchParams.delete('variantId');
+                  window.history.replaceState(null, '', url.toString());
+                }
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All variants</option>
+              {variants.map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {variant.color} / {variant.size}{variant.isActive ? '' : ' (inactive)'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {loading && items.length === 0 ? (
@@ -156,6 +199,7 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-slate-100">Date & time</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-slate-100">Type</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-slate-100">Variant</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">Change</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">Stock before</th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">Stock after</th>
@@ -172,6 +216,11 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
                     {formatDate(m.createdAt)}
                   </td>
                   <td className="px-4 py-3">{formatMovementType(m.type)}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                    {m.variantColor || m.variantSize
+                      ? `${m.variantColor ?? '—'} / ${m.variantSize ?? '—'}`
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {m.quantityDelta > 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400">+{m.quantityDelta}</span>
@@ -250,10 +299,22 @@ export function InventoryHistoryPage({ productId: productIdProp }: InventoryHist
           aria-labelledby="reason-modal-title"
         >
           <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700 p-6">
-            <h2 id="reason-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
-              Reason / reference
-            </h2>
-            <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <h2 id="reason-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Reason / reference
+              </h2>
+              <button
+                type="button"
+                onClick={() => setReasonModal(null)}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap wrap-break-word">
               {reasonModal}
             </p>
             <div className="mt-4 flex justify-end">

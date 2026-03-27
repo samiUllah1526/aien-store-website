@@ -4,12 +4,30 @@
  */
 
 import {
-  apiBaseUrl,
+  storeApiBaseUrl,
   brandName,
   defaultMetaDescription,
-  faviconPath,
   siteUrl,
 } from '../config';
+
+export interface PublicFooter {
+  tagline?: string;
+  copyright?: string;
+  email?: string;
+  phone?: string;
+  hours?: string;
+}
+
+export interface PublicSocial {
+  facebook?: string;
+  facebookVisible?: boolean;
+  instagram?: string;
+  instagramVisible?: boolean;
+  twitter?: string;
+  twitterVisible?: boolean;
+  youtube?: string;
+  youtubeVisible?: boolean;
+}
 
 export interface PublicSeo {
   siteTitle: string;
@@ -27,23 +45,86 @@ export interface PublicMarketing {
   enabled: boolean;
 }
 
+export interface PublicAnnouncementItem {
+  text: string;
+}
+
+export interface PublicAnnouncement {
+  items: PublicAnnouncementItem[];
+}
+
+export interface PublicHeroSlide {
+  src: string;
+  alt?: string;
+}
+
+export interface PublicHero {
+  slides: PublicHeroSlide[];
+}
+
 export interface PublicSettings {
+  logoPath: string | null;
+  footer: PublicFooter;
+  social: PublicSocial;
+  announcement: PublicAnnouncement;
+  hero: PublicHero;
   seo: PublicSeo;
   marketing: PublicMarketing;
 }
 
 let cached: PublicSettings | null = null;
 
+const isDev = typeof import.meta !== 'undefined' && (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+
 export async function getPublicSettings(): Promise<PublicSettings> {
-  if (cached) return cached;
+  if (cached && !isDev) return cached;
   try {
-    const res = await fetch(`${apiBaseUrl}/settings/public`);
+    const res = await fetch(`${storeApiBaseUrl}/settings/public`);
     const json = (await res.json()) as { success?: boolean; data?: unknown };
     if (res.ok && json.success && json.data && typeof json.data === 'object') {
       const data = json.data as Record<string, unknown>;
       const seo = (data.seo as Record<string, unknown>) ?? {};
       const marketing = (data.marketing as Record<string, unknown>) ?? {};
-      cached = {
+      const footer = (data.footer as Record<string, unknown>) ?? {};
+      const social = (data.social as Record<string, unknown>) ?? {};
+      const logoPath = (data.logoPath as string)?.trim() || null;
+      // Support both lowercase and capitalized keys (e.g. youtube vs YouTube from API)
+      const youtubeUrl = (social.youtube as string) ?? (social.YouTube as string);
+      const youtubeVisibleVal = social.youtubeVisible ?? social.YouTubeVisible;
+      const rawAnnouncement = (data.announcement as { items?: { text: string }[] }) ?? {};
+      const announcementItems = Array.isArray(rawAnnouncement.items)
+        ? rawAnnouncement.items.map((item) => ({ text: (item?.text ?? '').trim() })).filter((item) => item.text !== '')
+        : [];
+      const next: PublicSettings = {
+        logoPath,
+        footer: {
+          tagline: (footer.tagline as string)?.trim() || '',
+          copyright: (footer.copyright as string)?.trim() || '',
+          email: (footer.email as string)?.trim() || '',
+          phone: (footer.phone as string)?.trim() || '',
+          hours: (footer.hours as string)?.trim() || '',
+        },
+        social: {
+          facebook: (social.facebook as string)?.trim() || '',
+          facebookVisible: social.facebookVisible === true,
+          instagram: (social.instagram as string)?.trim() || '',
+          instagramVisible: social.instagramVisible === true,
+          twitter: (social.twitter as string)?.trim() || '',
+          twitterVisible: social.twitterVisible === true,
+          youtube: (youtubeUrl as string)?.trim() || '',
+          youtubeVisible: youtubeVisibleVal === true,
+        },
+        announcement: { items: announcementItems },
+        hero: {
+          slides: (() => {
+            const raw = (data.hero as { slides?: { src?: string; alt?: string }[] }) ?? {};
+            return Array.isArray(raw.slides)
+              ? raw.slides
+                  .filter((s) => s && typeof s.src === 'string' && String(s.src).trim() !== '')
+                  .map((s) => ({ src: String(s.src).trim(), alt: typeof s.alt === 'string' ? String(s.alt).trim() || undefined : undefined }))
+              : [];
+          })(),
+        },
         seo: {
           siteTitle: (seo.siteTitle as string)?.trim() || brandName,
           defaultDescription: (seo.defaultDescription as string)?.trim() || defaultMetaDescription,
@@ -59,12 +140,24 @@ export async function getPublicSettings(): Promise<PublicSettings> {
           enabled: marketing.enabled !== false,
         },
       };
-      return cached;
+      cached = next;
+      return next;
     }
   } catch {
     // fall through to defaults
   }
-  cached = {
+  return {
+    logoPath: null,
+    footer: {
+      tagline: '',
+      copyright: '',
+      email: '',
+      phone: '',
+      hours: '',
+    },
+    social: {},
+    announcement: { items: [] },
+    hero: { slides: [] },
     seo: {
       siteTitle: brandName,
       defaultDescription: defaultMetaDescription,
@@ -77,5 +170,4 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       enabled: true,
     },
   };
-  return cached;
 }

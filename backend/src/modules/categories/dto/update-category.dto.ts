@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength, Matches, ValidateIf } from 'class-validator';
+import { IsOptional, IsString, MinLength, Matches, ValidateIf, IsBoolean, IsInt } from 'class-validator';
 
 export class UpdateCategoryDto {
   @IsOptional()
@@ -17,6 +17,19 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  bannerImageUrl?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  showOnLanding?: boolean;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v != null)
+  @IsInt()
+  landingOrder?: number | null;
 
   @IsOptional()
   @ValidateIf((_, v) => v != null)

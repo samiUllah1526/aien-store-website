@@ -3,7 +3,8 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { AuthController } from './auth.controller';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleAdminStrategy } from './strategies/google-admin.strategy';
 import { AuthService } from './auth.service';
 
 @Module({
@@ -16,7 +17,7 @@ import { AuthService } from './auth.service';
         return {
           secret,
           signOptions: {
-            expiresIn: config.get<number>('JWT_ACCESS_EXPIRES_SEC', 86400),
+            expiresIn: config.get<number>('jwt.accessExpiresSec', 86400),
             algorithm: 'HS256',
           },
         };
@@ -24,8 +25,8 @@ import { AuthService } from './auth.service';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  controllers: [],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GoogleAdminStrategy],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

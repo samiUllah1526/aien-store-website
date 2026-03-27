@@ -22,21 +22,24 @@ interface Props {
 const settings = await getPublicSettings();
 const seo = settings.seo;
 const marketing = settings.marketing;
+const siteSettings = {
+  logoPath: settings.logoPath,
+  footer: settings.footer,
+  social: settings.social,
+  announcement: settings.announcement,
+};
 
 const { title: titleProp, description: descProp, image: imageProp, canonical: canonicalProp, jsonLd } = Astro.props;
 const title = titleProp ?? seo.siteTitle;
 const description = descProp ?? seo.defaultDescription;
 const image = imageProp ?? (seo.ogImageDefault || undefined);
 const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pathname}` : undefined);
-
-// Site settings for LayoutShell (logo, footer, social). Fetched separately by about page; layout uses minimal.
-const siteSettings = null;
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Theme: set dark class on <html> before any paint (Tailwind darkMode: 'class') -->
     <script is:inline define:vars={{ themeStorageKey }}>
       (function(){var el=document.documentElement;try{var s=localStorage.getItem(themeStorageKey);var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
@@ -64,7 +67,7 @@ const siteSettings = null;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400..900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>

@@ -31,6 +31,9 @@ const defaultSettings = [
     value: {
       tagline: 'Wear the words. Urdu poetry & adab on streetwear.',
       copyright: `© ${currentYear} Adab. All rights reserved.`,
+      email: 'contact@example.com',
+      phone: '000-0000000',
+      hours: 'MON - SAT | 9am - 5pm',
     },
   },
   {
@@ -68,6 +71,25 @@ const defaultSettings = [
       enabled: false,
     },
   },
+  {
+    key: 'announcement',
+    value: {
+      items: [
+        { text: 'FREE DELIVERY ON ORDERS PKR 2000 & ABOVE', visible: true },
+        { text: 'New drops every week — wear the words.', visible: true },
+      ],
+    },
+  },
+  {
+    key: 'hero',
+    value: {
+      slides: [
+        { src: 'https://picsum.photos/seed/hero1/1920/1080', alt: 'Hero 1' },
+        { src: 'https://picsum.photos/seed/hero2/1920/1080', alt: 'Hero 2' },
+        { src: 'https://picsum.photos/seed/hero3/1920/1080', alt: 'Hero 3' },
+      ],
+    },
+  },
 ];
 
 async function main() {
@@ -78,7 +100,7 @@ async function main() {
       update: { value: value as object },
     });
   }
-  console.log('Restored default site settings (general, about, footer, social, delivery, banking, seo, marketing).');
+  console.log('Restored default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement, hero).');
 }
 
 main()

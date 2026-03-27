@@ -50,8 +50,13 @@ export function VouchersManager() {
   const [formOpen, setFormOpen] = useState<'add' | 'edit' | null>(null);
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [statsModalId, setStatsModalId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const debouncedSearch = useDebounce(searchInput.trim(), 400);
 
@@ -162,6 +167,21 @@ export function VouchersManager() {
       setError(err instanceof Error ? err.message : 'Failed to update status');
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="p-12 text-center">
+            <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!canRead) {
     return (
@@ -280,10 +300,23 @@ export function VouchersManager() {
           onClick={(e) => e.target === e.currentTarget && (setFormOpen(null), setEditingVoucher(null))}
         >
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-800 dark:border dark:border-slate-700">
-            <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <h2 id="voucher-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {formOpen === 'add' ? 'Create voucher' : 'Edit voucher'}
               </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormOpen(null);
+                  setEditingVoucher(null);
+                }}
+                className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             <div className="p-6">
               <VoucherForm
@@ -539,9 +572,21 @@ function VoucherStatsModal({ voucherId, onClose }: { voucherId: string; onClose:
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="stats-modal-title" className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Voucher analytics
-        </h2>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 id="stats-modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Voucher analytics
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         {loading ? (
           <p className="text-slate-600 dark:text-slate-400">Loading…</p>
         ) : stats ? (

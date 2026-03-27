@@ -62,7 +62,8 @@ model User {
   firstName    String?    @map("first_name")
   lastName     String?    @map("last_name")
   email        String     @unique @map("email")
-  passwordHash String     @map("password_hash")
+  passwordHash String?   @map("password_hash")
+  googleId     String?    @unique @map("google_id")
   status       UserStatus @default(ACTIVE) @map("status")
   lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
   passwordResetToken    String?   @map("password_reset_token")
@@ -103,10 +104,11 @@ model UserSavedShipping {
 }
 
 model Role {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique @map("name")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   users       UserRole[]         @relation("RoleUsers")
   permissions RolePermission[]   @relation("RolePermissions")
@@ -118,6 +120,8 @@ model Permission {
   id          String   @id @default(uuid()) @db.Uuid
   name        String   @unique @map("name")
   description String?  @map("description")
+  /** Optional category for grouping in UI (e.g. "User Management", "Settings"). */
+  category    String?  @map("category")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -207,6 +211,7 @@ model Media {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   productMedia     ProductMedia[]
+  productVariantMedia ProductVariantMedia[]
   orderPaymentProof Order[]      @relation("OrderPaymentProof")
 
   @@index([source])
@@ -224,6 +229,12 @@ model Category {
   name        String    @map("name")
   slug        String    @unique @map("slug")
   description String?   @map("description")
+  /** Optional banner image URL for category/landing sections. */
+  bannerImageUrl String? @map("banner_image_url")
+  /** When true, category appears on the storefront landing page in order of landingOrder. */
+  showOnLanding  Boolean  @default(false) @map("show_on_landing")
+  /** Order on landing page (lower = first). Null = last. */
+  landingOrder   Int?     @map("landing_order")
   parentId    String?   @map("parent_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -242,9 +253,10 @@ model Product {
   description           String?   @map("description")
   priceCents            Int       @map("price_cents")
   currency              String    @default("PKR") @map("currency")
+  /** Deprecated: variant dimensions are stored in product_variants. */
   sizes                 Json?     @map("sizes")
   featured              Boolean   @default(false) @map("featured")
-  /** Current sellable quantity. Never negative. Deduct on order create, restore on cancel. */
+  /** Deprecated: total stock is derived from variants. */
   stockQuantity         Int       @default(0) @map("stock_quantity")
   urduVerse             String?   @map("urdu_verse")
   urduVerseTransliteration String? @map("urdu_verse_transliteration")
@@ -253,11 +265,35 @@ model Product {
 
   productCategories   ProductCategory[]
   productMedia         ProductMedia[]
+  variants             ProductVariant[]
   orderItems           OrderItem[]
   userFavorites        UserFavorite[] @relation("ProductFavorites")
   inventoryMovements   InventoryMovement[]
 
   @@map("products")
+}
+
+model ProductVariant {
+  id                 String   @id @default(uuid()) @db.Uuid
+  productId          String   @map("product_id") @db.Uuid
+  color              String   @map("color")
+  size               String   @map("size")
+  sku                String?  @unique @map("sku")
+  stockQuantity      Int      @default(0) @map("stock_quantity")
+  priceOverrideCents Int?     @map("price_override_cents")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product            Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantMedia       ProductVariantMedia[]
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([productId, color, size])
+  @@index([productId])
+  @@index([productId, isActive])
+  @@map("product_variants")
 }
 
 model UserFavorite {
@@ -299,6 +335,21 @@ model ProductMedia {
 
   @@id([productId, mediaId])
   @@map("product_media")
+}
+
+model ProductVariantMedia {
+  variantId String   @map("variant_id") @db.Uuid
+  mediaId   String   @map("media_id") @db.Uuid
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  media   Media          @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([variantId, mediaId])
+  @@index([variantId, sortOrder])
+  @@map("product_variant_media")
 }
 
 // -----------------------------------------------------------------------------
@@ -436,6 +487,10 @@ model OrderItem {
   id        String   @id @default(uuid()) @db.Uuid
   orderId   String   @map("order_id") @db.Uuid
   productId String   @map("product_id") @db.Uuid
+  variantId String   @map("variant_id") @db.Uuid
+  /** Snapshot values at order-time for fulfilment display. */
+  color     String?  @map("color")
+  size      String?  @map("size")
   quantity  Int      @map("quantity")
   unitCents Int      @map("unit_cents")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -443,7 +498,9 @@ model OrderItem {
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
 
+  @@index([variantId])
   @@map("order_items")
 }
 
@@ -461,6 +518,7 @@ enum InventoryMovementType {
 model InventoryMovement {
   id                 String                @id @default(uuid()) @db.Uuid
   productId          String                @map("product_id") @db.Uuid
+  variantId          String?               @map("variant_id") @db.Uuid
   orderId            String?               @map("order_id") @db.Uuid
   type               InventoryMovementType @map("type")
   /** Positive = stock in, negative = stock out. */
@@ -474,9 +532,11 @@ model InventoryMovement {
   updatedAt          DateTime              @updatedAt @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   performedBy User? @relation("InventoryMovementPerformedBy", fields: [performedByUserId], references: [id], onDelete: SetNull)
 
   @@index([productId])
+  @@index([variantId])
   @@index([orderId])
   @@map("inventory_movements")
 }

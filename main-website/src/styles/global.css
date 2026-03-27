@@ -6,8 +6,11 @@
   html {
     @apply scroll-smooth;
   }
+  /* Single source for default typeface: Montserrat. All text inherits unless .urdu-text. */
   body {
     @apply font-sans text-soft-charcoal dark:text-off-white bg-bone dark:bg-charcoal antialiased;
+    overflow-x: hidden; /* Prevent horizontal scroll on small screens */
+    -webkit-tap-highlight-color: transparent; /* Cleaner tap on mobile */
   }
   .urdu-text {
     @apply font-urdu text-right;
@@ -32,4 +35,12 @@ html {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+@keyframes announcement-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.announcement-marquee-track {
+  animation: announcement-marquee 20s linear infinite;
 }

@@ -1,13 +1,13 @@
 /**
  * API client for the storefront (main website).
- * Uses apiBaseUrl from config (single source of truth).
+ * Uses store API base (apiBaseUrl + /store) for all requests.
  */
 
-import { apiBaseUrl } from '../config';
+import { storeApiBaseUrl } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 export function getApiBaseUrl(): string {
-  return apiBaseUrl;
+  return storeApiBaseUrl;
 }
 
 export function getStoreToken(): string | null {
@@ -176,8 +176,11 @@ export interface OrderDto {
   items: Array<{
     id: string;
     productId: string;
+    variantId: string;
     productName?: string;
     productImage?: string | null;
+    color?: string | null;
+    size?: string | null;
     quantity: number;
     unitCents: number;
   }>;

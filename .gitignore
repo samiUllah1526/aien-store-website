@@ -13,6 +13,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# environment variables (never commit real secrets)
+.env
 # environment variables
 !.env.example
 

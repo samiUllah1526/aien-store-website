@@ -1,9 +1,11 @@
 /**
  * Auth helpers for admin portal.
  * Access token stored in localStorage, sent with API requests.
+ * User permissions for show/hide come from the JWT. Full list of permission names is backend-driven (see permissions-api.ts).
  */
 
 import { authTokenKey } from './config';
+import { clearPermissionsCache } from './permissions-api';
 
 export interface JwtPayload {
   sub?: string;
@@ -11,6 +13,8 @@ export interface JwtPayload {
   name?: string;
   permissions?: string[];
   roleNames?: string[];
+  aud?: string;
+  iss?: string;
   exp?: number;
 }
 
@@ -53,6 +57,14 @@ export function decodeToken(token: string): JwtPayload | null {
   }
 }
 
+/** Returns true when JWT exp is reached (with optional clock skew). */
+export function isTokenExpired(token: string, skewSeconds = 30): boolean {
+  const payload = decodeToken(token);
+  if (!payload || typeof payload.exp !== 'number') return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return nowSec >= payload.exp - skewSeconds;
+}
+
 /** Permissions from the current JWT (for role-based UI). */
 export function getStoredPermissions(): string[] {
   const token = getStoredToken();
@@ -78,6 +90,17 @@ export function hasPermission(permission: string): boolean {
   return getStoredPermissions().includes(permission);
 }
 
+/** True if the user has any of the given permissions. Permission names should match the backend (from getCachedPermissionNames() or API). */
+export function hasAnyPermission(permissions: string[]): boolean {
+  const userPerms = getStoredPermissions();
+  return permissions.some((p) => userPerms.includes(p));
+}
+
+/** True if the current user has Super Admin capabilities (superadmin:manage). */
+export function isSuperAdmin(): boolean {
+  return hasPermission('superadmin:manage');
+}
+
 export function setStoredToken(accessToken: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(authTokenKey, accessToken);
@@ -86,6 +109,7 @@ export function setStoredToken(accessToken: string): void {
 export function clearStoredTokens(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(authTokenKey);
+  clearPermissionsCache();
 }
 
 /** @deprecated Use clearStoredTokens for full cleanup */

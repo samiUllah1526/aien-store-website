@@ -3,6 +3,7 @@ import type { ProductListItem, Category } from '../lib/types';
 import { AdjustStockModal } from './AdjustStockModal';
 import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { hasPermission } from '../lib/auth';
 
 const PAGE_SIZE = 15;
 const STOCK_FILTERS = [
@@ -17,6 +18,7 @@ const SORT_OPTIONS = [
 ] as const;
 
 export function InventoryManager() {
+  const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState<ProductListItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
@@ -32,7 +34,12 @@ export function InventoryManager() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [adjustProduct, setAdjustProduct] = useState<ProductListItem | null>(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const debouncedSearch = useDebounce(searchInput.trim(), 400);
+  const canWriteInventory = hasPermission('inventory:write');
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -102,6 +109,21 @@ export function InventoryManager() {
   };
 
   const historyUrl = (productId: string) => `/admin/inventory/history?productId=${encodeURIComponent(productId)}`;
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="h-8 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="p-12 text-center">
+            <div className="mx-auto h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -288,13 +310,15 @@ export function InventoryManager() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setAdjustProduct(item)}
-                          className="mr-3 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 text-sm font-medium"
-                        >
-                          Adjust
-                        </button>
+                        {canWriteInventory && (
+                          <button
+                            type="button"
+                            onClick={() => setAdjustProduct(item)}
+                            className="mr-3 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 text-sm font-medium"
+                          >
+                            Adjust
+                          </button>
+                        )}
                         <a
                           href={historyUrl(item.id)}
                           target="_blank"
@@ -345,6 +369,7 @@ export function InventoryManager() {
             id: adjustProduct.id,
             name: adjustProduct.name,
             stockQuantity: adjustProduct.stockQuantity ?? 0,
+            variants: adjustProduct.variants ?? [],
           }}
           onClose={() => setAdjustProduct(null)}
           onSuccess={(newQty) => {

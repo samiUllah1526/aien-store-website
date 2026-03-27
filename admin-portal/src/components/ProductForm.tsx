@@ -1,9 +1,20 @@
-import type { FormEvent } from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { Controller, useFieldArray } from 'react-hook-form';
 import type { Product, ProductFormData } from '../lib/types';
 import { api, uploadFile } from '../lib/api';
 import { uploadMedia } from '../lib/media-upload';
 import { SearchableMultiSelect } from './SearchableMultiSelect';
+import { productFormSchema, type ProductFormValues } from '../lib/validation/product';
+import { useZodForm } from '../lib/forms/useZodForm';
+import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
+import {
+  VariantCard,
+  defaultVariant,
+  ProductFormImages,
+  inputBase,
+  labelBase,
+} from './product';
+import type { UseFormReturn } from 'react-hook-form';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -11,46 +22,108 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
-/** Currency is fixed to PKR; selector is hidden. */
 const FIXED_CURRENCY = 'PKR';
 
+function slugFromName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+function buildFormDefaultValues(product: Product | null | undefined): Partial<ProductFormValues> {
+  return {
+    name: product?.name ?? '',
+    slug: product?.slug ?? '',
+    description: product?.description ?? '',
+    pricePkr: product != null ? (product.price / 100).toString() : '',
+    categoryIds: product?.categories?.map((c) => c.id) ?? [],
+    featured: product?.featured ?? false,
+    variants: product?.variants?.length
+      ? product.variants.map((v) => ({
+          id: v.id,
+          color: v.color,
+          size: v.size,
+          sku: v.sku ?? '',
+          stockQuantity: v.stockQuantity,
+          priceOverridePkr:
+            v.priceOverrideCents != null ? (v.priceOverrideCents / 100).toString() : '',
+          isActive: v.isActive,
+          mediaIds: v.mediaIds ?? [],
+        }))
+      : [defaultVariant],
+    mediaIds: product?.mediaIds ?? [],
+  };
+}
+
+function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): ProductFormData {
+  const priceCents = Math.round(Number.parseFloat(values.pricePkr) * 100);
+  return {
+    name: values.name,
+    slug: values.slug || slugFromName(values.name),
+    description: values.description || undefined,
+    categoryIds: values.categoryIds?.length ? values.categoryIds : undefined,
+    priceCents,
+    currency: FIXED_CURRENCY,
+    featured: values.featured,
+    variants: values.variants.map((variant) => ({
+      ...(variant.id ? { id: variant.id } : {}),
+      color: variant.color.trim(),
+      size: variant.size.trim(),
+      ...(variant.sku?.trim() ? { sku: variant.sku.trim() } : {}),
+      stockQuantity: variant.stockQuantity,
+      ...(variant.priceOverridePkr?.trim()
+        ? { priceOverrideCents: Math.max(0, Math.round(Number.parseFloat(variant.priceOverridePkr) * 100)) }
+        : {}),
+      isActive: variant.isActive,
+      mediaIds: variant.mediaIds ?? [],
+    })),
+    mediaIds: mediaIds.length ? mediaIds : undefined,
+  };
+}
+
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-  const [name, setName] = useState(product?.name ?? '');
-  const [slug, setSlug] = useState(product?.slug ?? '');
-  const [description, setDescription] = useState(product?.description ?? '');
-  const [pricePkr, setPricePkr] = useState(
-    product != null ? (product.price / 100).toString() : ''
-  );
-  const [categoryIds, setCategoryIds] = useState<string[]>(
-    () => product?.categories?.map((c) => c.id) ?? []
-  );
-  const [featured, setFeatured] = useState(product?.featured ?? false);
-  const [mediaIds, setMediaIds] = useState<string[]>(() => {
-    if (product?.images?.length) return []; // existing product has images by URL; we don't have IDs for existing
-    return [];
+  const form = useZodForm({
+    schema: productFormSchema,
+    defaultValues: buildFormDefaultValues(product),
   });
-  const [mediaPreviews, setMediaPreviews] = useState<Record<string, string>>({}); // id -> preview URL
+
+  const variantsFieldArray = useFieldArray({
+    control: form.control,
+    name: 'variants',
+  });
+
+  const [mediaPreviews, setMediaPreviews] = useState<Record<string, string>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchCategories = async ({ search }: { search: string; page: number }) => {
+  const error = form.formState.errors.root?.serverError?.message;
+  const mediaIds = form.watch('mediaIds') ?? [];
+
+  useEffect(() => {
+    if (!product) return;
+    setMediaPreviews((prev) => {
+      const next = { ...prev };
+      (product.mediaIds ?? []).forEach((id, index) => {
+        const image = product.images?.[index];
+        if (image) next[id] = image;
+      });
+      (product.variants ?? []).forEach((variant) => {
+        (variant.mediaIds ?? []).forEach((id, index) => {
+          const image = variant.images?.[index];
+          if (image) next[id] = image;
+        });
+      });
+      return next;
+    });
+  }, [product]);
+
+  const fetchCategories = useCallback(async ({ search }: { search: string; page: number }) => {
     const res = await api.get<Array<{ id: string; name: string }>>('/categories', search ? { search } : undefined);
     const items = (res.data ?? []).map((c) => ({ id: c.id, label: c.name }));
     return { items, hasMore: false };
-  };
-
-  const slugFromName = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!product) setSlug(slugFromName(value));
-  };
+  }, []);
 
   const doUpload = useCallback(async (file: File): Promise<{ id: string; preview?: string }> => {
     try {
@@ -64,67 +137,129 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   }, []);
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    setError(null);
-    setUploading(true);
-    try {
-      const results: { id: string; preview?: string }[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const r = await doUpload(files[i]);
-        results.push(r);
-      }
-      setMediaIds((prev) => [...prev, ...results.map((r) => r.id)]);
-      setMediaPreviews((prev) => {
-        const next = { ...prev };
-        results.forEach((r) => {
-          if (r.preview) next[r.id] = r.preview;
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length) return;
+      form.clearErrors('root.serverError');
+      setUploading(true);
+      try {
+        const results: { id: string; preview?: string }[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const r = await doUpload(files[i]);
+          results.push(r);
+        }
+        form.setValue('mediaIds', [...(form.getValues('mediaIds') ?? []), ...results.map((r) => r.id)], {
+          shouldValidate: true,
         });
-        return next;
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-      setUploadProgress({});
-      e.target.value = '';
-    }
-  }, [doUpload]);
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          results.forEach((r) => {
+            if (r.preview) next[r.id] = r.preview;
+          });
+          return next;
+        });
+      } catch (err) {
+        mapApiErrorToForm(err, form.setError);
+      } finally {
+        setUploading(false);
+        setUploadProgress({});
+        e.target.value = '';
+      }
+    },
+    [doUpload, form]
+  );
 
-  const removeImage = (index: number) => {
-    const id = mediaIds[index];
-    setMediaIds((prev) => prev.filter((_, i) => i !== index));
-    if (id) setMediaPreviews((prev) => { const n = { ...prev }; delete n[id]; return n; });
-  };
+  const handleVariantFileSelect = useCallback(
+    async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length) return;
+      form.clearErrors('root.serverError');
+      setUploading(true);
+      try {
+        const results: { id: string; preview?: string }[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const r = await doUpload(files[i]);
+          results.push(r);
+        }
+        const fieldName = `variants.${index}.mediaIds` as const;
+        const current = form.getValues(fieldName) ?? [];
+        form.setValue(fieldName, [...current, ...results.map((r) => r.id)], {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          results.forEach((r) => {
+            if (r.preview) next[r.id] = r.preview;
+          });
+          return next;
+        });
+      } catch (err) {
+        mapApiErrorToForm(err, form.setError);
+      } finally {
+        setUploading(false);
+        setUploadProgress({});
+        e.target.value = '';
+      }
+    },
+    [doUpload, form],
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const pkr = parseFloat(pricePkr);
-    if (Number.isNaN(pkr) || pkr < 0) {
-      setError('Price must be a non-negative number (PKR).');
-      return;
-    }
-    const priceCents = Math.round(pkr * 100);
+  const removeImage = useCallback(
+    (index: number) => {
+      const id = mediaIds[index];
+      form.setValue(
+        'mediaIds',
+        mediaIds.filter((_, i) => i !== index),
+        { shouldValidate: true }
+      );
+      if (id) {
+        setMediaPreviews((prev) => {
+          const n = { ...prev };
+          delete n[id];
+          return n;
+        });
+      }
+    },
+    [form, mediaIds]
+  );
+
+  const removeVariantImage = useCallback(
+    (variantIndex: number, imageIndex: number) => {
+      const fieldName = `variants.${variantIndex}.mediaIds` as const;
+      const ids = form.getValues(fieldName) ?? [];
+      const id = ids[imageIndex];
+      form.setValue(
+        fieldName,
+        ids.filter((_, i) => i !== imageIndex),
+        { shouldValidate: true, shouldDirty: true },
+      );
+      if (id) {
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [form],
+  );
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    form.clearErrors('root.serverError');
     setSubmitting(true);
     try {
-      await onSubmit({
-        name,
-        slug: slug || slugFromName(name),
-        description: description || undefined,
-        categoryIds: categoryIds.length ? categoryIds : undefined,
-        priceCents,
-        currency: FIXED_CURRENCY,
-        featured,
-        mediaIds: mediaIds.length ? mediaIds : undefined,
-      });
+      await onSubmit(mapFormValuesToSubmit(values, mediaIds));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      mapApiErrorToForm(err, form.setError);
     } finally {
       setSubmitting(false);
     }
-  };
+  });
+
+  const appendVariant = () =>
+    variantsFieldArray.append(defaultVariant);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,46 +268,48 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           {error}
         </div>
       )}
+
       <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label htmlFor="name" className={labelBase}>
           Title
         </label>
         <input
           id="name"
           type="text"
           required
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          {...form.register('name', {
+            onChange: (e) => {
+              if (!product && !form.formState.dirtyFields.slug) {
+                form.setValue('slug', slugFromName(e.target.value), { shouldValidate: true });
+              }
+            },
+          })}
+          className={inputBase}
         />
       </div>
+
       <div>
-        <label htmlFor="slug" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label htmlFor="slug" className={labelBase}>
           Slug
         </label>
-        <input
-          id="slug"
-          type="text"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
+        <input id="slug" type="text" {...form.register('slug')} className={inputBase} />
       </div>
+
       <div>
-        <label htmlFor="description" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label htmlFor="description" className={labelBase}>
           Description
         </label>
         <textarea
           id="description"
           rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          {...form.register('description')}
+          className={inputBase}
         />
       </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="pricePkr" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label htmlFor="pricePkr" className={labelBase}>
             Price (PKR)
           </label>
           <input
@@ -181,77 +318,59 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             min={0}
             step={0.01}
             required
-            value={pricePkr}
-            onChange={(e) => setPricePkr(e.target.value)}
+            {...form.register('pricePkr')}
             placeholder="e.g. 50"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            className={inputBase}
           />
         </div>
       </div>
-      <SearchableMultiSelect
-        label="Categories (optional)"
-        placeholder="Search categories…"
-        emptyMessage="No categories"
-        selectedIds={categoryIds}
-        onSelectedIdsChange={setCategoryIds}
-        fetchItems={fetchCategories}
+
+      <VariantsSection
+        fields={variantsFieldArray.fields}
+        onAppend={appendVariant}
+        onRemove={variantsFieldArray.remove}
+        form={form}
+        mediaPreviews={mediaPreviews}
+        onAddVariantFiles={handleVariantFileSelect}
+        onRemoveVariantImage={removeVariantImage}
+        uploading={uploading}
       />
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Images
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {mediaIds.map((id, index) => (
-            <div
-              key={id}
-              className="relative flex items-center gap-1 rounded border border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800 overflow-hidden"
-            >
-              {mediaPreviews[id] ? (
-                <img
-                  src={mediaPreviews[id]}
-                  alt=""
-                  className="h-14 w-14 object-cover shrink-0"
-                />
-              ) : (
-                <span className="h-14 w-14 flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-xs text-slate-500 shrink-0">
-                  {id.slice(0, 8)}…
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => removeImage(index)}
-                className="absolute top-0.5 right-0.5 rounded bg-black/50 text-white p-0.5 hover:bg-red-600 text-xs leading-none"
-                aria-label="Remove"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
-            disabled={uploading}
-            onChange={handleFileSelect}
-            className="sr-only"
+
+      <Controller
+        control={form.control}
+        name="categoryIds"
+        render={({ field }) => (
+          <SearchableMultiSelect
+            label="Categories (optional)"
+            placeholder="Search categories…"
+            emptyMessage="No categories"
+            selectedIds={field.value ?? []}
+            onSelectedIdsChange={field.onChange}
+            fetchItems={fetchCategories}
           />
-          {uploading ? 'Uploading…' : 'Add images'}
-        </label>
-      </div>
+        )}
+      />
+
+      <ProductFormImages
+        mediaIds={mediaIds}
+        mediaPreviews={mediaPreviews}
+        onAddFiles={handleFileSelect}
+        onRemoveImage={removeImage}
+        uploading={uploading}
+      />
+
       <div className="flex items-center gap-2">
         <input
           id="featured"
           type="checkbox"
-          checked={featured}
-          onChange={(e) => setFeatured(e.target.checked)}
+          {...form.register('featured')}
           className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-slate-500"
         />
         <label htmlFor="featured" className="text-sm font-medium text-slate-700">
           Featured
         </label>
       </div>
+
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
@@ -269,5 +388,56 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         </button>
       </div>
     </form>
+  );
+}
+
+/** Variants section: header + list of VariantCard. */
+function VariantsSection({
+  fields,
+  onAppend,
+  onRemove,
+  form,
+  mediaPreviews,
+  onAddVariantFiles,
+  onRemoveVariantImage,
+  uploading,
+}: {
+  fields: { id: string }[];
+  onAppend: () => void;
+  onRemove: (index: number) => void;
+  form: UseFormReturn<ProductFormValues>;
+  mediaPreviews: Record<string, string>;
+  onAddVariantFiles: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveVariantImage: (variantIndex: number, imageIndex: number) => void;
+  uploading: boolean;
+}) {
+  return (
+    <div className="space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+          Variants
+        </label>
+        <button
+          type="button"
+          onClick={onAppend}
+          className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Add variant
+        </button>
+      </div>
+      {fields.map((variant, index) => (
+        <VariantCard
+          key={variant.id}
+          index={index}
+          form={form}
+          onRemove={() => onRemove(index)}
+          canRemove={fields.length > 1}
+          mediaPreviews={mediaPreviews}
+          onAddFiles={(e) => onAddVariantFiles(index, e)}
+          onRemoveImage={(imageIndex) => onRemoveVariantImage(index, imageIndex)}
+          uploading={uploading}
+        />
+      ))}
+    </div>
   );
 }

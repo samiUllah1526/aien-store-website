@@ -11,6 +11,7 @@ import type {
   WelcomeEmailPayload,
   UserCreatedEmailPayload,
   PasswordResetEmailPayload,
+  InviteEmailPayload,
 } from '../../mail/interfaces/mail.interface';
 
 @Injectable()
@@ -40,6 +41,11 @@ export class EmailQueueService {
   /** Enqueue password reset email (high priority - token expires in 1h). */
   async enqueuePasswordReset(payload: PasswordResetEmailPayload): Promise<string | null> {
     return this.send(QUEUE_EMAIL_HIGH, EMAIL_JOB_TYPES.PASSWORD_RESET, payload);
+  }
+
+  /** Enqueue invite email (set password link; high priority - token expires in 1h). */
+  async enqueueInvite(payload: InviteEmailPayload): Promise<string | null> {
+    return this.send(QUEUE_EMAIL_HIGH, EMAIL_JOB_TYPES.INVITE, payload);
   }
 
   private async send(

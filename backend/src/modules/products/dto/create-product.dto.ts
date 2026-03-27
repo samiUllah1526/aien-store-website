@@ -1,4 +1,16 @@
-import { IsString, IsOptional, IsInt, Min, IsArray, IsBoolean, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  ArrayMinSize,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ProductVariantInputDto } from './product-variant-input.dto';
 
 /** Only PKR is allowed. */
 const ALLOWED_CURRENCY = ['PKR'] as const;
@@ -29,10 +41,11 @@ export class CreateProductDto {
   @IsIn(ALLOWED_CURRENCY, { message: 'currency must be PKR' })
   currency?: string;
 
-  @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  sizes?: string[];
+  @ArrayMinSize(1, { message: 'At least one variant is required' })
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantInputDto)
+  variants: ProductVariantInputDto[];
 
   @IsOptional()
   @IsBoolean()
