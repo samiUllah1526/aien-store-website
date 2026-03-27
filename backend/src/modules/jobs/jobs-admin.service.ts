@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PgbossService } from './pgboss.service';
-import { QUEUE_NAMES } from './jobs.constants';
 
 /**
  * Admin API for pg-boss queues and jobs (stats, list, retry, cancel).
