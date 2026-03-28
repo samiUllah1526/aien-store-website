@@ -1,0 +1,53 @@
+name: Deploy Backend VPS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend-vps.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-vps
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.VPS_APP_DIR }}"
+            BRANCH="${{ secrets.DEPLOY_BRANCH }}"
+            if [ -z "$BRANCH" ]; then
+              BRANCH="main"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin
+            git checkout "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+
+            cd backend
+            npm ci
+            npm run build
+            npx prisma migrate deploy
+
+            pm2 restart aien-backend --update-env || pm2 start npm --name aien-backend -- run start:prod
+            pm2 save
+            pm2 status aien-backend
