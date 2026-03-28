@@ -1,0 +1,47 @@
+name: Deploy Main Website (Cloudflare Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "main-website/**"
+      - ".github/workflows/deploy-main-website-cloudflare.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main-website-cloudflare
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: CLOUDFLARE
+    defaults:
+      run:
+        working-directory: main-website
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: main-website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy dist --project-name aien-store
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
