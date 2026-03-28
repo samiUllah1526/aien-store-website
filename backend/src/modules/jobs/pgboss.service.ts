@@ -17,6 +17,8 @@ function stripSchemaFromUrl(url: string): string {
 export class PgbossService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PgbossService.name);
   private boss: InstanceType<typeof PgBoss> | null = null;
+  private started = false;
+  private startPromise: Promise<void> | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -40,33 +42,50 @@ export class PgbossService implements OnModuleInit, OnModuleDestroy {
 
     this.boss.on('error', (err) => this.logger.error('pg-boss error', err));
 
-    try {
-      await this.boss.start();
-      this.logger.log('pg-boss started');
-    } catch (err) {
-      this.logger.error('pg-boss failed to start', err);
-      throw err;
-    }
+    this.startPromise = (async () => {
+      try {
+        await this.boss!.start();
+        this.started = true;
+        this.logger.log('pg-boss started');
+      } catch (err) {
+        this.logger.error('pg-boss failed to start', err);
+        throw err;
+      }
+    })();
+
+    await this.startPromise;
   }
 
   async onModuleDestroy(): Promise<void> {
     if (this.boss) {
+      this.started = false;
       await this.boss.stop();
       this.boss = null;
+      this.startPromise = null;
       this.logger.log('pg-boss stopped');
     }
   }
 
   /** Get the PgBoss instance. Throws if not started. */
   getBoss(): InstanceType<typeof PgBoss> {
-    if (!this.boss) {
+    if (!this.boss || !this.started) {
       throw new Error('pg-boss is not started (DATABASE_URL may be unset)');
     }
     return this.boss;
   }
 
+  /**
+   * Wait until pg-boss startup finishes.
+   * Returns false when startup was skipped (e.g., DATABASE_URL missing).
+   */
+  async waitUntilStarted(): Promise<boolean> {
+    if (!this.startPromise) return this.started;
+    await this.startPromise;
+    return this.started;
+  }
+
   /** Check if pg-boss is running. */
   isStarted(): boolean {
-    return this.boss !== null;
+    return this.boss !== null && this.started;
   }
 }

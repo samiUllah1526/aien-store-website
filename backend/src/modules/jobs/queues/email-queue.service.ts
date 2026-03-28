@@ -53,7 +53,8 @@ export class EmailQueueService {
     type: string,
     payload: object,
   ): Promise<string | null> {
-    if (!this.pgboss.isStarted()) {
+    const started = await this.pgboss.waitUntilStarted();
+    if (!started) {
       return null;
     }
     try {

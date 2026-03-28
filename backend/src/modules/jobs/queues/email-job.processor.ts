@@ -33,7 +33,8 @@ export class EmailJobProcessor implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (!this.pgboss.isStarted()) {
+    const started = await this.pgboss.waitUntilStarted();
+    if (!started) {
       this.logger.warn('pg-boss not started; email job processor will not run');
       return;
     }
