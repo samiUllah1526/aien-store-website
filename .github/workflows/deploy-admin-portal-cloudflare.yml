@@ -19,6 +19,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: CLOUDFLARE
+    env:
+      PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL || secrets.PUBLIC_API_URL }}
     defaults:
       run:
         working-directory: admin-portal
