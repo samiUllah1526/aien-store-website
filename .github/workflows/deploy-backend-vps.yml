@@ -1,12 +1,39 @@
 name: Deploy Backend VPS
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-backend-vps.yml"
+  workflow_call:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        type: string
+        required: false
+        default: main
+      run_migrations:
+        description: "Run Prisma migrations during deploy"
+        type: boolean
+        required: false
+        default: true
+      reason:
+        description: "Reason for deploy"
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        type: string
+        required: true
+        default: main
+      run_migrations:
+        description: "Run Prisma migrations during deploy"
+        type: boolean
+        required: true
+        default: true
+      reason:
+        description: "Why are you running this manually?"
+        type: string
+        required: false
 
 concurrency:
   group: deploy-backend-vps
@@ -20,6 +47,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Deployment context
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch input: ${{ inputs.branch }}"
+          echo "Run migrations: ${{ inputs.run_migrations }}"
+          echo "Reason: ${{ inputs.reason }}"
+
       - name: Deploy backend via SSH
         uses: appleboy/ssh-action@v1.2.2
         with:
@@ -32,7 +66,11 @@ jobs:
             set -euo pipefail
 
             APP_DIR="${{ secrets.VPS_APP_DIR }}"
-            BRANCH="${{ secrets.DEPLOY_BRANCH }}"
+            BRANCH="${{ inputs.branch }}"
+            RUN_MIGRATIONS="${{ inputs.run_migrations }}"
+            if [ -z "$BRANCH" ]; then
+              BRANCH="${{ secrets.DEPLOY_BRANCH }}"
+            fi
             if [ -z "$BRANCH" ]; then
               BRANCH="main"
             fi
@@ -45,7 +83,11 @@ jobs:
             cd backend
             npm ci
             npm run build
-            npx prisma migrate deploy
+            if [ "$RUN_MIGRATIONS" = "true" ]; then
+              npx prisma migrate deploy
+            else
+              echo "Skipping migrations (run_migrations=false)"
+            fi
 
             pm2 restart aien-backend --update-env || pm2 start npm --name aien-backend -- run start:prod
             pm2 save

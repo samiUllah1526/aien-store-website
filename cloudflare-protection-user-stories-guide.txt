@@ -1,0 +1,379 @@
+Cloudflare Protection Guide for AIEN Store
+Date: 2026-03-29
+
+Audience: Junior developer, first production deployment.
+Goal: Keep site online while improving protection step by step.
+
+================================================================
+Quick Summary
+================================================================
+You have 3 public apps:
+- Main website: www.aien.store (Cloudflare Pages)
+- Admin portal: admin.aien.store (Cloudflare Pages)
+- Backend API: api.aien.store (VPS with Nginx + PM2 + Postgres)
+
+This guide is split into:
+1) User Story 1: Protect website + admin only (backend unchanged)
+2) User Story 2: Add backend DDoS protection
+3) Full reference: concepts, commands, costs, troubleshooting
+
+Important promise:
+- You can complete User Story 1 without breaking current backend access.
+- You can keep website/admin live while you work.
+
+================================================================
+User Story 1 (Safe and Incremental)
+Protect Website and Admin Portal Only
+================================================================
+Business objective:
+- Keep storefront and admin online and protected by Cloudflare edge.
+- Do NOT change backend traffic path yet.
+
+Technical strategy:
+- Keep API on VPS as-is.
+- Ensure only main/admin are behind Cloudflare Pages custom domains.
+- Keep Namecheap as registrar and DNS host (for now), or move DNS later.
+
+---------------------------------------------------------------
+Step 1: Confirm current working state
+---------------------------------------------------------------
+Run:
+dig +short www.aien.store
+dig +short admin.aien.store
+dig +short api.aien.store
+
+Expected:
+- www resolves to Pages target/IPs
+- admin resolves to Pages target/IPs
+- api resolves to VPS IP (163.245.208.214)
+
+Why:
+- This confirms customer-facing frontends are on Cloudflare edge.
+- Backend remains stable and unchanged.
+
+---------------------------------------------------------------
+Step 2: Ensure Pages custom domains are Active
+---------------------------------------------------------------
+In Cloudflare Pages:
+- Project aien-store -> add custom domain: www.aien.store
+- Project admin-portal-9td -> add custom domain: admin.aien.store
+
+If you are using Namecheap DNS, choose:
+- "My DNS provider" -> CNAME setup
+
+Why:
+- DNS record alone is not enough.
+- Pages must "claim" the custom domain.
+
+---------------------------------------------------------------
+Step 3: Keep DNS clean (no conflicts)
+---------------------------------------------------------------
+Required records in Namecheap:
+- CNAME www -> aien-store.pages.dev
+- CNAME admin -> admin-portal-9td.pages.dev
+- A api -> 163.245.208.214
+- URL Redirect @ -> https://www.aien.store (301)
+
+Keep:
+- TXT verification records (Google, etc.)
+
+Remove conflicts:
+- Do not keep both A and CNAME for same host (example: admin A + admin CNAME).
+
+Why:
+- Conflicting records cause random behavior and verification failures.
+
+---------------------------------------------------------------
+Step 4: Verify from browser and command line
+---------------------------------------------------------------
+Browser:
+- https://www.aien.store
+- https://admin.aien.store
+
+CLI:
+curl -I https://www.aien.store
+curl -I https://admin.aien.store
+
+Why:
+- Confirms end-user experience is healthy after DNS/domain setup.
+
+---------------------------------------------------------------
+Step 5: Cost and plan notes for User Story 1
+---------------------------------------------------------------
+Free Cloudflare benefits you get:
+- Global CDN for Pages
+- Basic DDoS protection for edge traffic
+- Free SSL/TLS for custom domains
+- Basic caching and security defaults
+
+What may require paid plans:
+- Advanced WAF tuning
+- Advanced bot management
+- Higher/advanced rate limiting packages (depends on limits/features needed)
+
+Free alternative:
+- Stay on free plan and use default protections + basic rules.
+
+No true free alternative for:
+- Enterprise-grade custom DDoS SLAs and advanced mitigation controls.
+
+Status after User Story 1:
+- Website/admin protected and accessible.
+- Backend untouched, still accessible.
+
+================================================================
+User Story 2 (Phase 2)
+Protect Backend API from DDoS
+================================================================
+Business objective:
+- Add Cloudflare edge in front of backend API without downtime.
+
+Technical strategy:
+- Move DNS authority to Cloudflare (recommended), then proxy API.
+- Keep origin (VPS) hardened with firewall and HTTPS.
+
+---------------------------------------------------------------
+Step 1: Prepare migration and avoid downtime
+---------------------------------------------------------------
+Before changes:
+- Backup all current DNS records from Namecheap.
+- Ensure API health is good: curl -I https://api.aien.store/health
+- Keep SSH access working.
+
+Why:
+- You need rollback capability and baseline health.
+
+---------------------------------------------------------------
+Step 2: Move DNS hosting to Cloudflare (domain ownership stays Namecheap)
+---------------------------------------------------------------
+Important concept:
+- Registrar (Namecheap) != DNS host (Cloudflare).
+- You still renew/pay domain at Namecheap.
+
+Process:
+1) Add aien.store zone in Cloudflare
+2) Recreate/verify all required DNS records
+3) At Namecheap, update nameservers to Cloudflare nameservers
+
+Why:
+- Cloudflare proxy and security controls require Cloudflare DNS authority.
+
+---------------------------------------------------------------
+Step 3: Set Cloudflare DNS records (recommended target)
+---------------------------------------------------------------
+Record table:
+- www    CNAME aien-store.pages.dev          proxied (orange cloud)
+- admin  CNAME admin-portal-9td.pages.dev    proxied (orange cloud)
+- api    A     163.245.208.214               start DNS-only (gray), then proxy
+- @      redirect rule to https://www.aien.store
+- TXT/MX/SPF/DKIM records as needed
+
+Why start api as DNS-only:
+- Lower risk during cutover.
+- After validation, switch to proxied for added protection.
+
+---------------------------------------------------------------
+Step 4: Validate DNS authority and propagation
+---------------------------------------------------------------
+Commands:
+dig NS aien.store +short
+dig +short www.aien.store
+dig +short admin.aien.store
+dig +short api.aien.store
+dig @1.1.1.1 api.aien.store +short
+dig @8.8.8.8 api.aien.store +short
+
+Expected:
+- NS shows Cloudflare nameservers
+- host resolution matches your Cloudflare records
+
+Why:
+- Removes guesswork during migration.
+
+---------------------------------------------------------------
+Step 5: Turn on API proxy and verify
+---------------------------------------------------------------
+In Cloudflare DNS:
+- Toggle api record from gray to orange cloud (proxied)
+
+Then test:
+curl -I https://api.aien.store/health
+
+If healthy, continue.
+
+Why:
+- API traffic now goes through Cloudflare edge before origin.
+- This adds DDoS/WAF/rate-limit opportunities.
+
+---------------------------------------------------------------
+Step 6: Add free security controls first
+---------------------------------------------------------------
+In Cloudflare (Free-first):
+- Enable SSL/TLS Full (strict) if certificate/origin supports it
+- Enable Security Level defaults
+- Add basic WAF managed rules (if available in your plan/features)
+- Add simple rate limits on auth endpoints:
+  /auth/*
+  /store/auth/*
+  /admin/auth/*
+
+Origin hardening:
+- Keep only ports 80/443/22 open
+- Keep UFW active
+- Keep SSH keys only (disable password/root after verified)
+
+Why:
+- Cloudflare edge + hardened origin is the practical defense model.
+
+---------------------------------------------------------------
+Step 7: Cost notes for User Story 2
+---------------------------------------------------------------
+Free/low-cost options:
+- Cloudflare proxy + baseline DDoS + SSL
+- Basic security and caching
+
+Likely paid if you need more:
+- Advanced WAF tuning/rulesets
+- Advanced bot management
+- Higher/finer rate-limit policy capacity
+
+No complete free replacement for:
+- Full enterprise API DDoS controls + guaranteed mitigation SLA.
+
+================================================================
+Full Documentation and Concepts (Reference Section)
+================================================================
+This section is intentionally complete so you can learn and revisit later.
+
+---------------------------------------------------------------
+A) DNS concepts in plain English
+---------------------------------------------------------------
+- @ means root domain (aien.store)
+- A record maps name -> IPv4
+- CNAME maps name -> another hostname
+- TTL is cache lifetime
+- Authoritative nameservers are source of truth for records
+
+How to check authority:
+dig NS aien.store +short
+
+Interpretation:
+- dns1/dns2.registrar-servers.com -> Namecheap DNS active
+- *.ns.cloudflare.com -> Cloudflare DNS active
+
+---------------------------------------------------------------
+B) Common DNS mistakes and fixes
+---------------------------------------------------------------
+Mistake: "NXDOMAIN from dig"
+Cause: You queried URL with https:// instead of hostname.
+Fix: Use dig +short www.aien.store (no protocol).
+
+Mistake: A and CNAME on same host
+Cause: conflicting records
+Fix: keep one record type per host.
+
+Mistake: Cloudflare Error 1001 for Pages domain
+Cause: domain not fully added/active in Pages custom domain config
+Fix: add domain in correct Pages project and wait for Active.
+
+Mistake: Different dig outputs over time
+Cause: propagation/resolver cache differences
+Fix: compare 1.1.1.1, 8.8.8.8, authoritative NS and wait.
+
+---------------------------------------------------------------
+C) Nginx role in your architecture
+---------------------------------------------------------------
+Nginx is the public entry point on VPS:
+- accepts HTTPS request on api.aien.store
+- forwards to local backend on 127.0.0.1:3000
+- handles TLS cert integration with certbot
+
+Healthy API check:
+curl -I https://api.aien.store/health
+
+Note:
+- 404 on / can still be normal if no root route exists.
+
+---------------------------------------------------------------
+D) SSL renewal
+---------------------------------------------------------------
+Check timer:
+sudo systemctl status certbot.timer --no-pager
+
+Dry run:
+sudo certbot renew --dry-run
+
+Why:
+- Let's Encrypt certificates expire; renewal should be automated.
+
+---------------------------------------------------------------
+E) PM2 env refresh
+---------------------------------------------------------------
+When backend .env changes:
+pm2 restart aien-backend --update-env
+pm2 save
+
+Why:
+- Ensures running process picks latest environment values.
+
+---------------------------------------------------------------
+F) Google OAuth callback URLs for your current code
+---------------------------------------------------------------
+Set these in Google Cloud Console:
+- https://api.aien.store/auth/google/callback
+- https://api.aien.store/store/auth/google/callback
+- https://api.aien.store/admin/auth/google/callback
+
+Also ensure backend env values:
+- API_URL=https://api.aien.store
+- APP_URL=https://www.aien.store
+- ADMIN_URL=https://admin.aien.store
+
+---------------------------------------------------------------
+G) GitHub Actions + frontend env note
+---------------------------------------------------------------
+Your frontend build runs in GitHub Actions.
+So required env vars (example PUBLIC_API_URL) must exist in GitHub environment used by workflows.
+
+If using environment CLOUDFLARE:
+- add PUBLIC_API_URL there
+- workflows should pass it to build step/job env
+
+Why:
+- Cloudflare Pages dashboard env vars do not automatically exist inside GitHub runner build.
+
+---------------------------------------------------------------
+H) No-downtime migration checklist (compact)
+---------------------------------------------------------------
+1) Backup Namecheap DNS records
+2) Add zone in Cloudflare and recreate records
+3) Verify records in Cloudflare are complete
+4) Switch nameservers in Namecheap to Cloudflare
+5) Verify NS + host resolution
+6) Test website/admin/api health
+7) Enable API proxy after validation
+8) Add security/rate limits
+
+---------------------------------------------------------------
+I) Rollback plan
+---------------------------------------------------------------
+If something breaks:
+- Revert nameservers to previous provider (if needed) OR fix records in current authoritative provider
+- Keep local backup of DNS records for quick restore
+- Verify with dig NS and endpoint health checks
+
+================================================================
+Final Learning Notes
+================================================================
+You are doing this correctly:
+- You validated with dig and curl, not just browser.
+- You changed one layer at a time.
+- You kept service availability as a requirement.
+
+Best mindset for production:
+- Make one change
+- Verify
+- Move to next change
+- Keep rollback ready
+
+End of document.

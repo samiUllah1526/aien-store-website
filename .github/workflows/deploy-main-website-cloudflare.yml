@@ -1,12 +1,52 @@
 name: Deploy Main Website (Cloudflare Pages)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "main-website/**"
-      - ".github/workflows/deploy-main-website-cloudflare.yml"
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deploy target"
+        type: string
+        required: false
+        default: production
+      purge_cache:
+        description: "Purge Cloudflare cache after deploy"
+        type: boolean
+        required: false
+        default: false
+      skip_build:
+        description: "Skip build step (not supported in this workflow)"
+        type: boolean
+        required: false
+        default: false
+      reason:
+        description: "Why this deploy was triggered"
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy target"
+        type: choice
+        required: true
+        options:
+          - production
+          - preview
+        default: production
+      purge_cache:
+        description: "Purge Cloudflare cache after deploy"
+        type: boolean
+        required: true
+        default: true
+      skip_build:
+        description: "Skip build step (not supported in this workflow)"
+        type: boolean
+        required: true
+        default: false
+      reason:
+        description: "Why are you running this manually?"
+        type: string
+        required: false
 
 concurrency:
   group: deploy-main-website-cloudflare
@@ -21,6 +61,7 @@ jobs:
     environment: CLOUDFLARE
     env:
       PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL || secrets.PUBLIC_API_URL }}
+      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID || secrets.CLOUDFLARE_ZONE_ID }}
     defaults:
       run:
         working-directory: main-website
@@ -36,14 +77,44 @@ jobs:
           cache: npm
           cache-dependency-path: main-website/package-lock.json
 
+      - name: Deployment context
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Reason: ${{ inputs.reason }}"
+
+      - name: Validate manual options
+        if: ${{ inputs.skip_build }}
+        run: |
+          echo "skip_build=true is not supported in this workflow because the runner has no prebuilt dist artifact."
+          echo "Set skip_build=false and rerun."
+          exit 1
+
       - name: Install dependencies
+        if: ${{ !inputs.skip_build }}
         run: npm ci
 
       - name: Build website
+        if: ${{ !inputs.skip_build }}
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy dist --project-name aien-store
+        run: |
+          if [ "${{ inputs.environment }}" = "preview" ]; then
+            npx wrangler pages deploy dist --project-name aien-store --branch preview
+          else
+            npx wrangler pages deploy dist --project-name aien-store
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Purge Cloudflare cache
+        if: ${{ inputs.purge_cache && env.CLOUDFLARE_ZONE_ID != '' }}
+        run: |
+          curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

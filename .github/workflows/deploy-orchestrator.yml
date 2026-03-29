@@ -1,0 +1,133 @@
+name: Deploy Orchestrator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "admin-portal/**"
+      - "main-website/**"
+      - ".github/workflows/deploy-orchestrator.yml"
+      - ".github/workflows/deploy-backend-vps.yml"
+      - ".github/workflows/deploy-admin-portal-cloudflare.yml"
+      - ".github/workflows/deploy-main-website-cloudflare.yml"
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: "Deploy backend"
+        type: boolean
+        required: true
+        default: true
+      deploy_admin_portal:
+        description: "Deploy admin portal"
+        type: boolean
+        required: true
+        default: true
+      deploy_main_website:
+        description: "Deploy main website"
+        type: boolean
+        required: true
+        default: true
+      backend_branch:
+        description: "Backend branch for manual run"
+        type: string
+        required: true
+        default: main
+      run_backend_migrations:
+        description: "Run backend migrations in manual run"
+        type: boolean
+        required: true
+        default: true
+      reason:
+        description: "Why are you running this manually?"
+        type: string
+        required: false
+
+concurrency:
+  group: deploy-orchestrator
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  detect_changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      backend_changed: ${{ steps.filter.outputs.backend }}
+      admin_changed: ${{ steps.filter.outputs.admin }}
+      website_changed: ${{ steps.filter.outputs.website }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - "backend/**"
+              - ".github/workflows/deploy-backend-vps.yml"
+            admin:
+              - "admin-portal/**"
+              - ".github/workflows/deploy-admin-portal-cloudflare.yml"
+            website:
+              - "main-website/**"
+              - ".github/workflows/deploy-main-website-cloudflare.yml"
+
+  deploy_backend:
+    name: Deploy Backend
+    needs: detect_changes
+    if: >-
+      ${{
+        (github.event_name == 'push' && needs.detect_changes.outputs.backend_changed == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy_backend)
+      }}
+    uses: ./.github/workflows/deploy-backend-vps.yml
+    with:
+      branch: ${{ github.event_name == 'workflow_dispatch' && inputs.backend_branch || 'main' }}
+      run_migrations: ${{ github.event_name == 'workflow_dispatch' && inputs.run_backend_migrations || true }}
+      reason: ${{ github.event_name == 'workflow_dispatch' && inputs.reason || 'Auto deploy from orchestrator (push)' }}
+    secrets: inherit
+
+  deploy_admin_portal:
+    name: Deploy Admin Portal
+    needs: [detect_changes, deploy_backend]
+    if: >-
+      ${{
+        (
+          (github.event_name == 'push' && needs.detect_changes.outputs.admin_changed == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.deploy_admin_portal)
+        ) &&
+        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped')
+      }}
+    uses: ./.github/workflows/deploy-admin-portal-cloudflare.yml
+    with:
+      environment: production
+      purge_cache: false
+      skip_build: false
+      reason: ${{ github.event_name == 'workflow_dispatch' && inputs.reason || 'Auto deploy from orchestrator (push)' }}
+    secrets: inherit
+
+  deploy_main_website:
+    name: Deploy Main Website
+    needs: [detect_changes, deploy_backend]
+    if: >-
+      ${{
+        (
+          (github.event_name == 'push' && needs.detect_changes.outputs.website_changed == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.deploy_main_website)
+        ) &&
+        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped')
+      }}
+    uses: ./.github/workflows/deploy-main-website-cloudflare.yml
+    with:
+      environment: production
+      purge_cache: false
+      skip_build: false
+      reason: ${{ github.event_name == 'workflow_dispatch' && inputs.reason || 'Auto deploy from orchestrator (push)' }}
+    secrets: inherit
