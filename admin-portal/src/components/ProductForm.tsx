@@ -323,20 +323,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             className={inputBase}
           />
         </div>
-      </div>
-
-      <VariantsSection
-        fields={variantsFieldArray.fields}
-        onAppend={appendVariant}
-        onRemove={variantsFieldArray.remove}
-        form={form}
-        mediaPreviews={mediaPreviews}
-        onAddVariantFiles={handleVariantFileSelect}
-        onRemoveVariantImage={removeVariantImage}
-        uploading={uploading}
-      />
-
-      <Controller
+        <Controller
         control={form.control}
         name="categoryIds"
         render={({ field }) => (
@@ -350,14 +337,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         )}
       />
+      </div>
 
-      <ProductFormImages
-        mediaIds={mediaIds}
-        mediaPreviews={mediaPreviews}
-        onAddFiles={handleFileSelect}
-        onRemoveImage={removeImage}
-        uploading={uploading}
-      />
+
 
       <div className="flex items-center gap-2">
         <input
@@ -369,7 +351,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         <label htmlFor="featured" className="text-sm font-medium text-slate-700">
           Featured
         </label>
-      </div>
+      </div>  
+
+      <ProductFormImages
+        mediaIds={mediaIds}
+        mediaPreviews={mediaPreviews}
+        onAddFiles={handleFileSelect}
+        onRemoveImage={removeImage}
+        uploading={uploading}
+      />
+
+      <VariantsSection
+        fields={variantsFieldArray.fields}
+        onAppend={appendVariant}
+        onRemove={variantsFieldArray.remove}
+        form={form}
+        mediaPreviews={mediaPreviews}
+        onAddVariantFiles={handleVariantFileSelect}
+        onRemoveVariantImage={removeVariantImage}
+        uploading={uploading}
+      />
+
 
       <div className="flex gap-3 pt-2">
         <button
