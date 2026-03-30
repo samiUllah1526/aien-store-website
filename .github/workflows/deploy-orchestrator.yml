@@ -99,11 +99,13 @@ jobs:
     needs: [detect_changes, deploy_backend]
     if: >-
       ${{
+        always() &&
+        needs.detect_changes.result == 'success' &&
+        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped') &&
         (
           (github.event_name == 'push' && needs.detect_changes.outputs.admin_changed == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.deploy_admin_portal)
-        ) &&
-        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped')
+        )
       }}
     uses: ./.github/workflows/deploy-admin-portal-cloudflare.yml
     with:
@@ -116,13 +118,16 @@ jobs:
   deploy_main_website:
     name: Deploy Main Website
     needs: [detect_changes, deploy_backend]
+    # Run when deploy_backend is skipped (website-only push): default GHA behavior skips dependents of a skipped job unless always() + result checks.
     if: >-
       ${{
+        always() &&
+        needs.detect_changes.result == 'success' &&
+        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped') &&
         (
           (github.event_name == 'push' && needs.detect_changes.outputs.website_changed == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.deploy_main_website)
-        ) &&
-        (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped')
+        )
       }}
     uses: ./.github/workflows/deploy-main-website-cloudflare.yml
     with:
