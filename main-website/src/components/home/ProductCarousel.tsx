@@ -15,6 +15,7 @@ export interface CarouselProduct {
   price: number;
   currency: string;
   image: string;
+  variantImage: string;
   urduVerse?: string | null;
   description?: string | null;
   /** When set, show sale badge (e.g. "30% Save") and strikethrough original price. */
@@ -155,7 +156,7 @@ export default function ProductCarousel({
                 </span>
               )}
               <motion.img
-                src={product.image}
+                src={product.image || product.variantImage}
                 alt=""
                 className="w-full h-full object-cover object-center"
                 animate={{

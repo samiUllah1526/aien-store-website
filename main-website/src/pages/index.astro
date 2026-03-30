@@ -8,9 +8,10 @@ import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroS
 import { getPublicSettings } from '../lib/settings';
 
 const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
-
+  // "variantImage": "https://res.cloudinary.com/dxn2snoak/image/upload/v1774903640/products/ug5padn01yrblctojs2i.png"
 function mapProduct(p: Record<string, unknown>): Product {
   const img = p.image as string;
+  const variantImage = p?.variantImage as string
   const price = Number(p.price);
   const compareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
   return {
@@ -20,6 +21,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     price,
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
+    variantImage: variantImage ? (variantImage.startsWith('http') ? variantImage : `${baseUrl}${variantImage.startsWith('/') ? '' : '/'}${variantImage}`) : '',
     urduVerse: (p.urduVerse as string | null) ?? null,
     urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
     description: (p.description as string | null) ?? null,
