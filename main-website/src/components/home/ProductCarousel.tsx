@@ -15,7 +15,8 @@ export interface CarouselProduct {
   price: number;
   currency: string;
   image: string;
-  variantImage: string;
+  /** Fallback when `image` is empty (e.g. shop list that keeps primary vs variant separate). */
+  variantImage?: string;
   urduVerse?: string | null;
   description?: string | null;
   /** When set, show sale badge (e.g. "30% Save") and strikethrough original price. */

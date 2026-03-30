@@ -8,10 +8,13 @@ import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroS
 import { getPublicSettings } from '../lib/settings';
 
 const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
-  // "variantImage": "https://res.cloudinary.com/dxn2snoak/image/upload/v1774903640/products/ug5padn01yrblctojs2i.png"
 function mapProduct(p: Record<string, unknown>): Product {
-  const img = p.image as string;
-  const variantImage = p?.variantImage as string
+
+  const variants = Array.isArray(p.variants)
+    ? (p.variants as Array<{ image?: string }>)
+    : [];
+  const variantImage = variants.find((v) => typeof v?.image === 'string' && v.image.length > 0)?.image ?? '';
+  const img = (p.image || variantImage) as string;
   const price = Number(p.price);
   const compareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
   return {
@@ -21,7 +24,6 @@ function mapProduct(p: Record<string, unknown>): Product {
     price,
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
-    variantImage: variantImage ? (variantImage.startsWith('http') ? variantImage : `${baseUrl}${variantImage.startsWith('/') ? '' : '/'}${variantImage}`) : '',
     urduVerse: (p.urduVerse as string | null) ?? null,
     urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
     description: (p.description as string | null) ?? null,
@@ -33,7 +35,7 @@ function mapProduct(p: Record<string, unknown>): Product {
 async function loadHomeCatalog() {
   try {
     const [allRes, landingRes] = await Promise.all([
-      fetch(`${baseUrl}/products?limit=20`),
+      fetch(`${baseUrl}/products`),
       fetch(`${baseUrl}/categories/landing`),
     ]);
 
@@ -41,7 +43,6 @@ async function loadHomeCatalog() {
     const shopAll: Product[] = allRes.ok && allJson?.success && Array.isArray(allJson.data)
       ? allJson.data.map((p: Record<string, unknown>) => mapProduct(p))
       : [];
-
     const landingJson = await landingRes.json().catch(() => ({}));
     const landingCategories: LandingCategory[] = landingRes.ok && landingJson?.success && Array.isArray(landingJson.data)
       ? landingJson.data

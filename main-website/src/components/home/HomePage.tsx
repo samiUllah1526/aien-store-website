@@ -32,7 +32,9 @@ export interface Product {
   price: number;
   currency: string;
   image: string;
-  variantImage: string;
+  /** Optional; home `mapProduct` merges variant into `image`, so this is often omitted. */
+  variantImage?: string;
+  variants?: { image?: string }[];
   urduVerse?: string | null;
   urduVerseTransliteration?: string | null;
   description?: string | null;
@@ -62,7 +64,6 @@ export default function HomePage({
   productsBySlug = {},
 }: HomePageProps) {
   const useHeroCarousel = heroSlides.length > 0;
-console.log("shopAll=>>", shopAll);
   return (
     <div className="flex flex-col">
       {/* Full-bleed hero */}
