@@ -33,6 +33,9 @@
     "job:voucher-expired": "ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts",
     "app-reset": "npm run db:migrate:reset && npm run db:seed && npm run db:restore-settings"
   },
+  "overrides": {
+    "axios": "1.14.0"
+  },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
     "@nestjs/common": "^11.0.1",
@@ -48,6 +51,7 @@
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "@sendgrid/mail": "^8.1.4",
+    "axios": "1.14.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
