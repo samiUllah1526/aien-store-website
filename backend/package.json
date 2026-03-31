@@ -36,6 +36,9 @@
   "overrides": {
     "axios": "1.14.0"
   },
+  "resolutions": {
+    "axios": "1.14.0"
+  },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
     "@nestjs/common": "^11.0.1",
