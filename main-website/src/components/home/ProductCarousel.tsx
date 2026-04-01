@@ -45,9 +45,7 @@ export default function ProductCarousel({
     const el = scrollRef.current;
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 10);
-    setCanScrollRight(
-      el.scrollLeft < el.scrollWidth - el.clientWidth - 10
-    );
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
   }, []);
 
   useEffect(() => {
@@ -81,6 +79,19 @@ export default function ProductCarousel({
     setIsDragging(false);
   };
 
+  const scrollByDirection = useCallback((direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const firstCard = el.querySelector<HTMLElement>('[data-carousel-item="true"]');
+    const cardWidth = firstCard?.getBoundingClientRect().width ?? el.clientWidth * 0.82;
+    const styles = window.getComputedStyle(el);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+    el.scrollBy({
+      left: direction * (cardWidth + gap),
+      behavior: 'smooth',
+    });
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -111,38 +122,40 @@ export default function ProductCarousel({
           </motion.h2>
         </div>
       )}
+      <div className="relative group/carousel">
         <div
           ref={scrollRef}
           className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 cursor-grab active:cursor-grabbing select-none touch-pan-x"
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-        }}
-        onMouseDown={handleDragStart}
-        onMouseMove={handleDragMove}
-        onMouseUp={handleDragEnd}
-        onTouchStart={handleDragStart}
-        onTouchMove={handleDragMove}
-        onTouchEnd={handleDragEnd}
-      >
-        {products.map((product, i) => (
-          <motion.a
-            key={product.id}
-            href={`/shop/${product.slug}`}
-            onClick={(e) => isDragging && e.preventDefault()}
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{
-              duration: 0.8,
-              delay: i * 0.1,
-              ease: [0.25, 0.46, 0.45, 0.94],
-            }}
-            className="flex-shrink-0 w-[75vw] sm:w-[55vw] md:w-[42vw] max-w-[280px] sm:max-w-[320px] md:max-w-[360px] snap-center group min-w-0"
-            onMouseEnter={() => setHoveredId(product.id)}
-            onMouseLeave={() => setHoveredId(null)}
-          >
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}
+          onMouseDown={handleDragStart}
+          onMouseMove={handleDragMove}
+          onMouseUp={handleDragEnd}
+          onTouchStart={handleDragStart}
+          onTouchMove={handleDragMove}
+          onTouchEnd={handleDragEnd}
+        >
+          {products.map((product, i) => (
+            <motion.a
+              key={product.id}
+              href={`/shop/${product.slug}`}
+              data-carousel-item="true"
+              onClick={(e) => isDragging && e.preventDefault()}
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{
+                duration: 0.8,
+                delay: i * 0.1,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+              className="flex-shrink-0 w-[75vw] sm:w-[55vw] md:w-[42vw] max-w-[280px] sm:max-w-[320px] md:max-w-[360px] snap-center group min-w-0"
+              onMouseEnter={() => setHoveredId(product.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
             <div className="aspect-[4/5] overflow-hidden rounded-xl bg-ash/10 relative">
               {showSaleBadge && (product.compareAtPrice != null && product.compareAtPrice > product.price) && (
                 <span className="absolute left-3 top-3 z-10 rounded bg-red-600 text-white text-xs font-semibold px-2 py-1">
@@ -201,8 +214,31 @@ export default function ProductCarousel({
                 </p>
               </div>
             </div>
-          </motion.a>
-        ))}
+            </motion.a>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-label="Previous products"
+          onClick={() => scrollByDirection(-1)}
+          disabled={!canScrollLeft}
+          className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-off-white/50 dark:border-off-white/20 bg-bone/90 dark:bg-charcoal/85 backdrop-blur-md text-soft-charcoal dark:text-off-white shadow-md transition-all duration-300 flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed hover:scale-105 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-mehndi/50 opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100"
+        >
+          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label="Next products"
+          onClick={() => scrollByDirection(1)}
+          disabled={!canScrollRight}
+          className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-off-white/50 dark:border-off-white/20 bg-bone/90 dark:bg-charcoal/85 backdrop-blur-md text-soft-charcoal dark:text-off-white shadow-md transition-all duration-300 flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed hover:scale-105 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-mehndi/50 opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100"
+        >
+          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
       <div className="mt-12 text-center">
         <motion.a
