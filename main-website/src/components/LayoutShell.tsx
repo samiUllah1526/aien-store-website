@@ -36,6 +36,12 @@ export interface SiteSettings {
   announcement?: { items: { text: string }[] };
 }
 
+export interface LandingCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 function logoUrl(logoPath: string | null): string {
   if (!logoPath) return '';
   const base = getApiBaseUrl().replace(/\/$/, '');
@@ -45,9 +51,11 @@ function logoUrl(logoPath: string | null): string {
 function ShellContent({
   children,
   siteSettings,
+  landingCategories,
 }: {
   children: ReactNode;
   siteSettings: SiteSettings | null | undefined;
+  landingCategories?: LandingCategory[];
 }) {
   const copyrightText = siteSettings?.footer?.copyright ?? '';
   const logoSrc = siteSettings?.logoPath ? logoUrl(siteSettings.logoPath) : '';
@@ -61,7 +69,7 @@ function ShellContent({
     <>
       <AnnouncementBar items={announcements} />
       <SiteContainer className="w-full">
-        <AppHeader logoSrc={logoSrc} />
+        <AppHeader logoSrc={logoSrc} landingCategories={landingCategories} />
       </SiteContainer>
       <main className="flex-1 w-full min-w-0 overflow-x-clip">{children}</main>
       <AppFooter
@@ -82,13 +90,15 @@ function ShellContent({
 export default function LayoutShell({
   children,
   siteSettings,
+  landingCategories,
 }: {
   children: ReactNode;
   siteSettings?: SiteSettings | null;
+  landingCategories?: LandingCategory[];
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <ShellContent siteSettings={siteSettings}>{children}</ShellContent>
+      <ShellContent siteSettings={siteSettings} landingCategories={landingCategories}>{children}</ShellContent>
     </div>
   );
 }

@@ -11,9 +11,6 @@ interface LandingCategory {
   id: string;
   name: string;
   slug: string;
-  bannerImageUrl: string | null;
-  landingOrder: number | null;
-  productCount: number;
 }
 
 type NavLinkItem = {
@@ -44,8 +41,6 @@ function buildNavLinks(categories: LandingCategory[]): NavLinkItem[] {
   return [HOME_LINK, ...middle, ABOUT_LINK];
 }
 
-const FALLBACK_NAV_LINKS: NavLinkItem[] = [HOME_LINK, ABOUT_LINK];
-
 interface SearchProduct {
   id: string;
   slug: string;
@@ -60,6 +55,7 @@ const SEARCH_LIMIT = 6;
 
 interface AppHeaderProps {
   logoSrc: string;
+  landingCategories?: LandingCategory[];
 }
 
 function NavLink({
@@ -92,10 +88,10 @@ function NavLink({
   );
 }
 
-export default function AppHeader({ logoSrc }: AppHeaderProps) {
+export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeaderProps) {
   const [pathname, setPathname] = useState('');
   const [search, setSearch] = useState('');
-  const [navLinks, setNavLinks] = useState<NavLinkItem[]>(FALLBACK_NAV_LINKS);
+  const navLinks = buildNavLinks(landingCategories);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
@@ -166,22 +162,6 @@ export default function AppHeader({ logoSrc }: AppHeaderProps) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
-    fetch(`${baseUrl}/categories/landing`)
-      .then((res) => res.json())
-      .then((json: { success?: boolean; data?: LandingCategory[] }) => {
-        if (cancelled) return;
-        const list = json?.success && Array.isArray(json.data) ? json.data : [];
-        setNavLinks(buildNavLinks(list));
-      })
-      .catch(() => {
-        if (!cancelled) setNavLinks(FALLBACK_NAV_LINKS);
-      });
-    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

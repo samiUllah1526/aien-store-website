@@ -6,7 +6,7 @@
 import '../styles/global.css';
 import LayoutShell from '../components/LayoutShell';
 import { getPublicSettings } from '../lib/settings';
-import { faviconPath, themeStorageKey } from '../config';
+import { faviconPath, themeStorageKey, storeApiBaseUrl } from '../config';
 
 interface Props {
   title?: string;
@@ -20,6 +20,26 @@ interface Props {
 }
 
 const settings = await getPublicSettings();
+const landingCategories = await (async () => {
+  try {
+    const res = await fetch(`${storeApiBaseUrl}/categories/landing`);
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: Array<{ id?: string | number; name?: string; slug?: string }>;
+    };
+    if (!res.ok || !json?.success || !Array.isArray(json.data)) return [];
+    return json.data
+      .filter((item) => item && item.slug && item.name)
+      .map((item) => ({
+        id: String(item.id ?? ''),
+        name: String(item.name ?? ''),
+        slug: String(item.slug ?? ''),
+      }))
+      .filter((item) => item.id !== '' && item.name !== '' && item.slug !== '');
+  } catch {
+    return [];
+  }
+})();
 const seo = settings.seo;
 const marketing = settings.marketing;
 const siteSettings = {
@@ -95,7 +115,7 @@ const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pat
     )}
   </head>
   <body class="min-h-screen flex flex-col bg-bone dark:bg-charcoal text-soft-charcoal dark:text-off-white antialiased transition-colors duration-400">
-    <LayoutShell client:load siteSettings={siteSettings}>
+    <LayoutShell client:load siteSettings={siteSettings} landingCategories={landingCategories}>
       <slot />
     </LayoutShell>
   </body>
