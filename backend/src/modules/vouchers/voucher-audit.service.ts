@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { VoucherAuditEvent, VoucherAuditPublisher } from './voucher-audit.interface';
+import type {
+  VoucherAuditEvent,
+  VoucherAuditPublisher,
+} from './voucher-audit.interface';
 
 @Injectable()
 export class VoucherAuditService implements VoucherAuditPublisher {
   constructor(private readonly prisma: PrismaService) {}
 
-  async publish(event: VoucherAuditEvent, tx?: Prisma.TransactionClient): Promise<void> {
+  async publish(
+    event: VoucherAuditEvent,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
     const client = tx ?? this.prisma;
     try {
       await client.voucherAuditLog.create({

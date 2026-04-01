@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VoucherAuditService } from './voucher-audit.service';
 import { VouchersService, VOUCHER_ERROR_CODES } from './vouchers.service';
@@ -34,7 +38,13 @@ const baseVoucher = {
 describe('VouchersService', () => {
   let service: VouchersService;
   let prisma: {
-    voucher: { findFirst: jest.Mock; findMany: jest.Mock; create: jest.Mock; update: jest.Mock; count: jest.Mock };
+    voucher: {
+      findFirst: jest.Mock;
+      findMany: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      count: jest.Mock;
+    };
     product: { findMany: jest.Mock };
     siteSetting: { findUnique: jest.Mock };
     voucherRedemption: { count: jest.Mock };
@@ -47,7 +57,9 @@ describe('VouchersService', () => {
     prisma.product.findMany.mockResolvedValue([
       { id: productId, priceCents: 1000, productCategories: [] },
     ]);
-    prisma.siteSetting.findUnique.mockResolvedValue({ value: { deliveryChargesCents: 200 } });
+    prisma.siteSetting.findUnique.mockResolvedValue({
+      value: { deliveryChargesCents: 200 },
+    });
     prisma.voucherRedemption.count.mockResolvedValue(0);
   };
 
@@ -65,7 +77,10 @@ describe('VouchersService', () => {
       voucherRedemption: { count: jest.fn() },
       voucherAuditLog: { findMany: jest.fn(), count: jest.fn() },
     };
-    audit = { publish: jest.fn().mockResolvedValue(undefined), publishAsync: jest.fn().mockResolvedValue(undefined) };
+    audit = {
+      publish: jest.fn().mockResolvedValue(undefined),
+      publishAsync: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,7 +114,10 @@ describe('VouchersService', () => {
     });
 
     it('returns error when voucher expired', async () => {
-      prisma.voucher.findFirst.mockResolvedValue({ ...baseVoucher, expiryDate: past });
+      prisma.voucher.findFirst.mockResolvedValue({
+        ...baseVoucher,
+        expiryDate: past,
+      });
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -108,8 +126,13 @@ describe('VouchersService', () => {
     });
 
     it('returns error when voucher not yet started', async () => {
-      prisma.voucher.findFirst.mockResolvedValue({ ...baseVoucher, startDate: future });
-      prisma.product.findMany.mockResolvedValue([{ id: productId, priceCents: 1000, productCategories: [] }]);
+      prisma.voucher.findFirst.mockResolvedValue({
+        ...baseVoucher,
+        startDate: future,
+      });
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 1000, productCategories: [] },
+      ]);
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -118,8 +141,13 @@ describe('VouchersService', () => {
     });
 
     it('returns error when voucher inactive', async () => {
-      prisma.voucher.findFirst.mockResolvedValue({ ...baseVoucher, isActive: false });
-      prisma.product.findMany.mockResolvedValue([{ id: productId, priceCents: 1000, productCategories: [] }]);
+      prisma.voucher.findFirst.mockResolvedValue({
+        ...baseVoucher,
+        isActive: false,
+      });
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 1000, productCategories: [] },
+      ]);
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -133,7 +161,9 @@ describe('VouchersService', () => {
         usageLimitGlobal: 5,
         usedCount: 5,
       });
-      prisma.product.findMany.mockResolvedValue([{ id: productId, priceCents: 1000, productCategories: [] }]);
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 1000, productCategories: [] },
+      ]);
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -147,7 +177,9 @@ describe('VouchersService', () => {
         usageLimitPerUser: 1,
       });
       prisma.voucherRedemption.count.mockResolvedValue(1);
-      prisma.product.findMany.mockResolvedValue([{ id: productId, priceCents: 1000, productCategories: [] }]);
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 1000, productCategories: [] },
+      ]);
 
       const result = await service.validate({
         code: 'SAVE10',
@@ -164,7 +196,9 @@ describe('VouchersService', () => {
         ...baseVoucher,
         minOrderValueCents: 5000,
       });
-      prisma.product.findMany.mockResolvedValue([{ id: productId, priceCents: 1000, productCategories: [] }]);
+      prisma.product.findMany.mockResolvedValue([
+        { id: productId, priceCents: 1000, productCategories: [] },
+      ]);
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -195,7 +229,9 @@ describe('VouchersService', () => {
       prisma.product.findMany.mockResolvedValue([
         { id: productId, priceCents: 1000, productCategories: [] },
       ]);
-      prisma.siteSetting.findUnique.mockResolvedValue({ value: { deliveryChargesCents: 0 } });
+      prisma.siteSetting.findUnique.mockResolvedValue({
+        value: { deliveryChargesCents: 0 },
+      });
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -212,7 +248,9 @@ describe('VouchersService', () => {
       prisma.product.findMany.mockResolvedValue([
         { id: productId, priceCents: 1000, productCategories: [] },
       ]);
-      prisma.siteSetting.findUnique.mockResolvedValue({ value: { deliveryChargesCents: 500 } });
+      prisma.siteSetting.findUnique.mockResolvedValue({
+        value: { deliveryChargesCents: 500 },
+      });
 
       const result = await service.validate({ code: 'SAVE10', items });
 
@@ -223,7 +261,9 @@ describe('VouchersService', () => {
 
   describe('computeDiscountForOrder', () => {
     it('returns null when code empty', async () => {
-      const result = await service.computeDiscountForOrder('  ', [{ productId, quantity: 1 }]);
+      const result = await service.computeDiscountForOrder('  ', [
+        { productId, quantity: 1 },
+      ]);
 
       expect(result).toBeNull();
     });
@@ -245,7 +285,12 @@ describe('VouchersService', () => {
       prisma.voucher.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.computeDiscountForOrder('INVALID', [{ productId, quantity: 1 }], null, true),
+        service.computeDiscountForOrder(
+          'INVALID',
+          [{ productId, quantity: 1 }],
+          null,
+          true,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -376,7 +421,9 @@ describe('VouchersService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.voucher.findFirst.mockResolvedValue(null);
 
-      await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -394,7 +441,9 @@ describe('VouchersService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.voucher.findFirst.mockResolvedValue(null);
 
-      await expect(service.update('missing', { value: 10 })).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', { value: 10 })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when new code exists', async () => {
@@ -411,7 +460,10 @@ describe('VouchersService', () => {
   describe('updateStatus', () => {
     it('updates isActive and returns DTO', async () => {
       prisma.voucher.findFirst.mockResolvedValue(baseVoucher);
-      prisma.voucher.update.mockResolvedValue({ ...baseVoucher, isActive: false });
+      prisma.voucher.update.mockResolvedValue({
+        ...baseVoucher,
+        isActive: false,
+      });
 
       const result = await service.updateStatus(voucherId, false);
 
@@ -421,14 +473,19 @@ describe('VouchersService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.voucher.findFirst.mockResolvedValue(null);
 
-      await expect(service.updateStatus('missing', true)).rejects.toThrow(NotFoundException);
+      await expect(service.updateStatus('missing', true)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('remove', () => {
     it('soft deletes voucher', async () => {
       prisma.voucher.findFirst.mockResolvedValue(baseVoucher);
-      prisma.voucher.update.mockResolvedValue({ ...baseVoucher, deletedAt: new Date() });
+      prisma.voucher.update.mockResolvedValue({
+        ...baseVoucher,
+        deletedAt: new Date(),
+      });
 
       const result = await service.remove(voucherId);
 
@@ -442,7 +499,9 @@ describe('VouchersService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.voucher.findFirst.mockResolvedValue(null);
 
-      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

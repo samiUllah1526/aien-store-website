@@ -14,7 +14,9 @@ import { CreateProductDto } from '../src/modules/products/dto/create-product.dto
 
 const testDbUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
 if (!testDbUrl) {
-  console.warn('DATABASE_URL or DATABASE_URL_TEST not set; skipping products integration tests.');
+  console.warn(
+    'DATABASE_URL or DATABASE_URL_TEST not set; skipping products integration tests.',
+  );
 }
 
 describe('Products (integration)', () => {

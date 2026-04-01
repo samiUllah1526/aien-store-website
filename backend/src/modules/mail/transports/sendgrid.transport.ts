@@ -16,7 +16,8 @@ export class SendgridTransport implements IMailTransport {
     // }
     // sgMail.setApiKey(apiKey);
     this.fromEmail =
-      this.configService.get<string>('MAIL_FROM_EMAIL') ?? 'noreply@example.com';
+      this.configService.get<string>('MAIL_FROM_EMAIL') ??
+      'noreply@example.com';
     this.fromName =
       this.configService.get<string>('MAIL_FROM_NAME') ?? 'E-Commerce';
   }

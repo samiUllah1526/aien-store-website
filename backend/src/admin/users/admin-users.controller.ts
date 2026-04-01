@@ -43,7 +43,10 @@ export class AdminUsersController {
 
   @Patch('me')
   @RequirePermission('admin:access')
-  async updateProfile(@Req() req: { user?: { userId: string } }, @Body() dto: UpdateProfileDto) {
+  async updateProfile(
+    @Req() req: { user?: { userId: string } },
+    @Body() dto: UpdateProfileDto,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.usersService.updateProfile(userId, dto);
@@ -108,7 +111,7 @@ export class AdminUsersController {
     @Body() dto: UpdateUserDto,
     @Req() req: { user?: { permissions?: string[] } },
   ) {
-    const callerPermissions = (req.user?.permissions as string[] | undefined) ?? [];
+    const callerPermissions = req.user?.permissions ?? [];
     const data = await this.usersService.update(id, dto, callerPermissions);
     return ApiResponseDto.ok(data, 'User updated');
   }

@@ -19,13 +19,25 @@ export class EmailQueueService {
   constructor(private readonly pgboss: PgbossService) {}
 
   /** Enqueue order confirmation email (default priority). */
-  async enqueueOrderConfirmation(payload: OrderConfirmationEmailPayload): Promise<string | null> {
-    return this.send(QUEUE_EMAIL_DEFAULT, EMAIL_JOB_TYPES.ORDER_CONFIRMATION, payload);
+  async enqueueOrderConfirmation(
+    payload: OrderConfirmationEmailPayload,
+  ): Promise<string | null> {
+    return this.send(
+      QUEUE_EMAIL_DEFAULT,
+      EMAIL_JOB_TYPES.ORDER_CONFIRMATION,
+      payload,
+    );
   }
 
   /** Enqueue order status change email (default priority). */
-  async enqueueOrderStatusChange(payload: OrderStatusEmailPayload): Promise<string | null> {
-    return this.send(QUEUE_EMAIL_DEFAULT, EMAIL_JOB_TYPES.ORDER_STATUS_CHANGE, payload);
+  async enqueueOrderStatusChange(
+    payload: OrderStatusEmailPayload,
+  ): Promise<string | null> {
+    return this.send(
+      QUEUE_EMAIL_DEFAULT,
+      EMAIL_JOB_TYPES.ORDER_STATUS_CHANGE,
+      payload,
+    );
   }
 
   /** Enqueue welcome email (default priority). */
@@ -34,12 +46,20 @@ export class EmailQueueService {
   }
 
   /** Enqueue user-created email (default priority). */
-  async enqueueUserCreated(payload: UserCreatedEmailPayload): Promise<string | null> {
-    return this.send(QUEUE_EMAIL_DEFAULT, EMAIL_JOB_TYPES.USER_CREATED, payload);
+  async enqueueUserCreated(
+    payload: UserCreatedEmailPayload,
+  ): Promise<string | null> {
+    return this.send(
+      QUEUE_EMAIL_DEFAULT,
+      EMAIL_JOB_TYPES.USER_CREATED,
+      payload,
+    );
   }
 
   /** Enqueue password reset email (high priority - token expires in 1h). */
-  async enqueuePasswordReset(payload: PasswordResetEmailPayload): Promise<string | null> {
+  async enqueuePasswordReset(
+    payload: PasswordResetEmailPayload,
+  ): Promise<string | null> {
     return this.send(QUEUE_EMAIL_HIGH, EMAIL_JOB_TYPES.PASSWORD_RESET, payload);
   }
 

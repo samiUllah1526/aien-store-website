@@ -77,7 +77,11 @@ export class VouchersService {
     const productIds = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, priceCents: true, productCategories: { select: { categoryId: true } } },
+      select: {
+        id: true,
+        priceCents: true,
+        productCategories: { select: { categoryId: true } },
+      },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -92,8 +96,12 @@ export class VouchersService {
         if (!applicableProductIds.includes(product.id)) continue;
       }
       if (applicableCategoryIds?.length) {
-        const productCategoryIds = product.productCategories.map((pc) => pc.categoryId);
-        const hasMatch = applicableCategoryIds.some((cid) => productCategoryIds.includes(cid));
+        const productCategoryIds = product.productCategories.map(
+          (pc) => pc.categoryId,
+        );
+        const hasMatch = applicableCategoryIds.some((cid) =>
+          productCategoryIds.includes(cid),
+        );
         if (!hasMatch) continue;
       }
 
@@ -106,7 +114,11 @@ export class VouchersService {
 
   /** Compute discount in cents for a voucher given eligible subtotal and shipping. */
   private computeDiscountCents(
-    voucher: { type: VoucherType; value: number; maxDiscountCents: number | null },
+    voucher: {
+      type: VoucherType;
+      value: number;
+      maxDiscountCents: number | null;
+    },
     eligibleSubtotalCents: number,
     shippingCents: number,
     /** Order total (subtotal + shipping) - discount must never exceed this. */
@@ -137,7 +149,11 @@ export class VouchersService {
   ): Promise<ValidateVoucherResult | ValidateVoucherError> {
     const code = dto.code?.trim().toUpperCase();
     if (!code) {
-      return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_FOUND, message: 'Voucher code is required.' };
+      return {
+        valid: false,
+        errorCode: VOUCHER_ERROR_CODES.NOT_FOUND,
+        message: 'Voucher code is required.',
+      };
     }
 
     const voucher = await this.prisma.voucher.findFirst({
@@ -148,7 +164,9 @@ export class VouchersService {
     });
 
     if (!voucher) {
-      this.logger.warn(`Voucher validation failed: code=${code} error=NOT_FOUND`);
+      this.logger.warn(
+        `Voucher validation failed: code=${code} error=NOT_FOUND`,
+      );
       this.audit.publishAsync({
         action: 'VALIDATION_FAILED',
         actorType: 'CUSTOMER',
@@ -158,7 +176,11 @@ export class VouchersService {
         errorCode: VOUCHER_ERROR_CODES.NOT_FOUND,
         requestId: auditCtx?.requestId ?? null,
       });
-      return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_FOUND, message: 'Invalid voucher code.' };
+      return {
+        valid: false,
+        errorCode: VOUCHER_ERROR_CODES.NOT_FOUND,
+        message: 'Invalid voucher code.',
+      };
     }
 
     const now = new Date();
@@ -174,7 +196,11 @@ export class VouchersService {
         errorCode: VOUCHER_ERROR_CODES.EXPIRED,
         requestId: auditCtx?.requestId ?? null,
       });
-      return { valid: false, errorCode: VOUCHER_ERROR_CODES.EXPIRED, message: 'This voucher has expired.' };
+      return {
+        valid: false,
+        errorCode: VOUCHER_ERROR_CODES.EXPIRED,
+        message: 'This voucher has expired.',
+      };
     }
     if (voucher.startDate > now) {
       this.audit.publishAsync({
@@ -187,7 +213,11 @@ export class VouchersService {
         errorCode: VOUCHER_ERROR_CODES.NOT_STARTED,
         requestId: auditCtx?.requestId ?? null,
       });
-      return { valid: false, errorCode: VOUCHER_ERROR_CODES.NOT_STARTED, message: 'This voucher is not yet valid.' };
+      return {
+        valid: false,
+        errorCode: VOUCHER_ERROR_CODES.NOT_STARTED,
+        message: 'This voucher is not yet valid.',
+      };
     }
     if (!voucher.isActive) {
       this.audit.publishAsync({
@@ -200,10 +230,17 @@ export class VouchersService {
         errorCode: VOUCHER_ERROR_CODES.INACTIVE,
         requestId: auditCtx?.requestId ?? null,
       });
-      return { valid: false, errorCode: VOUCHER_ERROR_CODES.INACTIVE, message: 'This voucher is no longer active.' };
+      return {
+        valid: false,
+        errorCode: VOUCHER_ERROR_CODES.INACTIVE,
+        message: 'This voucher is no longer active.',
+      };
     }
 
-    if (voucher.usageLimitGlobal != null && voucher.usedCount >= voucher.usageLimitGlobal) {
+    if (
+      voucher.usageLimitGlobal != null &&
+      voucher.usedCount >= voucher.usageLimitGlobal
+    ) {
       this.audit.publishAsync({
         voucherId: voucher.id,
         action: 'VALIDATION_FAILED',
@@ -239,13 +276,16 @@ export class VouchersService {
         return {
           valid: false,
           errorCode: VOUCHER_ERROR_CODES.USER_LIMIT_REACHED,
-          message: 'You have already used this voucher the maximum number of times.',
+          message:
+            'You have already used this voucher the maximum number of times.',
         };
       }
     }
 
-    const applicableProductIds = (voucher.applicableProductIds as string[] | null) ?? null;
-    const applicableCategoryIds = (voucher.applicableCategoryIds as string[] | null) ?? null;
+    const applicableProductIds =
+      (voucher.applicableProductIds as string[] | null) ?? null;
+    const applicableCategoryIds =
+      (voucher.applicableCategoryIds as string[] | null) ?? null;
 
     const { eligibleSubtotalCents } = await this.getEligibleSubtotalCents(
       dto.items,
@@ -283,7 +323,10 @@ export class VouchersService {
       };
     }
 
-    if (eligibleSubtotalCents === 0 && (applicableProductIds?.length || applicableCategoryIds?.length)) {
+    if (
+      eligibleSubtotalCents === 0 &&
+      (applicableProductIds?.length || applicableCategoryIds?.length)
+    ) {
       this.audit.publishAsync({
         voucherId: voucher.id,
         action: 'VALIDATION_FAILED',
@@ -316,7 +359,9 @@ export class VouchersService {
 
     const totalCents = Math.max(0, orderTotalCents - discountCents);
 
-    this.logger.log(`Voucher validated: code=${code} valid=true discountCents=${discountCents}`);
+    this.logger.log(
+      `Voucher validated: code=${code} valid=true discountCents=${discountCents}`,
+    );
     this.audit.publishAsync({
       voucherId: voucher.id,
       action: 'VALIDATED',
@@ -347,7 +392,12 @@ export class VouchersService {
     items: Array<{ productId: string; quantity: number }>,
     customerUserId?: string | null,
     throwOnInvalid = false,
-  ): Promise<{ voucherId: string; voucherCode: string; discountCents: number; discountType: string } | null> {
+  ): Promise<{
+    voucherId: string;
+    voucherCode: string;
+    discountCents: number;
+    discountType: string;
+  } | null> {
     if (!voucherCode?.trim()) return null;
     const result = await this.validate({
       code: voucherCode.trim(),
@@ -357,7 +407,8 @@ export class VouchersService {
     if (!result.valid) {
       if (throwOnInvalid) {
         throw new BadRequestException(
-          result.message || 'Voucher is no longer valid. Please remove it and try again.',
+          result.message ||
+            'Voucher is no longer valid. Please remove it and try again.',
         );
       }
       return null;
@@ -385,8 +436,13 @@ export class VouchersService {
       throw new BadRequestException('Expiry date must be after start date');
     }
 
-    if (dto.type === VoucherTypeDto.PERCENTAGE && (dto.value < 1 || dto.value > 100)) {
-      throw new BadRequestException('Percentage value must be between 1 and 100');
+    if (
+      dto.type === VoucherTypeDto.PERCENTAGE &&
+      (dto.value < 1 || dto.value > 100)
+    ) {
+      throw new BadRequestException(
+        'Percentage value must be between 1 and 100',
+      );
     }
     if (dto.type === VoucherTypeDto.FIXED_AMOUNT && dto.value < 1) {
       throw new BadRequestException('Fixed amount must be positive');
@@ -403,8 +459,12 @@ export class VouchersService {
         expiryDate,
         usageLimitGlobal: dto.usageLimitGlobal ?? undefined,
         usageLimitPerUser: dto.usageLimitPerUser ?? undefined,
-        applicableProductIds: dto.applicableProductIds?.length ? dto.applicableProductIds : undefined,
-        applicableCategoryIds: dto.applicableCategoryIds?.length ? dto.applicableCategoryIds : undefined,
+        applicableProductIds: dto.applicableProductIds?.length
+          ? dto.applicableProductIds
+          : undefined,
+        applicableCategoryIds: dto.applicableCategoryIds?.length
+          ? dto.applicableCategoryIds
+          : undefined,
         isActive: dto.isActive ?? true,
       },
     });
@@ -422,7 +482,14 @@ export class VouchersService {
   }
 
   async findAll(query: VoucherQueryDto) {
-    const { page = 1, limit = 20, search, statusFilter, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      statusFilter,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
     const skip = (page - 1) * limit;
     const where: Prisma.VoucherWhereInput = { deletedAt: null };
 
@@ -465,7 +532,11 @@ export class VouchersService {
     return this.toResponseDto(voucher);
   }
 
-  async update(id: string, dto: UpdateVoucherDto, auditCtx?: VoucherAuditContext) {
+  async update(
+    id: string,
+    dto: UpdateVoucherDto,
+    auditCtx?: VoucherAuditContext,
+  ) {
     const existing = await this.prisma.voucher.findFirst({
       where: { id, deletedAt: null },
     });
@@ -480,27 +551,37 @@ export class VouchersService {
           id: { not: id },
         },
       });
-      if (duplicate) throw new ConflictException(`Voucher with code "${code}" already exists`);
+      if (duplicate)
+        throw new ConflictException(
+          `Voucher with code "${code}" already exists`,
+        );
     }
 
     const data: Prisma.VoucherUpdateInput = {};
     if (dto.code != null) data.code = dto.code.trim().toUpperCase();
-    if (dto.type != null) data.type = this.toVoucherType(dto.type as VoucherTypeDto);
+    if (dto.type != null) data.type = this.toVoucherType(dto.type);
     if (dto.value != null) data.value = dto.value;
-    if (dto.minOrderValueCents != null) data.minOrderValueCents = dto.minOrderValueCents;
-    if (dto.maxDiscountCents != null) data.maxDiscountCents = dto.maxDiscountCents;
+    if (dto.minOrderValueCents != null)
+      data.minOrderValueCents = dto.minOrderValueCents;
+    if (dto.maxDiscountCents != null)
+      data.maxDiscountCents = dto.maxDiscountCents;
     if (dto.startDate != null) data.startDate = new Date(dto.startDate);
     if (dto.expiryDate != null) data.expiryDate = new Date(dto.expiryDate);
-    if (dto.usageLimitGlobal != null) data.usageLimitGlobal = dto.usageLimitGlobal;
-    if (dto.usageLimitPerUser != null) data.usageLimitPerUser = dto.usageLimitPerUser;
-    if (dto.applicableProductIds != null) data.applicableProductIds = dto.applicableProductIds;
-    if (dto.applicableCategoryIds != null) data.applicableCategoryIds = dto.applicableCategoryIds;
+    if (dto.usageLimitGlobal != null)
+      data.usageLimitGlobal = dto.usageLimitGlobal;
+    if (dto.usageLimitPerUser != null)
+      data.usageLimitPerUser = dto.usageLimitPerUser;
+    if (dto.applicableProductIds != null)
+      data.applicableProductIds = dto.applicableProductIds;
+    if (dto.applicableCategoryIds != null)
+      data.applicableCategoryIds = dto.applicableCategoryIds;
     if (dto.isActive != null) data.isActive = dto.isActive;
 
     if (dto.expiryDate != null && dto.startDate != null) {
       const exp = new Date(dto.expiryDate);
       const start = new Date(dto.startDate);
-      if (exp <= start) throw new BadRequestException('Expiry date must be after start date');
+      if (exp <= start)
+        throw new BadRequestException('Expiry date must be after start date');
     }
 
     const voucher = await this.prisma.voucher.update({
@@ -511,12 +592,16 @@ export class VouchersService {
     if (dto.code != null) changes.code = dto.code;
     if (dto.type != null) changes.type = dto.type;
     if (dto.value != null) changes.value = dto.value;
-    if (dto.minOrderValueCents != null) changes.minOrderValueCents = dto.minOrderValueCents;
-    if (dto.maxDiscountCents != null) changes.maxDiscountCents = dto.maxDiscountCents;
+    if (dto.minOrderValueCents != null)
+      changes.minOrderValueCents = dto.minOrderValueCents;
+    if (dto.maxDiscountCents != null)
+      changes.maxDiscountCents = dto.maxDiscountCents;
     if (dto.startDate != null) changes.startDate = dto.startDate;
     if (dto.expiryDate != null) changes.expiryDate = dto.expiryDate;
-    if (dto.usageLimitGlobal != null) changes.usageLimitGlobal = dto.usageLimitGlobal;
-    if (dto.usageLimitPerUser != null) changes.usageLimitPerUser = dto.usageLimitPerUser;
+    if (dto.usageLimitGlobal != null)
+      changes.usageLimitGlobal = dto.usageLimitGlobal;
+    if (dto.usageLimitPerUser != null)
+      changes.usageLimitPerUser = dto.usageLimitPerUser;
     if (dto.isActive != null) changes.isActive = dto.isActive;
     await this.audit.publish({
       voucherId: voucher.id,
@@ -529,7 +614,11 @@ export class VouchersService {
     return this.toResponseDto(voucher);
   }
 
-  async updateStatus(id: string, isActive: boolean, auditCtx?: VoucherAuditContext) {
+  async updateStatus(
+    id: string,
+    isActive: boolean,
+    auditCtx?: VoucherAuditContext,
+  ) {
     const voucher = await this.prisma.voucher.findFirst({
       where: { id, deletedAt: null },
     });
@@ -571,12 +660,15 @@ export class VouchersService {
     return { success: true };
   }
 
-  async findAuditLogs(query: VoucherAuditQueryDto): Promise<{ data: unknown[]; total: number }> {
+  async findAuditLogs(
+    query: VoucherAuditQueryDto,
+  ): Promise<{ data: unknown[]; total: number }> {
     const { page = 1, limit = 20, action, code, actorId, from, to } = query;
     const skip = (page - 1) * limit;
     const where: Prisma.VoucherAuditLogWhereInput = {};
     if (action?.trim()) where.action = action.trim();
-    if (code?.trim()) where.code = { contains: code.trim(), mode: 'insensitive' };
+    if (code?.trim())
+      where.code = { contains: code.trim(), mode: 'insensitive' };
     if (actorId?.trim()) where.actorId = actorId.trim();
     if (from || to) {
       where.createdAt = {};
@@ -665,14 +757,27 @@ export class VouchersService {
 
     const redemptions = await this.prisma.voucherRedemption.findMany({
       where: { voucherId: id },
-      include: { order: { select: { id: true, discountCents: true, totalCents: true, createdAt: true } } },
+      include: {
+        order: {
+          select: {
+            id: true,
+            discountCents: true,
+            totalCents: true,
+            createdAt: true,
+          },
+        },
+      },
     });
 
     const totalRedemptions = redemptions.length;
-    const revenueImpactCents = redemptions.reduce((sum, r) => sum + (r.order.discountCents ?? 0), 0);
-    const remaining = voucher.usageLimitGlobal != null
-      ? Math.max(0, voucher.usageLimitGlobal - voucher.usedCount)
-      : null;
+    const revenueImpactCents = redemptions.reduce(
+      (sum, r) => sum + (r.order.discountCents ?? 0),
+      0,
+    );
+    const remaining =
+      voucher.usageLimitGlobal != null
+        ? Math.max(0, voucher.usageLimitGlobal - voucher.usedCount)
+        : null;
 
     return {
       totalRedemptions,
@@ -685,7 +790,12 @@ export class VouchersService {
         orderId: r.orderId,
         userId: r.userId,
         createdAt: r.createdAt.toISOString(),
-        order: { id: r.order.id, discountCents: r.order.discountCents, totalCents: r.order.totalCents, createdAt: r.order.createdAt.toISOString() },
+        order: {
+          id: r.order.id,
+          discountCents: r.order.discountCents,
+          totalCents: r.order.totalCents,
+          createdAt: r.order.createdAt.toISOString(),
+        },
       })),
     };
   }

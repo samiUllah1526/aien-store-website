@@ -11,7 +11,12 @@ describe('FavoritesService', () => {
   let service: FavoritesService;
   let prisma: {
     product: { findUnique: jest.Mock };
-    userFavorite: { upsert: jest.Mock; deleteMany: jest.Mock; findMany: jest.Mock; findUnique: jest.Mock };
+    userFavorite: {
+      upsert: jest.Mock;
+      deleteMany: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+    };
   };
   let productsService: { findByIds: jest.Mock };
 
@@ -56,7 +61,9 @@ describe('FavoritesService', () => {
     it('throws NotFoundException when product not found', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.add(userId, 'missing-product')).rejects.toThrow(NotFoundException);
+      await expect(service.add(userId, 'missing-product')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.userFavorite.upsert).not.toHaveBeenCalled();
     });
   });
@@ -104,7 +111,9 @@ describe('FavoritesService', () => {
 
     it('returns products from ProductsService when favorites exist', async () => {
       prisma.userFavorite.findMany.mockResolvedValue([{ productId }]);
-      productsService.findByIds.mockResolvedValue([{ id: productId, name: 'Widget' }]);
+      productsService.findByIds.mockResolvedValue([
+        { id: productId, name: 'Widget' },
+      ]);
 
       const result = await service.getFavoriteProducts(userId);
 

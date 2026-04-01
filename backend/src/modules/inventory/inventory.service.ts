@@ -48,7 +48,10 @@ export class InventoryService {
     items: DeductItem[],
     tx: Prisma.TransactionClient,
   ): Promise<DeductResult> {
-    const variantQuantities = new Map<string, { productId: string; quantity: number }>();
+    const variantQuantities = new Map<
+      string,
+      { productId: string; quantity: number }
+    >();
     for (const { productId, variantId, quantity } of items) {
       if (quantity <= 0) continue;
       const existing = variantQuantities.get(variantId);
@@ -69,7 +72,12 @@ export class InventoryService {
       if (updated === 0) {
         const variant = await tx.productVariant.findUnique({
           where: { id: variantId },
-          select: { color: true, size: true, stockQuantity: true, product: { select: { name: true } } },
+          select: {
+            color: true,
+            size: true,
+            stockQuantity: true,
+            product: { select: { name: true } },
+          },
         });
         throw new BadRequestException(
           variant
@@ -105,7 +113,10 @@ export class InventoryService {
    * Restore stock when an order is cancelled. Idempotent: only restores if this order
    * had not been restored before (no existing RESTORE movements for this orderId).
    */
-  async restoreForOrder(orderId: string, tx: Prisma.TransactionClient): Promise<void> {
+  async restoreForOrder(
+    orderId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
     const alreadyRestored = await tx.inventoryMovement.findFirst({
       where: { orderId, type: InventoryMovementType.RESTORE },
     });
@@ -115,7 +126,10 @@ export class InventoryService {
       where: { orderId },
       select: { productId: true, variantId: true, quantity: true },
     });
-    const byVariant = new Map<string, { productId: string; quantity: number }>();
+    const byVariant = new Map<
+      string,
+      { productId: string; quantity: number }
+    >();
     for (const { productId, variantId, quantity } of orderItems) {
       const existing = byVariant.get(variantId);
       if (existing) {
@@ -182,14 +196,18 @@ export class InventoryService {
     let targetVariantId = variantId ?? null;
     if (!targetVariantId) {
       if (variants.length > 1) {
-        throw new BadRequestException('variantId is required when product has multiple variants');
+        throw new BadRequestException(
+          'variantId is required when product has multiple variants',
+        );
       }
       targetVariantId = variants[0].id;
     }
 
     const targetVariant = variants.find((v) => v.id === targetVariantId);
     if (!targetVariant) {
-      throw new BadRequestException('variantId does not belong to this product');
+      throw new BadRequestException(
+        'variantId does not belong to this product',
+      );
     }
 
     if (quantityDelta > 0) {
@@ -198,7 +216,7 @@ export class InventoryService {
         data: { stockQuantity: { increment: quantityDelta } },
       });
     } else {
-      const updated = await (client as Prisma.TransactionClient).$executeRaw(
+      const updated = await client.$executeRaw(
         Prisma.sql`UPDATE product_variants SET stock_quantity = stock_quantity + ${quantityDelta} WHERE id = ${targetVariant.id}::uuid AND stock_quantity + ${quantityDelta} >= 0`,
       );
       if (updated === 0) {
@@ -313,7 +331,10 @@ export class InventoryService {
   }
 
   /** Check idempotency key: if present and not expired, return existing orderId. */
-  async getIdempotentOrderId(key: string, tx: Prisma.TransactionClient): Promise<string | null> {
+  async getIdempotentOrderId(
+    key: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string | null> {
     const row = await tx.idempotencyKey.findUnique({
       where: { key },
     });

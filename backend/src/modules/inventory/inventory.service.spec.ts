@@ -11,7 +11,12 @@ describe('InventoryService', () => {
   let service: InventoryService;
   let prisma: {
     product: { update: jest.Mock; findUnique: jest.Mock };
-    inventoryMovement: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock };
+    inventoryMovement: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      count: jest.Mock;
+      findFirst: jest.Mock;
+    };
     orderItem: { findMany: jest.Mock };
     idempotencyKey: { findUnique: jest.Mock; create: jest.Mock };
     $executeRaw: jest.Mock;
@@ -32,7 +37,10 @@ describe('InventoryService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [InventoryService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        InventoryService,
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get<InventoryService>(InventoryService);
@@ -71,9 +79,14 @@ describe('InventoryService', () => {
 
     it('throws BadRequestException when negative adjustment exceeds stock', async () => {
       prisma.$executeRaw.mockResolvedValue(0);
-      prisma.product.findUnique.mockResolvedValue({ name: 'Widget', stockQuantity: 2 });
+      prisma.product.findUnique.mockResolvedValue({
+        name: 'Widget',
+        stockQuantity: 2,
+      });
 
-      await expect(service.adjust(productId, -5, 'Adjust')).rejects.toThrow('only 2 in stock');
+      await expect(service.adjust(productId, -5, 'Adjust')).rejects.toThrow(
+        'only 2 in stock',
+      );
     });
 
     it('returns early when quantityDelta is 0', async () => {
@@ -101,7 +114,11 @@ describe('InventoryService', () => {
       tx.$executeRaw.mockResolvedValue(1);
       tx.inventoryMovement.create.mockResolvedValue({});
 
-      const result = await service.deductForOrder(orderId, [{ productId, quantity: 2 }], tx);
+      const result = await service.deductForOrder(
+        orderId,
+        [{ productId, quantity: 2 }],
+        tx,
+      );
 
       expect(result).toEqual({ success: true });
       expect(tx.inventoryMovement.create).toHaveBeenCalledWith({
@@ -116,7 +133,10 @@ describe('InventoryService', () => {
 
     it('throws BadRequestException when insufficient stock', async () => {
       tx.$executeRaw.mockResolvedValue(0);
-      tx.product.findUnique.mockResolvedValue({ name: 'Widget', stockQuantity: 1 });
+      tx.product.findUnique.mockResolvedValue({
+        name: 'Widget',
+        stockQuantity: 1,
+      });
 
       await expect(
         service.deductForOrder(orderId, [{ productId, quantity: 5 }], tx),
@@ -163,7 +183,10 @@ describe('InventoryService', () => {
       ]);
       prisma.inventoryMovement.count.mockResolvedValue(1);
 
-      const result = await service.getMovements(productId, { page: 1, limit: 20 });
+      const result = await service.getMovements(productId, {
+        page: 1,
+        limit: 20,
+      });
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);

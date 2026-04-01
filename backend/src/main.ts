@@ -5,7 +5,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-function setupSwagger(app: Parameters<typeof SwaggerModule.setup>[1], path: string) {
+function setupSwagger(
+  app: Parameters<typeof SwaggerModule.setup>[1],
+  path: string,
+) {
   const config = new DocumentBuilder()
     .setTitle('AIEN Store API')
     .setDescription(
@@ -38,6 +41,7 @@ function setupSwagger(app: Parameters<typeof SwaggerModule.setup>[1], path: stri
     .addTag('profile', 'User profile and shipping')
     .addTag('email-logs', 'Email delivery logs')
     .addTag('jobs', 'Background jobs (pg-boss queues and job list)')
+    .addTag('admin-deploy', 'Trigger storefront deploy via GitHub Actions')
     .build();
 
   const documentFactory = () =>
@@ -72,7 +76,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('port', 3000);
   const corsOrigin = configService.get<string>('corsOrigin');
-  const swagger = configService.get<{ enabled?: boolean; path?: string }>('swagger');
+  const swagger = configService.get<{ enabled?: boolean; path?: string }>(
+    'swagger',
+  );
   const swaggerEnabled = swagger?.enabled ?? false;
   const swaggerPath = swagger?.path ?? 'docs';
 

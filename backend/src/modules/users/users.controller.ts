@@ -46,7 +46,10 @@ export class UsersController {
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
-  async updateProfile(@Req() req: RequestWithUser, @Body() dto: UpdateProfileDto) {
+  async updateProfile(
+    @Req() req: RequestWithUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.usersService.updateProfile(userId, dto);
@@ -127,7 +130,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @Req() req: RequestWithUser,
   ) {
-    const callerPermissions = (req.user?.permissions as string[] | undefined) ?? [];
+    const callerPermissions = req.user?.permissions ?? [];
     const data = await this.usersService.update(id, dto, callerPermissions);
     return ApiResponseDto.ok(data, 'User updated');
   }

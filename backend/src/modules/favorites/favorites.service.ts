@@ -27,7 +27,10 @@ export class FavoritesService {
     return { added: true };
   }
 
-  async remove(userId: string, productId: string): Promise<{ removed: boolean }> {
+  async remove(
+    userId: string,
+    productId: string,
+  ): Promise<{ removed: boolean }> {
     const deleted = await this.prisma.userFavorite.deleteMany({
       where: { userId, productId },
     });

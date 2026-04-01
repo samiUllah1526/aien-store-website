@@ -53,8 +53,8 @@ export class JobsAdminService {
       queuedCount: q.queuedCount ?? 0,
       activeCount: q.activeCount ?? 0,
       totalCount: q.totalCount ?? 0,
-      createdOn: (q.createdOn as Date)?.toISOString?.() ?? '',
-      updatedOn: (q.updatedOn as Date)?.toISOString?.() ?? '',
+      createdOn: q.createdOn?.toISOString?.() ?? '',
+      updatedOn: q.updatedOn?.toISOString?.() ?? '',
     }));
   }
 
@@ -78,7 +78,10 @@ export class JobsAdminService {
     for (const queueName of queues) {
       try {
         const jobs = await boss.findJobs(queueName, {
-          queued: params.state === 'created' || params.state === 'retry' ? true : undefined,
+          queued:
+            params.state === 'created' || params.state === 'retry'
+              ? true
+              : undefined,
         });
         for (const j of jobs) {
           const job = j as {
@@ -97,7 +100,7 @@ export class JobsAdminService {
             id: job.id,
             name: job.name,
             state: job.state,
-            data: (job.data as Record<string, unknown>) ?? {},
+            data: job.data ?? {},
             retryCount: job.retryCount ?? 0,
             retryLimit: job.retryLimit ?? 0,
             createdOn: job.createdOn?.toISOString?.() ?? '',
@@ -135,7 +138,8 @@ export class JobsAdminService {
       if (sortBy === 'id') cmp = a.id.localeCompare(b.id);
       else if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
       else if (sortBy === 'state') cmp = a.state.localeCompare(b.state);
-      else if (sortBy === 'createdOn') cmp = a.createdOn.localeCompare(b.createdOn);
+      else if (sortBy === 'createdOn')
+        cmp = a.createdOn.localeCompare(b.createdOn);
       else if (sortBy === 'retryCount') cmp = a.retryCount - b.retryCount;
       else cmp = a.createdOn.localeCompare(b.createdOn);
       return sortOrder === 'asc' ? cmp : -cmp;
@@ -149,7 +153,10 @@ export class JobsAdminService {
     return { data, total };
   }
 
-  async retryJob(queue: string, id: string): Promise<{ success: boolean; message: string }> {
+  async retryJob(
+    queue: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
     if (!this.pgboss.isStarted()) {
       return { success: false, message: 'pg-boss not started' };
     }
@@ -158,7 +165,10 @@ export class JobsAdminService {
     return { success: true, message: 'Job retry requested' };
   }
 
-  async cancelJob(queue: string, id: string): Promise<{ success: boolean; message: string }> {
+  async cancelJob(
+    queue: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
     if (!this.pgboss.isStarted()) {
       return { success: false, message: 'pg-boss not started' };
     }

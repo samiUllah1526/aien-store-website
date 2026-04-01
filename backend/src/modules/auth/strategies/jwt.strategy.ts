@@ -19,8 +19,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly expectedIssuer: string | undefined;
 
   constructor(configService: ConfigService) {
-    const secret = (configService.get<string>('JWT_SECRET') ?? configService.get<string>('jwt.secret') ?? 'change-me-in-production').trim();
-    const issuer = configService.get<string>('jwt.issuer') ?? configService.get<string>('urls.api');
+    const secret = (
+      configService.get<string>('JWT_SECRET') ??
+      configService.get<string>('jwt.secret') ??
+      'change-me-in-production'
+    ).trim();
+    const issuer =
+      configService.get<string>('jwt.issuer') ??
+      configService.get<string>('urls.api');
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -35,11 +41,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       this.logger.warn('Invalid JWT payload: missing sub');
       throw new UnauthorizedException('Invalid token payload');
     }
-    if (this.expectedIssuer && payload.iss && payload.iss !== this.expectedIssuer) {
+    if (
+      this.expectedIssuer &&
+      payload.iss &&
+      payload.iss !== this.expectedIssuer
+    ) {
       this.logger.warn(
         `Invalid JWT issuer: expected="${this.expectedIssuer}" received="${payload.iss}" sub="${payload.sub}" aud="${payload.aud ?? ''}"`,
       );
-      throw new UnauthorizedException(`Invalid token issuer (expected ${this.expectedIssuer}, got ${payload.iss})`);
+      throw new UnauthorizedException(
+        `Invalid token issuer (expected ${this.expectedIssuer}, got ${payload.iss})`,
+      );
     }
     return {
       userId: payload.sub,

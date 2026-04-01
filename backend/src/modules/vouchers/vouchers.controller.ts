@@ -54,13 +54,12 @@ export class VouchersController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 15, ttl: 60000 } })
   @ApiOperation({ summary: 'Validate voucher (public)', security: [] })
-  async validate(
-    @Body() dto: ValidateVoucherDto,
-    @Req() req: RequestWithUser,
-  ) {
+  async validate(@Body() dto: ValidateVoucherDto, @Req() req: RequestWithUser) {
     let customerUserId: string | undefined;
     const authHeader = req.headers?.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
     if (token) {
       try {
         const payload = this.jwtService.verify<{ sub: string }>(token);
@@ -71,10 +70,13 @@ export class VouchersController {
     }
     const result = await this.vouchersService.validate(
       { ...dto, customerUserId: customerUserId ?? dto.customerUserId },
-      { actorId: customerUserId ?? null, requestId: this.getRequestId(req.headers) },
+      {
+        actorId: customerUserId ?? null,
+        requestId: this.getRequestId(req.headers),
+      },
     );
     if (result.valid) {
-      return ApiResponseDto.ok(result as ValidateVoucherResult);
+      return ApiResponseDto.ok(result);
     }
     return {
       success: false,
@@ -88,7 +90,10 @@ export class VouchersController {
   @RequirePermission('vouchers:write')
   @ApiBearerAuth('bearer')
   async create(@Body() dto: CreateVoucherDto, @Req() req: RequestWithUser) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     const data = await this.vouchersService.create(dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher created');
   }
@@ -132,7 +137,10 @@ export class VouchersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: VoucherAuditQueryDto,
   ) {
-    const { data, total } = await this.vouchersService.findAuditLogsByVoucher(id, query);
+    const { data, total } = await this.vouchersService.findAuditLogsByVoucher(
+      id,
+      query,
+    );
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     return ApiResponseDto.list(data, { total, page, limit });
@@ -156,7 +164,10 @@ export class VouchersController {
     @Body() dto: UpdateVoucherDto,
     @Req() req: RequestWithUser,
   ) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     const data = await this.vouchersService.update(id, dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher updated');
   }
@@ -170,17 +181,33 @@ export class VouchersController {
     @Body() body: { isActive: boolean },
     @Req() req: RequestWithUser,
   ) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
-    const data = await this.vouchersService.updateStatus(id, body.isActive ?? false, ctx);
-    return ApiResponseDto.ok(data, body.isActive ? 'Voucher activated' : 'Voucher deactivated');
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
+    const data = await this.vouchersService.updateStatus(
+      id,
+      body.isActive ?? false,
+      ctx,
+    );
+    return ApiResponseDto.ok(
+      data,
+      body.isActive ? 'Voucher activated' : 'Voucher deactivated',
+    );
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('vouchers:write')
   @ApiBearerAuth('bearer')
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: RequestWithUser) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     await this.vouchersService.remove(id, ctx);
     return ApiResponseDto.ok(null, 'Voucher deleted');
   }

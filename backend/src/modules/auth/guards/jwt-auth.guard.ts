@@ -1,4 +1,9 @@
-import { Injectable, ExecutionContext, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
@@ -37,7 +42,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     try {
       const payloadRaw = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const padded = payloadRaw + '='.repeat((4 - (payloadRaw.length % 4)) % 4);
-      const json = JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as {
+      const json = JSON.parse(
+        Buffer.from(padded, 'base64').toString('utf8'),
+      ) as {
         sub?: string;
         aud?: string;
         iss?: string;
@@ -68,15 +75,23 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   ): TUser {
     if (err || !user) {
       const req = context.switchToHttp().getRequest<Request>();
-      const infoObj = (info ?? {}) as { name?: string; message?: string; expiredAt?: Date };
+      const infoObj = (info ?? {}) as {
+        name?: string;
+        message?: string;
+        expiredAt?: Date;
+      };
       const tokenMeta = this.getTokenMeta(req.headers.authorization);
       this.logger.warn(
         [
           `JWT rejected for ${req.method} ${req.originalUrl || req.url}`,
           `reason=${infoObj.name || (err instanceof Error ? err.name : 'Unauthorized')}`,
           `message=${infoObj.message || (err instanceof Error ? err.message : 'Unauthorized')}`,
-          infoObj.expiredAt ? `expiredAt=${infoObj.expiredAt.toISOString()}` : '',
-          tokenMeta ? `tokenMeta=${JSON.stringify(tokenMeta)}` : 'tokenMeta=unavailable',
+          infoObj.expiredAt
+            ? `expiredAt=${infoObj.expiredAt.toISOString()}`
+            : '',
+          tokenMeta
+            ? `tokenMeta=${JSON.stringify(tokenMeta)}`
+            : 'tokenMeta=unavailable',
         ]
           .filter(Boolean)
           .join(' | '),

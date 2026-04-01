@@ -58,7 +58,9 @@ export class OrdersController {
   ) {
     let customerUserId: string | null = null;
     const authHeader = req.headers?.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
     if (token) {
       try {
         const payload = this.jwtService.verify<{ sub: string }>(token);
@@ -67,7 +69,11 @@ export class OrdersController {
         // Invalid or expired token: proceed as guest
       }
     }
-    const data = await this.ordersService.create(dto, customerUserId, idempotencyKey);
+    const data = await this.ordersService.create(
+      dto,
+      customerUserId,
+      idempotencyKey,
+    );
     return ApiResponseDto.ok(data, 'Order placed');
   }
 
@@ -97,7 +103,10 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   @ApiOperation({ summary: 'Get my order by ID' })
-  async findMyOrder(@Req() req: RequestWithUser, @Param('id', ParseUUIDPipe) id: string) {
+  async findMyOrder(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.ordersService.findOneByCustomer(userId, id);

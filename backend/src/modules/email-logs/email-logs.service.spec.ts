@@ -23,7 +23,12 @@ const mockFailedLog = {
 describe('EmailLogsService', () => {
   let service: EmailLogsService;
   let prisma: {
-    emailLog: { findUnique: jest.Mock; findMany: jest.Mock; count: jest.Mock; update: jest.Mock };
+    emailLog: {
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      count: jest.Mock;
+      update: jest.Mock;
+    };
     order: { findUnique: jest.Mock };
     $queryRaw: jest.Mock;
   };
@@ -67,7 +72,9 @@ describe('EmailLogsService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.emailLog.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -120,13 +127,20 @@ describe('EmailLogsService', () => {
     it('throws NotFoundException when log not found', async () => {
       prisma.emailLog.findUnique.mockResolvedValue(null);
 
-      await expect(service.resend('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.resend('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws BadRequestException when status is not failed', async () => {
-      prisma.emailLog.findUnique.mockResolvedValue({ ...mockFailedLog, status: 'sent' });
+      prisma.emailLog.findUnique.mockResolvedValue({
+        ...mockFailedLog,
+        status: 'sent',
+      });
 
-      await expect(service.resend(logId)).rejects.toThrow('Only failed emails can be resent');
+      await expect(service.resend(logId)).rejects.toThrow(
+        'Only failed emails can be resent',
+      );
     });
 
     it('throws BadRequestException when already resent', async () => {
@@ -135,7 +149,9 @@ describe('EmailLogsService', () => {
         resentLogId: 'already-resent-id',
       });
 
-      await expect(service.resend(logId)).rejects.toThrow('already been resent');
+      await expect(service.resend(logId)).rejects.toThrow(
+        'already been resent',
+      );
     });
 
     it('throws BadRequestException for unsupported type', async () => {

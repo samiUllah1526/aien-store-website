@@ -34,7 +34,10 @@ export class ProfileService {
     };
   }
 
-  async saveShipping(userId: string, dto: SaveShippingDto): Promise<SavedShippingDto> {
+  async saveShipping(
+    userId: string,
+    dto: SaveShippingDto,
+  ): Promise<SavedShippingDto> {
     const data = {
       firstName: dto.firstName?.trim() || null,
       lastName: dto.lastName?.trim() || null,

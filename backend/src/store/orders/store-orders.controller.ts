@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Param, Query, Headers, UseGuards, ParseUUIDPipe, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Headers,
+  UseGuards,
+  ParseUUIDPipe,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { OrdersService } from '../../modules/orders/orders.service';
 import { CreateOrderDto } from '../../modules/orders/dto/create-order.dto';
@@ -34,7 +45,9 @@ export class StoreOrdersController {
   ) {
     let customerUserId: string | null = null;
     const authHeader = req.headers?.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
     if (token) {
       try {
         const payload = this.jwtService.verify<{ sub: string }>(token);
@@ -43,7 +56,11 @@ export class StoreOrdersController {
         // proceed as guest
       }
     }
-    const data = await this.ordersService.create(dto, customerUserId, idempotencyKey);
+    const data = await this.ordersService.create(
+      dto,
+      customerUserId,
+      idempotencyKey,
+    );
     return ApiResponseDto.ok(data, 'Order placed');
   }
 
@@ -60,7 +77,10 @@ export class StoreOrdersController {
     if (!userId) throw new Error('User not authenticated');
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
-    const { data, total } = await this.ordersService.findMyOrders(userId, { page: pageNum, limit: limitNum });
+    const { data, total } = await this.ordersService.findMyOrders(userId, {
+      page: pageNum,
+      limit: limitNum,
+    });
     return ApiResponseDto.list(data, { total, page: pageNum, limit: limitNum });
   }
 
@@ -68,7 +88,10 @@ export class StoreOrdersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   @ApiOperation({ summary: 'Get my order by ID' })
-  async findMyOrder(@Req() req: { user?: { userId: string } }, @Param('id', ParseUUIDPipe) id: string) {
+  async findMyOrder(
+    @Req() req: { user?: { userId: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.ordersService.findOneByCustomer(userId, id);

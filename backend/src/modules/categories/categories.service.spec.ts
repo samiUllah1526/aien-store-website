@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -19,7 +23,15 @@ const mockCategory = {
 
 describe('CategoriesService', () => {
   let service: CategoriesService;
-  let prisma: { category: { findUnique: jest.Mock; findMany: jest.Mock; create: jest.Mock; update: jest.Mock; delete: jest.Mock } };
+  let prisma: {
+    category: {
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
+  };
 
   beforeEach(async () => {
     prisma = {
@@ -33,7 +45,10 @@ describe('CategoriesService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CategoriesService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        CategoriesService,
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get<CategoriesService>(CategoriesService);
@@ -41,7 +56,10 @@ describe('CategoriesService', () => {
 
   describe('create', () => {
     it('creates category and returns it', async () => {
-      const dto: CreateCategoryDto = { name: 'Electronics', slug: 'electronics' };
+      const dto: CreateCategoryDto = {
+        name: 'Electronics',
+        slug: 'electronics',
+      };
       prisma.category.findUnique.mockResolvedValue(null);
       prisma.category.create.mockResolvedValue(mockCategory);
 
@@ -68,7 +86,11 @@ describe('CategoriesService', () => {
         .mockResolvedValueOnce(null);
 
       await expect(
-        service.create({ name: 'Sub', slug: 'sub', parentId: 'missing-parent' }),
+        service.create({
+          name: 'Sub',
+          slug: 'sub',
+          parentId: 'missing-parent',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -82,7 +104,10 @@ describe('CategoriesService', () => {
       const result = await service.findAll();
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ name: mockCategory.name, productCount: 5 });
+      expect(result[0]).toMatchObject({
+        name: mockCategory.name,
+        productCount: 5,
+      });
     });
 
     it('applies search filter when provided', async () => {
@@ -119,7 +144,9 @@ describe('CategoriesService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -137,7 +164,9 @@ describe('CategoriesService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when new slug exists', async () => {
@@ -176,13 +205,17 @@ describe('CategoriesService', () => {
 
       await service.remove(categoryId);
 
-      expect(prisma.category.delete).toHaveBeenCalledWith({ where: { id: categoryId } });
+      expect(prisma.category.delete).toHaveBeenCalledWith({
+        where: { id: categoryId },
+      });
     });
 
     it('throws NotFoundException when not found', async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.category.delete).not.toHaveBeenCalled();
     });
   });

@@ -28,7 +28,11 @@ const PASSWORD_RESET_EXPIRES_SEC = 3600;
 const SUPER_ADMIN_ROLE_NAME = 'Super Admin';
 
 const userInclude = {
-  roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+  roles: {
+    include: {
+      role: { include: { permissions: { include: { permission: true } } } },
+    },
+  },
   directPermissions: { include: { permission: true } },
 } as const;
 
@@ -85,13 +89,18 @@ export class UsersService {
   /** Invite user to admin portal (set-password email). Super Admin only. */
   async invite(dto: InviteUserDto): Promise<UserResponseDto> {
     const existing = await this.prisma.user.findFirst({
-      where: { email: { equals: dto.email.trim().toLowerCase(), mode: 'insensitive' } },
+      where: {
+        email: { equals: dto.email.trim().toLowerCase(), mode: 'insensitive' },
+      },
     });
     if (existing) {
-      throw new ConflictException(`User with email "${dto.email}" already exists`);
+      throw new ConflictException(
+        `User with email "${dto.email}" already exists`,
+      );
     }
     if (dto.roleIds?.length) await this.validateRoleIds(dto.roleIds);
-    if (dto.permissionIds?.length) await this.validatePermissionIds(dto.permissionIds);
+    if (dto.permissionIds?.length)
+      await this.validatePermissionIds(dto.permissionIds);
 
     const tempPassword = randomBytes(32).toString('hex');
     const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
@@ -120,20 +129,27 @@ export class UsersService {
           ? { create: dto.roleIds.map((roleId) => ({ roleId })) }
           : undefined,
         directPermissions: dto.permissionIds?.length
-          ? { create: dto.permissionIds.map((permissionId) => ({ permissionId, granted: true })) }
+          ? {
+              create: dto.permissionIds.map((permissionId) => ({
+                permissionId,
+                granted: true,
+              })),
+            }
           : undefined,
       },
       include: userInclude,
     });
 
     const setPasswordLink = this.buildAdminResetLink(token);
-    this.emailQueue.enqueueInvite({
-      to: user.email,
-      name: user.name,
-      setPasswordLink,
-    }).catch((err) => {
-      console.warn('[UsersService] Failed to enqueue invite email:', err);
-    });
+    this.emailQueue
+      .enqueueInvite({
+        to: user.email,
+        name: user.name,
+        setPasswordLink,
+      })
+      .catch((err) => {
+        console.warn('[UsersService] Failed to enqueue invite email:', err);
+      });
 
     return this.toResponseDto(user);
   }
@@ -143,7 +159,9 @@ export class UsersService {
       where: { email: dto.email },
     });
     if (existing) {
-      throw new ConflictException(`User with email "${dto.email}" already exists`);
+      throw new ConflictException(
+        `User with email "${dto.email}" already exists`,
+      );
     }
     if (dto.roleIds?.length) {
       await this.validateRoleIds(dto.roleIds);
@@ -169,9 +187,14 @@ export class UsersService {
       },
       include: userInclude,
     });
-    this.emailQueue.enqueueUserCreated({ to: user.email, name: user.name }).catch((err) => {
-      console.warn('[UsersService] Failed to enqueue user-created email:', err);
-    });
+    this.emailQueue
+      .enqueueUserCreated({ to: user.email, name: user.name })
+      .catch((err) => {
+        console.warn(
+          '[UsersService] Failed to enqueue user-created email:',
+          err,
+        );
+      });
     return this.toResponseDto(user);
   }
 
@@ -187,16 +210,24 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with id "${id}" not found`);
     }
-    const canManageRoles =
-      callerPermissions.includes('superadmin:manage');
-    if ((dto.roleIds !== undefined || (dto.directPermissions !== undefined && dto.directPermissions.length > 0)) && !canManageRoles) {
-      throw new ForbiddenException('Only Super Admins can assign roles or permissions');
+    const canManageRoles = callerPermissions.includes('superadmin:manage');
+    if (
+      (dto.roleIds !== undefined ||
+        (dto.directPermissions !== undefined &&
+          dto.directPermissions.length > 0)) &&
+      !canManageRoles
+    ) {
+      throw new ForbiddenException(
+        'Only Super Admins can assign roles or permissions',
+      );
     }
     if (dto.roleIds !== undefined) {
       await this.validateRoleIds(dto.roleIds);
     }
     if (dto.directPermissions !== undefined) {
-      await this.validatePermissionIds(dto.directPermissions.map((p) => p.permissionId));
+      await this.validatePermissionIds(
+        dto.directPermissions.map((p) => p.permissionId),
+      );
     }
     if (dto.email !== undefined) {
       const normalized = dto.email.trim().toLowerCase();
@@ -205,12 +236,15 @@ export class UsersService {
         select: { id: true },
       });
       if (existing && existing.id !== id) {
-        throw new ConflictException(`An account with this email already exists`);
+        throw new ConflictException(
+          `An account with this email already exists`,
+        );
       }
     }
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
-    if (dto.firstName !== undefined) data.firstName = dto.firstName.trim() || null;
+    if (dto.firstName !== undefined)
+      data.firstName = dto.firstName.trim() || null;
     if (dto.lastName !== undefined) data.lastName = dto.lastName.trim() || null;
     if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase();
     if (dto.firstName !== undefined || dto.lastName !== undefined) {
@@ -251,7 +285,10 @@ export class UsersService {
     return this.toResponseDto(updated);
   }
 
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserResponseDto> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UserResponseDto> {
     return this.update(userId, {
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -266,7 +303,9 @@ export class UsersService {
       where: { name: SUPER_ADMIN_ROLE_NAME },
     });
     if (!superAdminRole) {
-      throw new BadRequestException('Super Admin role not found; run database seed.');
+      throw new BadRequestException(
+        'Super Admin role not found; run database seed.',
+      );
     }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -295,7 +334,9 @@ export class UsersService {
       where: { name: SUPER_ADMIN_ROLE_NAME },
     });
     if (!superAdminRole) {
-      throw new BadRequestException('Super Admin role not found; run database seed.');
+      throw new BadRequestException(
+        'Super Admin role not found; run database seed.',
+      );
     }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -331,8 +372,12 @@ export class UsersService {
   }
 
   private buildAdminResetLink(token: string): string {
-    const mainWebsiteUrl = (this.config.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
-    const adminPortalUrl = this.config.get<string>('ADMIN_URL')?.replace(/\/$/, '');
+    const mainWebsiteUrl = (
+      this.config.get<string>('APP_URL') ?? 'https://example.com'
+    ).replace(/\/$/, '');
+    const adminPortalUrl = this.config
+      .get<string>('ADMIN_URL')
+      ?.replace(/\/$/, '');
     const base = adminPortalUrl ?? mainWebsiteUrl;
     return `${base}/admin/reset-password?token=${encodeURIComponent(token)}`;
   }
@@ -345,7 +390,9 @@ export class UsersService {
     const foundSet = new Set(found.map((p) => p.id));
     const missing = permissionIds.filter((id) => !foundSet.has(id));
     if (missing.length) {
-      throw new BadRequestException(`Permissions not found: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Permissions not found: ${missing.join(', ')}`,
+      );
     }
   }
 
@@ -380,7 +427,10 @@ export class UsersService {
         permissions?: Array<{ permission: { name: string } }>;
       };
     }>;
-    directPermissions?: Array<{ permission: { id: string; name: string }; granted: boolean }>;
+    directPermissions?: Array<{
+      permission: { id: string; name: string };
+      granted: boolean;
+    }>;
   }): UserResponseDto {
     const roles: UserRoleDto[] = user.roles.map((ur) => ({
       roleId: ur.role.id,
@@ -396,7 +446,9 @@ export class UsersService {
       if (up.granted) permissionsSet.add(up.permission.name);
       else permissionsSet.delete(up.permission.name);
     }
-    const isSuperAdmin = user.roles.some((ur) => ur.role.name === SUPER_ADMIN_ROLE_NAME);
+    const isSuperAdmin = user.roles.some(
+      (ur) => ur.role.name === SUPER_ADMIN_ROLE_NAME,
+    );
     const directPermissionIds = (user.directPermissions ?? [])
       .filter((up) => up.granted)
       .map((up) => up.permission.id);

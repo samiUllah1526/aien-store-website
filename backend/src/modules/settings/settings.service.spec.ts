@@ -5,7 +5,11 @@ import { SettingsService } from './settings.service';
 describe('SettingsService', () => {
   let service: SettingsService;
   let prisma: {
-    siteSetting: { findUnique: jest.Mock; findMany: jest.Mock; upsert: jest.Mock };
+    siteSetting: {
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      upsert: jest.Mock;
+    };
     media: { findUnique: jest.Mock };
   };
 
@@ -39,7 +43,10 @@ describe('SettingsService', () => {
     });
 
     it('returns value when found', async () => {
-      prisma.siteSetting.findUnique.mockResolvedValue({ key: 'general', value: { logoMediaId: 'm1' } });
+      prisma.siteSetting.findUnique.mockResolvedValue({
+        key: 'general',
+        value: { logoMediaId: 'm1' },
+      });
 
       const result = await service.getByKey('general');
 
@@ -106,10 +113,18 @@ describe('SettingsService', () => {
     });
 
     it('resolves logoPath from media when general has logoMediaId', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(where.key === 'general' ? { value: { logoMediaId: 'media-1' } } : null),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'general'
+              ? { value: { logoMediaId: 'media-1' } }
+              : null,
+          ),
       );
-      prisma.media.findUnique.mockResolvedValue({ path: '/img/logo.png', deliveryUrl: 'https://cdn/logo.png' });
+      prisma.media.findUnique.mockResolvedValue({
+        path: '/img/logo.png',
+        deliveryUrl: 'https://cdn/logo.png',
+      });
 
       const result = await service.getPublic();
 
@@ -117,8 +132,13 @@ describe('SettingsService', () => {
     });
 
     it('returns null logoPath when media not found', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(where.key === 'general' ? { value: { logoMediaId: 'missing-media' } } : null),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'general'
+              ? { value: { logoMediaId: 'missing-media' } }
+              : null,
+          ),
       );
       prisma.media.findUnique.mockResolvedValue(null);
 
@@ -128,8 +148,13 @@ describe('SettingsService', () => {
     });
 
     it('uses deliveryChargesCents when valid', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(where.key === 'delivery' ? { value: { deliveryChargesCents: 300 } } : null),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'delivery'
+              ? { value: { deliveryChargesCents: 300 } }
+              : null,
+          ),
       );
 
       const result = await service.getPublic();
@@ -138,8 +163,13 @@ describe('SettingsService', () => {
     });
 
     it('defaults deliveryChargesCents to 0 when negative', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(where.key === 'delivery' ? { value: { deliveryChargesCents: -100 } } : null),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'delivery'
+              ? { value: { deliveryChargesCents: -100 } }
+              : null,
+          ),
       );
 
       const result = await service.getPublic();
@@ -148,18 +178,19 @@ describe('SettingsService', () => {
     });
 
     it('normalizes marketing GTM format and metaPixelId digits', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(
-          where.key === 'marketing'
-            ? {
-                value: {
-                  metaPixelId: '123-456-789',
-                  googleTagManagerId: 'gtm-abc123',
-                  enabled: true,
-                },
-              }
-            : null,
-        ),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'marketing'
+              ? {
+                  value: {
+                    metaPixelId: '123-456-789',
+                    googleTagManagerId: 'gtm-abc123',
+                    enabled: true,
+                  },
+                }
+              : null,
+          ),
       );
 
       const result = await service.getPublic();
@@ -169,8 +200,13 @@ describe('SettingsService', () => {
     });
 
     it('formats GTM from digits-only input', async () => {
-      prisma.siteSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) =>
-        Promise.resolve(where.key === 'marketing' ? { value: { googleTagManagerId: '123456' } } : null),
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'marketing'
+              ? { value: { googleTagManagerId: '123456' } }
+              : null,
+          ),
       );
 
       const result = await service.getPublic();

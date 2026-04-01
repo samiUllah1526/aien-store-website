@@ -31,7 +31,8 @@ export class ProductQueryDto {
   @IsOptional()
   @IsString()
   @IsIn(['name', 'price', 'createdAt', 'slug', 'stockQuantity'])
-  sortBy?: 'name' | 'price' | 'createdAt' | 'slug' | 'stockQuantity' = 'createdAt';
+  sortBy?: 'name' | 'price' | 'createdAt' | 'slug' | 'stockQuantity' =
+    'createdAt';
 
   @IsOptional()
   @IsString()

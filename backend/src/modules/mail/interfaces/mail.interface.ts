@@ -61,7 +61,9 @@ export interface PasswordResetEmailPayload {
 }
 
 export interface IMailService {
-  sendOrderConfirmation(payload: OrderConfirmationEmailPayload): Promise<string>;
+  sendOrderConfirmation(
+    payload: OrderConfirmationEmailPayload,
+  ): Promise<string>;
   sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<string>;
   sendWelcome(payload: WelcomeEmailPayload): Promise<string>;
   sendUserCreated(payload: UserCreatedEmailPayload): Promise<string>;

@@ -1,4 +1,13 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  IsUUID,
+} from 'class-validator';
 
 export class ProductVariantInputDto {
   @IsOptional()

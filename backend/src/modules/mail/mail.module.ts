@@ -15,7 +15,9 @@ import type { MailProviderType } from './constants';
     {
       provide: MAIL_TRANSPORT,
       useFactory: (config: ConfigService): IMailTransport => {
-        const provider = (config.get<string>('MAIL_PROVIDER') ?? 'mock').toLowerCase() as MailProviderType;
+        const provider = (
+          config.get<string>('MAIL_PROVIDER') ?? 'mock'
+        ).toLowerCase() as MailProviderType;
         switch (provider) {
           case 'brevo':
             return new BrevoTransport(config);

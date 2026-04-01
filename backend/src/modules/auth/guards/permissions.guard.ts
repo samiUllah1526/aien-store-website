@@ -18,12 +18,17 @@ export class PermissionsGuard implements CanActivate {
     );
 
     const request = context.switchToHttp().getRequest();
-    const path = (request.path || request.url || '').replace(/\?.*$/, '').replace(/\/$/, '') || '/';
+    const path =
+      (request.path || request.url || '')
+        .replace(/\?.*$/, '')
+        .replace(/\/$/, '') || '/';
     const isAdminRoute = path.startsWith('/admin');
 
     if (!requiredPermissions?.length) {
       if (isAdminRoute) {
-        throw new ForbiddenException('No permission required for this admin route');
+        throw new ForbiddenException(
+          'No permission required for this admin route',
+        );
       }
       return true;
     }

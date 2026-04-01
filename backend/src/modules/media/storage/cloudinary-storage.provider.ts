@@ -8,7 +8,12 @@ import type {
   UploadFolder,
 } from './storage-provider.interface';
 
-const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+const ALLOWED_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 @Injectable()
@@ -20,7 +25,9 @@ export class CloudinaryStorageProvider implements IStorageProvider {
   private readonly enabled: boolean;
 
   constructor(private readonly config: ConfigService) {
-    const storage = this.config.get<{ cloudinary?: { cloudName?: string; apiKey?: string; apiSecret?: string } }>('storage');
+    const storage = this.config.get<{
+      cloudinary?: { cloudName?: string; apiKey?: string; apiSecret?: string };
+    }>('storage');
     const cld = storage?.cloudinary ?? {};
     this.cloudName = cld.cloudName ?? '';
     this.apiKey = cld.apiKey ?? '';
@@ -53,7 +60,10 @@ export class CloudinaryStorageProvider implements IStorageProvider {
       timestamp,
     };
 
-    const signature = cloudinary.utils.api_sign_request(paramsToSign, this.apiSecret);
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      this.apiSecret,
+    );
     const uploadUrl = `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`;
 
     return {

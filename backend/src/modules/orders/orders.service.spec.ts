@@ -56,7 +56,9 @@ const mockOrder = {
       product: {
         id: productId,
         name: 'Test Product',
-        productMedia: [] as Array<{ media: { path: string; deliveryUrl: string | null } }>,
+        productMedia: [] as Array<{
+          media: { path: string; deliveryUrl: string | null };
+        }>,
       },
     },
   ],
@@ -67,7 +69,14 @@ const mockOrder = {
 };
 
 type PrismaMock = {
-  order: { findUnique: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock; count: jest.Mock };
+  order: {
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    count: jest.Mock;
+  };
   product: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
   user: { findUnique: jest.Mock };
   orderItem: { findMany: jest.Mock };
@@ -83,7 +92,10 @@ type PrismaMock = {
 describe('OrdersService', () => {
   let service: OrdersService;
   let prisma: PrismaMock;
-  let emailQueue: { enqueueOrderStatusChange: jest.Mock; enqueueOrderConfirmation: jest.Mock };
+  let emailQueue: {
+    enqueueOrderStatusChange: jest.Mock;
+    enqueueOrderConfirmation: jest.Mock;
+  };
   let settingsService: { getByKey: jest.Mock };
   let inventoryService: {
     deductForOrder: jest.Mock;
@@ -104,7 +116,11 @@ describe('OrdersService', () => {
         update: jest.fn(),
         count: jest.fn(),
       },
-      product: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      product: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
       user: { findUnique: jest.fn() },
       orderItem: { findMany: jest.fn().mockResolvedValue([]) },
       voucherRedemption: { create: jest.fn().mockResolvedValue({}) },
@@ -117,7 +133,9 @@ describe('OrdersService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({}),
       },
-      $transaction: jest.fn((fn: (tx: PrismaMock) => Promise<unknown>) => fn(prisma)),
+      $transaction: jest.fn((fn: (tx: PrismaMock) => Promise<unknown>) =>
+        fn(prisma),
+      ),
       $executeRaw: jest.fn().mockResolvedValue(1),
       $queryRaw: jest.fn().mockResolvedValue([]),
     };
@@ -162,7 +180,12 @@ describe('OrdersService', () => {
         items: [{ productId, quantity: 2 }],
       };
       prisma.product.findMany.mockResolvedValue([
-        { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
+        {
+          id: productId,
+          priceCents: 2500,
+          currency: 'PKR',
+          name: 'Test Product',
+        },
       ]);
       const createdOrder = { ...mockOrder, totalCents: 5000, shippingCents: 0 };
       prisma.order.create.mockResolvedValue(createdOrder);
@@ -201,7 +224,12 @@ describe('OrdersService', () => {
       const otherProductId = '33333333-3333-3333-3333-333333333333';
       prisma.product.findMany.mockResolvedValue([
         { id: productId, priceCents: 2500, currency: 'PKR', name: 'Product A' },
-        { id: otherProductId, priceCents: 500, currency: 'USD', name: 'Product B' },
+        {
+          id: otherProductId,
+          priceCents: 500,
+          currency: 'USD',
+          name: 'Product B',
+        },
       ]);
       await expect(
         service.create({
@@ -244,7 +272,12 @@ describe('OrdersService', () => {
     it('should return server-computed totals from DB (no order created)', async () => {
       settingsService.getByKey.mockResolvedValue({ deliveryChargesCents: 299 });
       prisma.product.findMany.mockResolvedValue([
-        { id: productId, priceCents: 2500, currency: 'PKR', name: 'Test Product' },
+        {
+          id: productId,
+          priceCents: 2500,
+          currency: 'PKR',
+          name: 'Test Product',
+        },
       ]);
       const result = await service.quote([{ productId, quantity: 2 }]);
       expect(result).toMatchObject({
@@ -404,7 +437,10 @@ describe('OrdersService', () => {
   describe('assignStaff', () => {
     it('should call update with userId', async () => {
       prisma.order.findUnique.mockResolvedValue(mockOrder);
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-123', name: 'Staff' });
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        name: 'Staff',
+      });
       prisma.order.update.mockResolvedValue({
         ...mockOrder,
         assignedToUserId: 'user-123',
@@ -423,7 +459,10 @@ describe('OrdersService', () => {
 
     it('should allow unassign when userId is null', async () => {
       prisma.order.findUnique.mockResolvedValue(mockOrder);
-      prisma.order.update.mockResolvedValue({ ...mockOrder, assignedToUserId: null });
+      prisma.order.update.mockResolvedValue({
+        ...mockOrder,
+        assignedToUserId: null,
+      });
       await service.update(orderId, { assignedToUserId: null });
       const call = prisma.order.update.mock.calls[0][0];
       expect(call.data).toBeDefined();

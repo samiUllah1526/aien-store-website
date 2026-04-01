@@ -30,7 +30,9 @@ export class BrevoTransport implements IMailTransport {
     message.subject = options.subject;
     message.textContent = options.text ?? undefined;
     // Brevo accepts either; provide minimal HTML if only text is set
-    message.htmlContent = options.html ?? (options.text ? `<p>${escapeHtml(options.text)}</p>` : '<p></p>');
+    message.htmlContent =
+      options.html ??
+      (options.text ? `<p>${escapeHtml(options.text)}</p>` : '<p></p>');
 
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -42,7 +44,9 @@ export class BrevoTransport implements IMailTransport {
           err &&
           typeof err === 'object' &&
           (String((err as { code?: string }).code) === 'ECONNRESET' ||
-            String((err as { message?: string }).message).toLowerCase().includes('socket hang up'));
+            String((err as { message?: string }).message)
+              .toLowerCase()
+              .includes('socket hang up'));
         if (isRetryable && attempt < maxAttempts) {
           await sleep(500 * attempt);
           continue;

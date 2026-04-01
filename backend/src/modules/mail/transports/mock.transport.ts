@@ -8,7 +8,9 @@ export class MockMailTransport implements IMailTransport {
       to: options.to,
       from: options.from,
       subject: options.subject,
-      textPreview: options.text?.slice(0, 80) + (options.text && options.text.length > 80 ? '...' : ''),
+      textPreview:
+        options.text?.slice(0, 80) +
+        (options.text && options.text.length > 80 ? '...' : ''),
     });
   }
 }

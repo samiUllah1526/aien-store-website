@@ -6,7 +6,10 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { InventoryService } from '../inventory/inventory.service';
-import { CreateOrderDto, CreateOrderPaymentMethod } from './dto/create-order.dto';
+import {
+  CreateOrderDto,
+  CreateOrderPaymentMethod,
+} from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import {
@@ -14,10 +17,7 @@ import {
   OrderItemResponseDto,
   OrderStatusHistoryEntryDto,
 } from './dto/order-response.dto';
-import {
-  QuoteResponseDto,
-  QuoteLineItemDto,
-} from './dto/quote-response.dto';
+import { QuoteResponseDto, QuoteLineItemDto } from './dto/quote-response.dto';
 import { canTransitionOrderStatus } from './order-status.enum';
 import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -41,7 +41,8 @@ export class OrdersService {
   /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
   private async getDeliveryChargesCents(): Promise<number> {
     const delivery = await this.settingsService.getByKey('delivery');
-    const cents = (delivery as { deliveryChargesCents?: number } | null)?.deliveryChargesCents;
+    const cents = (delivery as { deliveryChargesCents?: number } | null)
+      ?.deliveryChargesCents;
     return typeof cents === 'number' && cents >= 0 ? cents : 0;
   }
 
@@ -51,9 +52,22 @@ export class OrdersService {
    * Variant-first: all item pricing/stock is resolved from product_variants.
    */
   async computeOrderFromItems(
-    items: Array<{ productId: string; variantId: string; quantity: number; color?: string | null; size?: string | null }>,
+    items: Array<{
+      productId: string;
+      variantId: string;
+      quantity: number;
+      color?: string | null;
+      size?: string | null;
+    }>,
   ): Promise<{
-    orderItemsData: Array<{ productId: string; variantId: string; quantity: number; unitCents: number; color?: string | null; size?: string | null }>;
+    orderItemsData: Array<{
+      productId: string;
+      variantId: string;
+      quantity: number;
+      unitCents: number;
+      color?: string | null;
+      size?: string | null;
+    }>;
     quoteItems: QuoteLineItemDto[];
     subtotalCents: number;
     currency: string;
@@ -72,44 +86,73 @@ export class OrdersService {
         stockQuantity: true,
         isActive: true,
         priceOverrideCents: true,
-        product: { select: { id: true, priceCents: true, currency: true, name: true } },
+        product: {
+          select: { id: true, priceCents: true, currency: true, name: true },
+        },
       },
     });
     const variantMap = new Map(variants.map((v) => [v.id, v]));
     const missing = variantIds.filter((id) => !variantMap.has(id));
     if (missing.length) {
-      throw new BadRequestException(`Variants not found: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Variants not found: ${missing.join(', ')}`,
+      );
     }
 
-    const currencies = [...new Set(items.map((item) => variantMap.get(item.variantId)!.product.currency))];
+    const currencies = [
+      ...new Set(
+        items.map((item) => variantMap.get(item.variantId)!.product.currency),
+      ),
+    ];
     if (currencies.length > 1) {
       throw new BadRequestException(
         'All items must be in the same currency. Please create separate orders for different currencies.',
       );
     }
     const rawCurrency =
-      currencies[0] && (CURRENCIES as readonly string[]).includes(currencies[0]) ? currencies[0] : 'PKR';
+      currencies[0] && (CURRENCIES as readonly string[]).includes(currencies[0])
+        ? currencies[0]
+        : 'PKR';
     if (rawCurrency !== 'PKR') {
-      throw new BadRequestException('Only PKR currency is supported for orders.');
+      throw new BadRequestException(
+        'Only PKR currency is supported for orders.',
+      );
     }
     const currency = 'PKR';
 
     let subtotalCents = 0;
-    const orderItemsData: Array<{ productId: string; variantId: string; quantity: number; unitCents: number; color?: string | null; size?: string | null }> = [];
+    const orderItemsData: Array<{
+      productId: string;
+      variantId: string;
+      quantity: number;
+      unitCents: number;
+      color?: string | null;
+      size?: string | null;
+    }> = [];
     const quoteItems: QuoteLineItemDto[] = [];
     const requestedByVariant = new Map<string, number>();
     for (const item of items) {
-      const clamped = Math.min(Math.max(1, Number(item.quantity) || 1), MAX_ORDER_ITEM_QUANTITY);
-      requestedByVariant.set(item.variantId, (requestedByVariant.get(item.variantId) ?? 0) + clamped);
+      const clamped = Math.min(
+        Math.max(1, Number(item.quantity) || 1),
+        MAX_ORDER_ITEM_QUANTITY,
+      );
+      requestedByVariant.set(
+        item.variantId,
+        (requestedByVariant.get(item.variantId) ?? 0) + clamped,
+      );
     }
 
     for (const item of items) {
       const variant = variantMap.get(item.variantId)!;
       if (variant.productId !== item.productId) {
-        throw new BadRequestException(`Variant ${item.variantId} does not belong to product ${item.productId}`);
+        throw new BadRequestException(
+          `Variant ${item.variantId} does not belong to product ${item.productId}`,
+        );
       }
       if (!variant.isActive) {
-        throw new BadRequestException(`Variant ${variant.color}/${variant.size} is inactive`);
+        throw new BadRequestException(
+          `Variant ${variant.color}/${variant.size} is inactive`,
+        );
       }
       const quantity = Math.min(
         Math.max(1, Number(item.quantity) || 1),
@@ -121,12 +164,15 @@ export class OrdersService {
           `Insufficient stock for "${variant.product.name}" (${variant.color}/${variant.size}). Available: ${variant.stockQuantity}, requested: ${requiredQty}.`,
         );
       }
-      const unitCents = variant.priceOverrideCents ?? variant.product.priceCents;
+      const unitCents =
+        variant.priceOverrideCents ?? variant.product.priceCents;
       const lineTotalCents = unitCents * quantity;
       subtotalCents += lineTotalCents;
-      const rawColor = typeof item.color === 'string' ? item.color.trim().slice(0, 50) : '';
+      const rawColor =
+        typeof item.color === 'string' ? item.color.trim().slice(0, 50) : '';
       const color = rawColor.length > 0 ? rawColor : variant.color;
-      const rawSize = typeof item.size === 'string' ? item.size.trim().slice(0, 50) : '';
+      const rawSize =
+        typeof item.size === 'string' ? item.size.trim().slice(0, 50) : '';
       const size = rawSize.length > 0 ? rawSize : variant.size;
       orderItemsData.push({
         productId: item.productId,
@@ -153,10 +199,17 @@ export class OrdersService {
 
   /** Returns server-computed quote (no order created). All amounts from DB. */
   async quote(
-    items: Array<{ productId: string; variantId: string; quantity: number; color?: string | null; size?: string | null }>,
+    items: Array<{
+      productId: string;
+      variantId: string;
+      quantity: number;
+      color?: string | null;
+      size?: string | null;
+    }>,
     voucherCode?: string,
   ): Promise<QuoteResponseDto> {
-    const { quoteItems, subtotalCents, currency } = await this.computeOrderFromItems(items);
+    const { quoteItems, subtotalCents, currency } =
+      await this.computeOrderFromItems(items);
     const shippingCents = await this.getDeliveryChargesCents();
     let discountCents = 0;
     let appliedVoucherCode: string | undefined;
@@ -175,7 +228,10 @@ export class OrdersService {
     // Safeguard: discount must never exceed subtotal + shipping (avoids negative totals)
     const maxAllowedDiscount = subtotalCents + shippingCents;
     const safeDiscountCents = Math.min(discountCents, maxAllowedDiscount);
-    const totalCents = Math.max(0, subtotalCents - safeDiscountCents + shippingCents);
+    const totalCents = Math.max(
+      0,
+      subtotalCents - safeDiscountCents + shippingCents,
+    );
     return {
       items: quoteItems,
       subtotalCents,
@@ -192,7 +248,8 @@ export class OrdersService {
     customerUserId?: string | null,
     idempotencyKey?: string | null,
   ): Promise<OrderResponseDto> {
-    const { orderItemsData, subtotalCents, currency } = await this.computeOrderFromItems(dto.items);
+    const { orderItemsData, subtotalCents, currency } =
+      await this.computeOrderFromItems(dto.items);
     const deliveryCents = await this.getDeliveryChargesCents();
 
     const voucherResult = await this.vouchersService.computeDiscountForOrder(
@@ -206,13 +263,19 @@ export class OrdersService {
     // Safeguard: discount must never exceed subtotal + shipping (avoids negative totals)
     const maxAllowedDiscount = subtotalCents + deliveryCents;
     const safeDiscountCents = Math.min(discountCents, maxAllowedDiscount);
-    const totalCents = Math.max(0, subtotalCents - safeDiscountCents + deliveryCents);
+    const totalCents = Math.max(
+      0,
+      subtotalCents - safeDiscountCents + deliveryCents,
+    );
 
     const paymentMethod =
       dto.paymentMethod === CreateOrderPaymentMethod.BANK_DEPOSIT
         ? PaymentMethod.BANK_DEPOSIT
         : PaymentMethod.COD;
-    if (paymentMethod === PaymentMethod.BANK_DEPOSIT && !dto.paymentProofMediaId?.trim()) {
+    if (
+      paymentMethod === PaymentMethod.BANK_DEPOSIT &&
+      !dto.paymentProofMediaId?.trim()
+    ) {
       throw new BadRequestException(
         'Payment proof (screenshot) is required when payment method is Bank Deposit.',
       );
@@ -220,13 +283,18 @@ export class OrdersService {
 
     const customerFirstName = dto.customerFirstName?.trim() || undefined;
     const customerLastName = dto.customerLastName?.trim() || undefined;
-    const customerName = [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() || undefined;
+    const customerName =
+      [customerFirstName, customerLastName].filter(Boolean).join(' ').trim() ||
+      undefined;
     const key = idempotencyKey?.trim() || undefined;
     const include = this.orderInclude();
 
     const result = await this.prisma.$transaction(async (tx) => {
       if (key) {
-        const existingOrderId = await this.inventory.getIdempotentOrderId(key, tx);
+        const existingOrderId = await this.inventory.getIdempotentOrderId(
+          key,
+          tx,
+        );
         if (existingOrderId) {
           const existing = await tx.order.findUnique({
             where: { id: existingOrderId },
@@ -307,21 +375,19 @@ export class OrdersService {
     return this.toResponseDto(result.order);
   }
 
-  private async sendOrderConfirmationEmail(
-    order: {
-      id: string;
-      customerEmail: string;
-      customerName: string | null;
-      totalCents: number;
-      currency: string;
-      createdAt: Date;
-      items: Array<{
-        quantity: number;
-        unitCents: number;
-        product: { name: string };
-      }>;
-    },
-  ): Promise<void> {
+  private async sendOrderConfirmationEmail(order: {
+    id: string;
+    customerEmail: string;
+    customerName: string | null;
+    totalCents: number;
+    currency: string;
+    createdAt: Date;
+    items: Array<{
+      quantity: number;
+      unitCents: number;
+      product: { name: string };
+    }>;
+  }): Promise<void> {
     try {
       await this.emailQueue.enqueueOrderConfirmation({
         to: order.customerEmail,
@@ -337,7 +403,10 @@ export class OrdersService {
         })),
       });
     } catch (err) {
-      console.warn('[OrdersService] Failed to enqueue order confirmation email:', err);
+      console.warn(
+        '[OrdersService] Failed to enqueue order confirmation email:',
+        err,
+      );
     }
   }
 
@@ -368,9 +437,17 @@ export class OrdersService {
       where.id = { in: ids };
     }
     if (customerEmail?.trim()) {
-      where.customerEmail = { contains: customerEmail.trim(), mode: 'insensitive' };
+      where.customerEmail = {
+        contains: customerEmail.trim(),
+        mode: 'insensitive',
+      };
     }
-    if (totalMinCents != null && totalMaxCents != null && totalMinCents >= 0 && totalMaxCents >= 0) {
+    if (
+      totalMinCents != null &&
+      totalMaxCents != null &&
+      totalMinCents >= 0 &&
+      totalMaxCents >= 0
+    ) {
       where.totalCents = { gte: totalMinCents, lte: totalMaxCents };
     } else if (totalMinCents != null && totalMinCents >= 0) {
       where.totalCents = { gte: totalMinCents };
@@ -388,7 +465,9 @@ export class OrdersService {
         select: { id: true },
       });
       if (!userExists) {
-        throw new BadRequestException('No user found with the given assigned staff ID.');
+        throw new BadRequestException(
+          'No user found with the given assigned staff ID.',
+        );
       }
       where.assignedToUserId = assignedToUserId;
     }
@@ -441,7 +520,10 @@ export class OrdersService {
   }
 
   /** Customer-facing: get one order by id only if it belongs to the customer (403-style not found). */
-  async findOneByCustomer(customerUserId: string, orderId: string): Promise<OrderResponseDto> {
+  async findOneByCustomer(
+    customerUserId: string,
+    orderId: string,
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, customerUserId },
       include: this.orderInclude(),
@@ -475,7 +557,8 @@ export class OrdersService {
       };
     }
 
-    if (dto.courierServiceName !== undefined) updates.courierServiceName = dto.courierServiceName;
+    if (dto.courierServiceName !== undefined)
+      updates.courierServiceName = dto.courierServiceName;
     if (dto.trackingId !== undefined) updates.trackingId = dto.trackingId;
 
     if (dto.assignedToUserId !== undefined) {
@@ -517,7 +600,10 @@ export class OrdersService {
 
     if (dto.status !== undefined && dto.status !== order.status) {
       this.sendStatusChangeEmail(updated, dto.status).catch((err) => {
-        console.warn(`[OrdersService] Order ${updated.id} status-change email failed:`, err);
+        console.warn(
+          `[OrdersService] Order ${updated.id} status-change email failed:`,
+          err,
+        );
       });
     }
 
@@ -555,15 +641,17 @@ export class OrdersService {
     return {
       items: {
         include: {
-      product: {
-        include: {
-          productMedia: {
-            take: 1,
-            orderBy: { sortOrder: 'asc' as const },
-            include: { media: { select: { path: true, deliveryUrl: true } } },
+          product: {
+            include: {
+              productMedia: {
+                take: 1,
+                orderBy: { sortOrder: 'asc' as const },
+                include: {
+                  media: { select: { path: true, deliveryUrl: true } },
+                },
+              },
+            },
           },
-        },
-      },
         },
       },
       statusHistory: { orderBy: { createdAt: 'asc' as const } },
@@ -572,9 +660,11 @@ export class OrdersService {
     };
   }
 
-  private productImagePath(
-    product: { productMedia?: Array<{ media: { path: string; deliveryUrl: string | null } }> },
-  ): string | null {
+  private productImagePath(product: {
+    productMedia?: Array<{
+      media: { path: string; deliveryUrl: string | null };
+    }>;
+  }): string | null {
     const media = product.productMedia?.[0]?.media;
     if (!media) return null;
     if (media.deliveryUrl) return media.deliveryUrl;
@@ -616,10 +706,12 @@ export class OrdersService {
       unitCents: number;
       color?: string | null;
       size?: string | null;
-        product: {
+      product: {
         id: string;
         name: string;
-        productMedia?: Array<{ media: { path: string; deliveryUrl: string | null } }>;
+        productMedia?: Array<{
+          media: { path: string; deliveryUrl: string | null };
+        }>;
       };
     }>;
     statusHistory: Array<{ status: OrderStatus; createdAt: Date }>;
@@ -636,14 +728,19 @@ export class OrdersService {
       quantity: i.quantity,
       unitCents: i.unitCents,
     }));
-    const statusHistory: OrderStatusHistoryEntryDto[] =
-      order.statusHistory.map((h) => ({
+    const statusHistory: OrderStatusHistoryEntryDto[] = order.statusHistory.map(
+      (h) => ({
         status: h.status,
         createdAt: h.createdAt.toISOString(),
-      }));
-    const subtotalCents = order.subtotalCents ?? order.items.reduce((s, i) => s + i.unitCents * i.quantity, 0);
+      }),
+    );
+    const subtotalCents =
+      order.subtotalCents ??
+      order.items.reduce((s, i) => s + i.unitCents * i.quantity, 0);
     const discountCentsVal = order.discountCents ?? 0;
-    const shippingCentsVal = order.shippingCents ?? Math.max(0, order.totalCents - subtotalCents + discountCentsVal);
+    const shippingCentsVal =
+      order.shippingCents ??
+      Math.max(0, order.totalCents - subtotalCents + discountCentsVal);
     return {
       id: order.id,
       status: order.status,
@@ -657,7 +754,13 @@ export class OrdersService {
       customerEmail: order.customerEmail,
       customerFirstName: order.customerFirstName ?? null,
       customerLastName: order.customerLastName ?? null,
-      customerName: order.customerName ?? ([order.customerFirstName, order.customerLastName].filter(Boolean).join(' ').trim() || null),
+      customerName:
+        order.customerName ??
+        ([order.customerFirstName, order.customerLastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim() ||
+          null),
       customerPhone: order.customerPhone ?? null,
       shippingCountry: order.shippingCountry ?? null,
       shippingAddressLine1: order.shippingAddressLine1 ?? null,
@@ -665,7 +768,8 @@ export class OrdersService {
       shippingCity: order.shippingCity ?? null,
       shippingPostalCode: order.shippingPostalCode ?? null,
       paymentMethod: order.paymentMethod,
-      paymentProofPath: order.paymentProof?.deliveryUrl ?? order.paymentProof?.path ?? null,
+      paymentProofPath:
+        order.paymentProof?.deliveryUrl ?? order.paymentProof?.path ?? null,
       courierServiceName: order.courierServiceName ?? null,
       trackingId: order.trackingId ?? null,
       assignedToUserId: order.assignedToUserId,

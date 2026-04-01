@@ -74,8 +74,12 @@ export class MailService implements IMailService {
       this.configService.get<string>('MAIL_FROM_NAME') ?? 'E-Commerce';
     this.companyName =
       this.configService.get<string>('MAIL_COMPANY_NAME') ?? this.fromName;
-    const appBase = (this.configService.get<string>('APP_URL') ?? 'https://example.com').replace(/\/$/, '');
-    const adminBase = this.configService.get<string>('ADMIN_URL')?.replace(/\/$/, '');
+    const appBase = (
+      this.configService.get<string>('APP_URL') ?? 'https://example.com'
+    ).replace(/\/$/, '');
+    const adminBase = this.configService
+      .get<string>('ADMIN_URL')
+      ?.replace(/\/$/, '');
     this.appUrl = appBase;
     this.adminLoginUrl =
       this.configService.get<string>('ADMIN_LOGIN_URL') ??
@@ -87,7 +91,8 @@ export class MailService implements IMailService {
   ): Promise<string> {
     const subject = `Order confirmed – ${payload.orderId}`;
     const metadata = { orderId: payload.orderId };
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const totalFormatted = this.formatCurrency(
         payload.totalCents,
@@ -111,21 +116,43 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'order-confirmation', to: payload.to, subject, status: 'sent', metadata, content });
-      this.logger.log(`Email sent: order-confirmation to ${payload.to} (order ${payload.orderId})`);
+      const logId = await this.logEmail({
+        type: 'order-confirmation',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        metadata,
+        content,
+      });
+      this.logger.log(
+        `Email sent: order-confirmation to ${payload.to} (order ${payload.orderId})`,
+      );
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'order-confirmation', to: payload.to, subject, status: 'failed', error: serializeError(err), metadata, content: content ?? undefined });
-      this.logger.warn(`Email failed: order-confirmation to ${payload.to}: ${msg}`);
+      await this.logEmail({
+        type: 'order-confirmation',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        metadata,
+        content: content ?? undefined,
+      });
+      this.logger.warn(
+        `Email failed: order-confirmation to ${payload.to}: ${msg}`,
+      );
       throw err;
     }
   }
 
-  async sendOrderStatusChange(payload: OrderStatusEmailPayload): Promise<string> {
+  async sendOrderStatusChange(
+    payload: OrderStatusEmailPayload,
+  ): Promise<string> {
     const subject = `Order ${payload.orderId} – Status: ${payload.status}`;
     const metadata = { orderId: payload.orderId, status: payload.status };
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const { html, text } = renderMjmlTemplate('order-status-change', {
         customerName: payload.customerName ?? 'Customer',
@@ -143,20 +170,40 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'order-status-change', to: payload.to, subject, status: 'sent', metadata, content });
-      this.logger.log(`Email sent: order-status-change to ${payload.to} (order ${payload.orderId}, status ${payload.status})`);
+      const logId = await this.logEmail({
+        type: 'order-status-change',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        metadata,
+        content,
+      });
+      this.logger.log(
+        `Email sent: order-status-change to ${payload.to} (order ${payload.orderId}, status ${payload.status})`,
+      );
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'order-status-change', to: payload.to, subject, status: 'failed', error: serializeError(err), metadata, content: content ?? undefined });
-      this.logger.warn(`Email failed: order-status-change to ${payload.to}: ${msg}`);
+      await this.logEmail({
+        type: 'order-status-change',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        metadata,
+        content: content ?? undefined,
+      });
+      this.logger.warn(
+        `Email failed: order-status-change to ${payload.to}: ${msg}`,
+      );
       throw err;
     }
   }
 
   async sendWelcome(payload: WelcomeEmailPayload): Promise<string> {
     const subject = `Welcome to ${this.companyName}`;
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const { html, text } = renderMjmlTemplate('welcome', {
         name: payload.name,
@@ -171,12 +218,25 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'welcome', to: payload.to, subject, status: 'sent', content });
+      const logId = await this.logEmail({
+        type: 'welcome',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        content,
+      });
       this.logger.log(`Email sent: welcome to ${payload.to}`);
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'welcome', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      await this.logEmail({
+        type: 'welcome',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        content: content ?? undefined,
+      });
       this.logger.warn(`Email failed: welcome to ${payload.to}: ${msg}`);
       throw err;
     }
@@ -184,7 +244,8 @@ export class MailService implements IMailService {
 
   async sendUserCreated(payload: UserCreatedEmailPayload): Promise<string> {
     const subject = `Your account has been created – ${this.companyName}`;
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const loginUrl = payload.loginUrl ?? this.adminLoginUrl;
       const { html, text } = renderMjmlTemplate('user-created', {
@@ -201,12 +262,25 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'user-created', to: payload.to, subject, status: 'sent', content });
+      const logId = await this.logEmail({
+        type: 'user-created',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        content,
+      });
       this.logger.log(`Email sent: user-created to ${payload.to}`);
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'user-created', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      await this.logEmail({
+        type: 'user-created',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        content: content ?? undefined,
+      });
       this.logger.warn(`Email failed: user-created to ${payload.to}: ${msg}`);
       throw err;
     }
@@ -214,7 +288,8 @@ export class MailService implements IMailService {
 
   async sendPasswordReset(payload: PasswordResetEmailPayload): Promise<string> {
     const subject = `Reset your password – ${this.companyName}`;
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const { html, text } = renderMjmlTemplate('password-reset', {
         name: payload.name,
@@ -230,12 +305,25 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'password-reset', to: payload.to, subject, status: 'sent', content });
+      const logId = await this.logEmail({
+        type: 'password-reset',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        content,
+      });
       this.logger.log(`Email sent: password-reset to ${payload.to}`);
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'password-reset', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      await this.logEmail({
+        type: 'password-reset',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        content: content ?? undefined,
+      });
       this.logger.warn(`Email failed: password-reset to ${payload.to}: ${msg}`);
       throw err;
     }
@@ -243,7 +331,8 @@ export class MailService implements IMailService {
 
   async sendInvite(payload: InviteEmailPayload): Promise<string> {
     const subject = `You're invited to the admin portal – ${this.companyName}`;
-    let content: { subject: string; text?: string; html?: string } | null = null;
+    let content: { subject: string; text?: string; html?: string } | null =
+      null;
     try {
       const { html, text } = renderMjmlTemplate('invite', {
         name: payload.name,
@@ -259,12 +348,25 @@ export class MailService implements IMailService {
         text,
         html,
       });
-      const logId = await this.logEmail({ type: 'invite', to: payload.to, subject, status: 'sent', content });
+      const logId = await this.logEmail({
+        type: 'invite',
+        to: payload.to,
+        subject,
+        status: 'sent',
+        content,
+      });
       this.logger.log(`Email sent: invite to ${payload.to}`);
       return logId ?? '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await this.logEmail({ type: 'invite', to: payload.to, subject, status: 'failed', error: serializeError(err), content: content ?? undefined });
+      await this.logEmail({
+        type: 'invite',
+        to: payload.to,
+        subject,
+        status: 'failed',
+        error: serializeError(err),
+        content: content ?? undefined,
+      });
       this.logger.warn(`Email failed: invite to ${payload.to}: ${msg}`);
       throw err;
     }
@@ -286,9 +388,15 @@ export class MailService implements IMailService {
           to: params.to,
           subject: params.subject,
           status: params.status,
-          ...(params.error != null && { error: params.error as Prisma.InputJsonValue }),
-          ...(params.content != null && { content: params.content as Prisma.InputJsonValue }),
-          ...(params.metadata != null && { metadata: params.metadata as Prisma.InputJsonValue }),
+          ...(params.error != null && {
+            error: params.error as Prisma.InputJsonValue,
+          }),
+          ...(params.content != null && {
+            content: params.content as Prisma.InputJsonValue,
+          }),
+          ...(params.metadata != null && {
+            metadata: params.metadata as Prisma.InputJsonValue,
+          }),
         },
       });
       return log.id;

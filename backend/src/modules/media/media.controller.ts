@@ -63,7 +63,9 @@ export class MediaController {
         'No remote storage configured. Set CLOUDINARY_* or configure S3.',
       );
     }
-    const f = (folder === 'payment-proofs' ? 'payment-proofs' : 'products') as UploadFolder;
+    const f = (
+      folder === 'payment-proofs' ? 'payment-proofs' : 'products'
+    ) as UploadFolder;
     const params = provider.getSignedUploadParams(f);
     return ApiResponseDto.ok(params);
   }
@@ -73,7 +75,16 @@ export class MediaController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission('products:write')
   @ApiBearerAuth('bearer')
-  async registerLegacy(@Body() body: { publicId?: string; secureUrl?: string; filename?: string; mimeType?: string; bytes?: number }) {
+  async registerLegacy(
+    @Body()
+    body: {
+      publicId?: string;
+      secureUrl?: string;
+      filename?: string;
+      mimeType?: string;
+      bytes?: number;
+    },
+  ) {
     return this.register({
       provider: 'cloudinary',
       storageKey: body.publicId,
@@ -81,7 +92,10 @@ export class MediaController {
       filename: body.filename,
       mimeType: body.mimeType,
       bytes: body.bytes,
-      providerResponse: body.publicId && body.secureUrl ? { public_id: body.publicId, secure_url: body.secureUrl } : undefined,
+      providerResponse:
+        body.publicId && body.secureUrl
+          ? { public_id: body.publicId, secure_url: body.secureUrl }
+          : undefined,
     });
   }
 
@@ -120,7 +134,9 @@ export class MediaController {
           productId: dto.productId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       throw err;
     }
@@ -137,7 +153,10 @@ export class MediaController {
   /** Get signed params for payment proof (public). */
   @Public()
   @Get('upload-params-payment-proof')
-  @ApiOperation({ summary: 'Get payment proof upload params (public)', security: [] })
+  @ApiOperation({
+    summary: 'Get payment proof upload params (public)',
+    security: [],
+  })
   getUploadParamsPaymentProof() {
     const provider = this.storageFactory.getRemoteProvider();
     if (!provider) {
@@ -156,7 +175,16 @@ export class MediaController {
   @Public()
   @Post('cloudinary/register-payment-proof')
   @ApiOperation({ security: [] })
-  async registerPaymentProofLegacy(@Body() body: { publicId?: string; secureUrl?: string; filename?: string; mimeType?: string; bytes?: number }) {
+  async registerPaymentProofLegacy(
+    @Body()
+    body: {
+      publicId?: string;
+      secureUrl?: string;
+      filename?: string;
+      mimeType?: string;
+      bytes?: number;
+    },
+  ) {
     return this.registerPaymentProof({
       provider: 'cloudinary',
       storageKey: body.publicId,
@@ -164,14 +192,20 @@ export class MediaController {
       filename: body.filename,
       mimeType: body.mimeType,
       bytes: body.bytes,
-      providerResponse: body.publicId && body.secureUrl ? { public_id: body.publicId, secure_url: body.secureUrl } : undefined,
+      providerResponse:
+        body.publicId && body.secureUrl
+          ? { public_id: body.publicId, secure_url: body.secureUrl }
+          : undefined,
     });
   }
 
   /** Register payment proof upload (public). */
   @Public()
   @Post('register-payment-proof')
-  @ApiOperation({ summary: 'Register payment proof upload (public)', security: [] })
+  @ApiOperation({
+    summary: 'Register payment proof upload (public)',
+    security: [],
+  })
   async registerPaymentProof(@Body() dto: RegisterMediaDto) {
     try {
       const { id } = await this.mediaService.registerUpload(
@@ -200,7 +234,9 @@ export class MediaController {
           orderId: dto.orderId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       throw err;
     }
@@ -223,7 +259,10 @@ export class MediaController {
     }),
   )
   async upload(
-    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @UploadedFile()
+    file:
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
+      | undefined,
     @Body('productId') productId?: string,
   ) {
     if (!file) {
@@ -235,7 +274,9 @@ export class MediaController {
           productId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       return ApiResponseDto.fail('No file provided');
     }
@@ -260,7 +301,9 @@ export class MediaController {
           productId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       throw err;
     }
@@ -277,13 +320,19 @@ export class MediaController {
         if (ALLOWED_MIMES.includes(file.mimetype)) {
           cb(null, true);
         } else {
-          cb(new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'), false);
+          cb(
+            new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'),
+            false,
+          );
         }
       },
     }),
   )
   async uploadPaymentProof(
-    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @UploadedFile()
+    file:
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
+      | undefined,
     @Body('orderId') orderId?: string,
   ) {
     if (!file) {
@@ -295,7 +344,9 @@ export class MediaController {
           orderId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       return ApiResponseDto.fail('No file provided');
     }
@@ -320,7 +371,9 @@ export class MediaController {
           orderId,
         });
       } catch (logErr) {
-        this.logger.warn(`Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`);
+        this.logger.warn(
+          `Failed to record upload error: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+        );
       }
       throw err;
     }
@@ -340,7 +393,16 @@ export class MediaController {
       return res.status(404).send('Not found');
     }
     const ext = filename.split('.').pop()?.toLowerCase();
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'application/octet-stream';
+    const mime =
+      ext === 'jpg' || ext === 'jpeg'
+        ? 'image/jpeg'
+        : ext === 'png'
+          ? 'image/png'
+          : ext === 'webp'
+            ? 'image/webp'
+            : ext === 'gif'
+              ? 'image/gif'
+              : 'application/octet-stream';
     res.setHeader('Content-Type', mime);
     const stream = createReadStream(fullPath);
     stream.pipe(res);

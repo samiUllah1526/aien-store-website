@@ -4,7 +4,11 @@ jest.mock('pg-boss', () => ({
   PgBoss: jest.fn(),
 }));
 
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailQueueService } from '../jobs/queues/email-queue.service';
 import { UsersService } from './users.service';
@@ -122,14 +126,20 @@ describe('UsersService', () => {
     it('throws NotFoundException when not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('create', () => {
     it('creates user and sends user-created email', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue({ ...mockUser, email: 'new@test.com', name: 'New User' });
+      prisma.user.create.mockResolvedValue({
+        ...mockUser,
+        email: 'new@test.com',
+        name: 'New User',
+      });
 
       const result = await service.create({
         name: 'New User',
@@ -174,12 +184,15 @@ describe('UsersService', () => {
 
     it('derives name from firstName and lastName when name empty after trim', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({
-          ...mockUser,
-          ...data,
-          roles: [{ roleId: 'role-1', role: { id: 'role-1', name: 'Admin' } }],
-        }),
+      prisma.user.create.mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({
+            ...mockUser,
+            ...data,
+            roles: [
+              { roleId: 'role-1', role: { id: 'role-1', name: 'Admin' } },
+            ],
+          }),
       );
 
       await service.create({
@@ -200,11 +213,19 @@ describe('UsersService', () => {
 
   describe('update', () => {
     it('updates user and returns DTO', async () => {
-      const updated = { ...mockUser, name: 'Updated Name', firstName: 'Updated', lastName: 'Name' };
+      const updated = {
+        ...mockUser,
+        name: 'Updated Name',
+        firstName: 'Updated',
+        lastName: 'Name',
+      };
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.user.update.mockResolvedValue(updated);
 
-      const result = await service.update(userId, { firstName: 'Updated', lastName: 'Name' });
+      const result = await service.update(userId, {
+        firstName: 'Updated',
+        lastName: 'Name',
+      });
 
       expect(result.name).toBe('Updated Name');
     });
@@ -212,7 +233,9 @@ describe('UsersService', () => {
     it('throws NotFoundException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when email taken by another user', async () => {
@@ -228,9 +251,14 @@ describe('UsersService', () => {
     it('allows same user to keep their email', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.user.findFirst.mockResolvedValue({ id: userId });
-      prisma.user.update.mockResolvedValue({ ...mockUser, email: 'test@example.com' });
+      prisma.user.update.mockResolvedValue({
+        ...mockUser,
+        email: 'test@example.com',
+      });
 
-      const result = await service.update(userId, { email: 'test@example.com' });
+      const result = await service.update(userId, {
+        email: 'test@example.com',
+      });
 
       expect(result).toBeDefined();
     });
@@ -252,13 +280,17 @@ describe('UsersService', () => {
 
       await service.remove(userId);
 
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: userId } });
+      expect(prisma.user.delete).toHaveBeenCalledWith({
+        where: { id: userId },
+      });
     });
 
     it('throws NotFoundException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.user.delete).not.toHaveBeenCalled();
     });
   });

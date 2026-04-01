@@ -37,40 +37,45 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getStats(days = 30): Promise<DashboardStatsDto> {
-    const [totalProducts, totalOrders, orderCountsByStatus, ordersInRange, orderItemsForCategory] =
-      await Promise.all([
-        this.prisma.product.count(),
-        this.prisma.order.count(),
-        this.prisma.order.groupBy({
-          by: ['status'],
-          _count: { id: true },
-        }),
-        this.prisma.order.findMany({
-          where: {
-            createdAt: {
-              gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
-            },
+    const [
+      totalProducts,
+      totalOrders,
+      orderCountsByStatus,
+      ordersInRange,
+      orderItemsForCategory,
+    ] = await Promise.all([
+      this.prisma.product.count(),
+      this.prisma.order.count(),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
           },
-          select: { id: true, createdAt: true, totalCents: true },
-          orderBy: { createdAt: 'asc' },
-        }),
-        this.prisma.orderItem.findMany({
-          where: { order: { status: { not: OrderStatus.CANCELLED } } },
-          select: {
-            orderId: true,
-            quantity: true,
-            unitCents: true,
-            product: {
-              select: {
-                productCategories: {
-                  take: 1,
-                  select: { category: { select: { id: true, name: true } } },
-                },
+        },
+        select: { id: true, createdAt: true, totalCents: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.orderItem.findMany({
+        where: { order: { status: { not: OrderStatus.CANCELLED } } },
+        select: {
+          orderId: true,
+          quantity: true,
+          unitCents: true,
+          product: {
+            select: {
+              productCategories: {
+                take: 1,
+                select: { category: { select: { id: true, name: true } } },
               },
             },
           },
-        }),
-      ]);
+        },
+      }),
+    ]);
 
     const ordersByStatus: OrdersByStatusDto = {
       PENDING: 0,
@@ -93,16 +98,25 @@ export class DashboardService {
         totalCents: prev.totalCents + order.totalCents,
       });
     }
-    const sortedDates = Array.from(dateMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    const ordersOverTime: OrdersOverTimeDto[] = sortedDates.map(([date, v]) => ({
-      date,
-      count: v.count,
-      totalCents: v.totalCents,
-    }));
+    const sortedDates = Array.from(dateMap.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    const ordersOverTime: OrdersOverTimeDto[] = sortedDates.map(
+      ([date, v]) => ({
+        date,
+        count: v.count,
+        totalCents: v.totalCents,
+      }),
+    );
 
     const categoryMap = new Map<
       string,
-      { categoryId: string | null; categoryName: string; totalCents: number; orderIds: Set<string> }
+      {
+        categoryId: string | null;
+        categoryName: string;
+        totalCents: number;
+        orderIds: Set<string>;
+      }
     >();
     const uncategorizedKey = '__uncategorized__';
     for (const item of orderItemsForCategory) {
@@ -123,7 +137,9 @@ export class DashboardService {
       rec.totalCents += revenue;
       rec.orderIds.add(item.orderId);
     }
-    const salesByCategory: SalesByCategoryDto[] = Array.from(categoryMap.values()).map((rec) => ({
+    const salesByCategory: SalesByCategoryDto[] = Array.from(
+      categoryMap.values(),
+    ).map((rec) => ({
       categoryId: rec.categoryId,
       categoryName: rec.categoryName,
       totalCents: rec.totalCents,

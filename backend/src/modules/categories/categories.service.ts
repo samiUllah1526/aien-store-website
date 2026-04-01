@@ -17,7 +17,9 @@ export class CategoriesService {
       where: { slug: dto.slug },
     });
     if (existing) {
-      throw new ConflictException(`Category with slug "${dto.slug}" already exists`);
+      throw new ConflictException(
+        `Category with slug "${dto.slug}" already exists`,
+      );
     }
     if (dto.parentId) {
       await this.validateParentId(dto.parentId);
@@ -54,7 +56,12 @@ export class CategoriesService {
       ? {
           OR: [
             { name: { contains: search.trim(), mode: 'insensitive' as const } },
-            { description: { contains: search.trim(), mode: 'insensitive' as const } },
+            {
+              description: {
+                contains: search.trim(),
+                mode: 'insensitive' as const,
+              },
+            },
           ],
         }
       : undefined;
@@ -139,7 +146,9 @@ export class CategoriesService {
         where: { slug: dto.slug },
       });
       if (existing) {
-        throw new ConflictException(`Category with slug "${dto.slug}" already exists`);
+        throw new ConflictException(
+          `Category with slug "${dto.slug}" already exists`,
+        );
       }
     }
     if (dto.parentId !== undefined && dto.parentId !== null) {
@@ -151,9 +160,15 @@ export class CategoriesService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.slug !== undefined && { slug: dto.slug }),
         ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.bannerImageUrl !== undefined && { bannerImageUrl: dto.bannerImageUrl }),
-        ...(dto.showOnLanding !== undefined && { showOnLanding: dto.showOnLanding }),
-        ...(dto.landingOrder !== undefined && { landingOrder: dto.landingOrder }),
+        ...(dto.bannerImageUrl !== undefined && {
+          bannerImageUrl: dto.bannerImageUrl,
+        }),
+        ...(dto.showOnLanding !== undefined && {
+          showOnLanding: dto.showOnLanding,
+        }),
+        ...(dto.landingOrder !== undefined && {
+          landingOrder: dto.landingOrder,
+        }),
         ...(dto.parentId !== undefined && { parentId: dto.parentId }),
       },
     });
@@ -167,7 +182,10 @@ export class CategoriesService {
     await this.prisma.category.delete({ where: { id } });
   }
 
-  private async validateParentId(parentId: string, excludeId?: string): Promise<void> {
+  private async validateParentId(
+    parentId: string,
+    excludeId?: string,
+  ): Promise<void> {
     if (excludeId && parentId === excludeId) {
       throw new BadRequestException('Category cannot be its own parent');
     }
@@ -175,7 +193,9 @@ export class CategoriesService {
       where: { id: parentId },
     });
     if (!parent) {
-      throw new BadRequestException(`Parent category with id "${parentId}" not found`);
+      throw new BadRequestException(
+        `Parent category with id "${parentId}" not found`,
+      );
     }
   }
 }

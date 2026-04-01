@@ -32,7 +32,9 @@ describe('MailService', () => {
         },
         {
           provide: PrismaService,
-          useValue: { emailLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) } },
+          useValue: {
+            emailLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
+          },
         },
         {
           provide: MAIL_TRANSPORT,
@@ -113,7 +115,10 @@ describe('MailService', () => {
   });
 
   it('sends welcome email', async () => {
-    const payload: WelcomeEmailPayload = { to: 'new@user.com', name: 'New User' };
+    const payload: WelcomeEmailPayload = {
+      to: 'new@user.com',
+      name: 'New User',
+    };
     await service.sendWelcome(payload);
     expect(transportSend).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -125,7 +130,10 @@ describe('MailService', () => {
   });
 
   it('sends user-created email', async () => {
-    const payload: UserCreatedEmailPayload = { to: 'staff@co.com', name: 'Staff' };
+    const payload: UserCreatedEmailPayload = {
+      to: 'staff@co.com',
+      name: 'Staff',
+    };
     await service.sendUserCreated(payload);
     expect(transportSend).toHaveBeenCalledWith(
       expect.objectContaining({

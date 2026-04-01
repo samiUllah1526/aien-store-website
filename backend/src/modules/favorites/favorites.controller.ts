@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Delete, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  UseGuards,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { FavoritesService } from './favorites.service';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
@@ -35,7 +43,10 @@ export class FavoritesController {
 
   @ApiBearerAuth('bearer')
   @Post(':productId')
-  async add(@Req() req: RequestWithUser, @Param('productId', ParseUUIDPipe) productId: string) {
+  async add(
+    @Req() req: RequestWithUser,
+    @Param('productId', ParseUUIDPipe) productId: string,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const result = await this.favoritesService.add(userId, productId);
@@ -44,7 +55,10 @@ export class FavoritesController {
 
   @ApiBearerAuth('bearer')
   @Delete(':productId')
-  async remove(@Req() req: RequestWithUser, @Param('productId', ParseUUIDPipe) productId: string) {
+  async remove(
+    @Req() req: RequestWithUser,
+    @Param('productId', ParseUUIDPipe) productId: string,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const result = await this.favoritesService.remove(userId, productId);

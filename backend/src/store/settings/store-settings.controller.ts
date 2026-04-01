@@ -1,7 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
-import { SettingsService, type PublicSettingsDto } from '../../modules/settings/settings.service';
+import {
+  SettingsService,
+  type PublicSettingsDto,
+} from '../../modules/settings/settings.service';
 import { Public } from '../../modules/auth/decorators/public.decorator';
 
 @ApiTags('store-settings')

@@ -13,7 +13,9 @@ import { AuthService } from './auth.service';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService): JwtModuleOptions => {
-        const secret = (config.get<string>('JWT_SECRET') ?? 'change-me-in-production').trim();
+        const secret = (
+          config.get<string>('JWT_SECRET') ?? 'change-me-in-production'
+        ).trim();
         return {
           secret,
           signOptions: {

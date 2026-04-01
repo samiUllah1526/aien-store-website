@@ -41,8 +41,15 @@ export class AdminVouchersController {
 
   @Post()
   @RequirePermission('vouchers:write')
-  async create(@Body() dto: CreateVoucherDto, @Req() req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } }) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+  async create(
+    @Body() dto: CreateVoucherDto,
+    @Req()
+    req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
+  ) {
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     const data = await this.vouchersService.create(dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher created');
   }
@@ -78,7 +85,10 @@ export class AdminVouchersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: VoucherAuditQueryDto,
   ) {
-    const { data, total } = await this.vouchersService.findAuditLogsByVoucher(id, query);
+    const { data, total } = await this.vouchersService.findAuditLogsByVoucher(
+      id,
+      query,
+    );
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     return ApiResponseDto.list(data, { total, page, limit });
@@ -96,9 +106,13 @@ export class AdminVouchersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVoucherDto,
-    @Req() req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
+    @Req()
+    req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
   ) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     const data = await this.vouchersService.update(id, dto, ctx);
     return ApiResponseDto.ok(data, 'Voucher updated');
   }
@@ -108,17 +122,35 @@ export class AdminVouchersController {
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { isActive: boolean },
-    @Req() req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
+    @Req()
+    req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
   ) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
-    const data = await this.vouchersService.updateStatus(id, body.isActive ?? false, ctx);
-    return ApiResponseDto.ok(data, body.isActive ? 'Voucher activated' : 'Voucher deactivated');
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
+    const data = await this.vouchersService.updateStatus(
+      id,
+      body.isActive ?? false,
+      ctx,
+    );
+    return ApiResponseDto.ok(
+      data,
+      body.isActive ? 'Voucher activated' : 'Voucher deactivated',
+    );
   }
 
   @Delete(':id')
   @RequirePermission('vouchers:write')
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } }) {
-    const ctx = { actorId: req.user?.userId ?? null, requestId: this.getRequestId(req.headers) };
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req()
+    req: { user?: { userId: string }; headers?: { 'x-request-id'?: string } },
+  ) {
+    const ctx = {
+      actorId: req.user?.userId ?? null,
+      requestId: this.getRequestId(req.headers),
+    };
     await this.vouchersService.remove(id, ctx);
     return ApiResponseDto.ok(null, 'Voucher deleted');
   }

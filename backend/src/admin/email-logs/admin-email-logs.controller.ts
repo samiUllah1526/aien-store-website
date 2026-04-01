@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UseGuards,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailLogsService } from '../../modules/email-logs/email-logs.service';
 import { EmailLogQueryDto } from '../../modules/email-logs/dto/email-log-query.dto';

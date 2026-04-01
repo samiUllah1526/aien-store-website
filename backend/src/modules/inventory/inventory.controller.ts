@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
@@ -24,11 +31,14 @@ export class InventoryController {
     @Param('productId', ParseUUIDPipe) productId: string,
     @Query() query: MovementsQueryDto,
   ) {
-    const { data, total } = await this.inventoryService.getMovements(productId, {
-      variantId: query.variantId,
-      page: query.page,
-      limit: query.limit,
-    });
+    const { data, total } = await this.inventoryService.getMovements(
+      productId,
+      {
+        variantId: query.variantId,
+        page: query.page,
+        limit: query.limit,
+      },
+    );
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     return ApiResponseDto.list(data, { total, page, limit });

@@ -7,7 +7,8 @@ export class CreatePermissionDto {
   @IsString()
   @MinLength(1)
   @Matches(PERMISSION_NAME_REGEX, {
-    message: 'Permission name must use format resource:action (e.g. users:read, products:write)',
+    message:
+      'Permission name must use format resource:action (e.g. users:read, products:write)',
   })
   name: string;
 

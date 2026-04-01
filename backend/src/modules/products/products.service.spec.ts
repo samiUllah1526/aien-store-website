@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -20,7 +24,9 @@ const mockProduct = {
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
   productCategories: [],
-  productMedia: [{ media: { id: 'm1', path: 'products/abc.jpg', deliveryUrl: null } }],
+  productMedia: [
+    { media: { id: 'm1', path: 'products/abc.jpg', deliveryUrl: null } },
+  ],
   variants: [
     {
       id: 'v1',
@@ -50,7 +56,12 @@ describe('ProductsService', () => {
     media: { findMany: jest.Mock };
     productMedia: { createMany: jest.Mock; deleteMany: jest.Mock };
     productVariantMedia: { createMany: jest.Mock; deleteMany: jest.Mock };
-    productVariant: { findMany: jest.Mock; update: jest.Mock; create: jest.Mock; updateMany: jest.Mock };
+    productVariant: {
+      findMany: jest.Mock;
+      update: jest.Mock;
+      create: jest.Mock;
+      updateMany: jest.Mock;
+    };
     productCategory: { deleteMany: jest.Mock; createMany: jest.Mock };
     category: { findUnique: jest.Mock };
   };
@@ -69,7 +80,12 @@ describe('ProductsService', () => {
       media: { findMany: jest.fn() },
       productMedia: { createMany: jest.fn(), deleteMany: jest.fn() },
       productVariantMedia: { createMany: jest.fn(), deleteMany: jest.fn() },
-      productVariant: { findMany: jest.fn(), update: jest.fn(), create: jest.fn(), updateMany: jest.fn() },
+      productVariant: {
+        findMany: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        updateMany: jest.fn(),
+      },
       productCategory: { deleteMany: jest.fn(), createMany: jest.fn() },
       category: { findUnique: jest.fn() },
     };
@@ -93,7 +109,10 @@ describe('ProductsService', () => {
         variants: [{ color: 'Black', size: 'M', stockQuantity: 5 }],
       };
       prisma.product.findUnique.mockResolvedValue(null);
-      prisma.product.create.mockResolvedValue({ ...mockProduct, id: mockProduct.id });
+      prisma.product.create.mockResolvedValue({
+        ...mockProduct,
+        id: mockProduct.id,
+      });
       prisma.product.findUniqueOrThrow.mockResolvedValue(mockProduct);
 
       const result = await service.create(dto);
@@ -121,7 +140,12 @@ describe('ProductsService', () => {
     it('throws ConflictException when slug exists', async () => {
       prisma.product.findUnique.mockResolvedValue({ id: 'existing' });
       await expect(
-        service.create({ name: 'A', slug: 'existing-slug', priceCents: 100, variants: [{ color: 'Black', size: 'M', stockQuantity: 1 }] }),
+        service.create({
+          name: 'A',
+          slug: 'existing-slug',
+          priceCents: 100,
+          variants: [{ color: 'Black', size: 'M', stockQuantity: 1 }],
+        }),
       ).rejects.toThrow(ConflictException);
       expect(prisma.product.create).not.toHaveBeenCalled();
     });
@@ -198,7 +222,9 @@ describe('ProductsService', () => {
 
     it('throws NotFoundException when not found', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -229,7 +255,9 @@ describe('ProductsService', () => {
 
     it('throws NotFoundException when slug not found', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
-      await expect(service.findBySlug('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findBySlug('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -240,7 +268,10 @@ describe('ProductsService', () => {
         .mockResolvedValueOnce({ id: mockProduct.id, slug: mockProduct.slug })
         .mockResolvedValueOnce(null);
       prisma.product.update.mockResolvedValue({ ...mockProduct, ...dto });
-      prisma.product.findUniqueOrThrow.mockResolvedValue({ ...mockProduct, ...dto });
+      prisma.product.findUniqueOrThrow.mockResolvedValue({
+        ...mockProduct,
+        ...dto,
+      });
 
       const result = await service.update(mockProduct.id, dto);
       expect(result.name).toBe('Updated Name');
@@ -249,9 +280,9 @@ describe('ProductsService', () => {
 
     it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
-      await expect(
-        service.update('missing', { name: 'X' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when new slug already exists', async () => {
@@ -269,12 +300,16 @@ describe('ProductsService', () => {
       prisma.product.findUnique.mockResolvedValue(mockProduct);
       prisma.product.delete.mockResolvedValue(mockProduct);
       await service.remove(mockProduct.id);
-      expect(prisma.product.delete).toHaveBeenCalledWith({ where: { id: mockProduct.id } });
+      expect(prisma.product.delete).toHaveBeenCalledWith({
+        where: { id: mockProduct.id },
+      });
     });
 
     it('throws NotFoundException when product does not exist', async () => {
       prisma.product.findUnique.mockResolvedValue(null);
-      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.product.delete).not.toHaveBeenCalled();
     });
   });

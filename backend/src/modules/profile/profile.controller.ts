@@ -27,7 +27,10 @@ export class ProfileController {
 
   @ApiBearerAuth('bearer')
   @Put('shipping')
-  async saveShipping(@Req() req: RequestWithUser, @Body() dto: SaveShippingDto) {
+  async saveShipping(
+    @Req() req: RequestWithUser,
+    @Body() dto: SaveShippingDto,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.profileService.saveShipping(userId, dto);

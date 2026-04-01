@@ -42,9 +42,13 @@ export class AdminMediaController {
   getUploadParams(@Query('folder') folder?: string) {
     const provider = this.storageFactory.getRemoteProvider();
     if (!provider) {
-      throw new BadRequestException('No remote storage configured. Set CLOUDINARY_* or configure S3.');
+      throw new BadRequestException(
+        'No remote storage configured. Set CLOUDINARY_* or configure S3.',
+      );
     }
-    const f = (folder === 'payment-proofs' ? 'payment-proofs' : 'products') as UploadFolder;
+    const f = (
+      folder === 'payment-proofs' ? 'payment-proofs' : 'products'
+    ) as UploadFolder;
     const params = provider.getSignedUploadParams(f);
     return ApiResponseDto.ok(params);
   }
@@ -68,7 +72,9 @@ export class AdminMediaController {
       );
       return ApiResponseDto.ok({ id }, 'Media registered');
     } catch (err) {
-      this.logger.error(`Media register failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Media register failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       try {
         await this.mediaService.createFailedUpload({
           source: 'product',
@@ -94,7 +100,10 @@ export class AdminMediaController {
     }),
   )
   async upload(
-    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @UploadedFile()
+    file:
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
+      | undefined,
     @Body('productId') productId?: string,
   ) {
     if (!file) {

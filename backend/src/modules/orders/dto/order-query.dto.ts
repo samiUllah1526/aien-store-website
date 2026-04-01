@@ -1,4 +1,14 @@
-import { IsOptional, IsEnum, IsInt, Min, Max, IsString, IsDateString, IsUUID, ValidateIf } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsDateString,
+  IsUUID,
+  ValidateIf,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderStatus } from '@prisma/client';
 

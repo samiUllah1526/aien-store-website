@@ -6,7 +6,7 @@
 
 import { getStoredToken, clearStoredTokens, decodeToken } from './auth';
 import { adminApiBaseUrl, loginRedirectPath } from './config';
-import { toastError } from './toast';
+import { toastError, toastSuccess } from './toast';
 import { incrementLoading, decrementLoading } from './loading';
 
 export function getApiBaseUrl(): string {
@@ -172,3 +172,16 @@ export const api = {
     return request<ApiSingleResponse<null>>(path, { method: 'DELETE' });
   },
 };
+
+/** Queue a GitHub Actions rebuild of the main (storefront) website. Requires deploy:website. */
+export async function deployMainWebsite(reason?: string): Promise<{ actionsUrl: string }> {
+  const json = await api.post<{ actionsUrl: string }>('/deploy/main-website', {
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  });
+  if (!json.success || !json.data?.actionsUrl) {
+    const msg = typeof json.message === 'string' ? json.message : 'Deploy request failed';
+    throw new Error(msg);
+  }
+  toastSuccess(json.message || 'Rebuild queued in GitHub Actions.');
+  return json.data;
+}

@@ -75,7 +75,10 @@ export default function configuration(env: EnvSource = process.env) {
     },
 
     mail: {
-      provider: (getOr(env, 'MAIL_PROVIDER', 'mock').toLowerCase()) as 'mock' | 'brevo' | 'sendgrid',
+      provider: getOr(env, 'MAIL_PROVIDER', 'mock').toLowerCase() as
+        | 'mock'
+        | 'brevo'
+        | 'sendgrid',
       fromEmail: getOr(env, 'MAIL_FROM_EMAIL', 'noreply@example.com'),
       fromName: getOr(env, 'MAIL_FROM_NAME', 'E-Commerce'),
       brevoApiKey: get(env, 'BREVO_API_KEY'),
@@ -83,7 +86,10 @@ export default function configuration(env: EnvSource = process.env) {
     },
 
     storage: {
-      provider: (getOr(env, 'STORAGE_PROVIDER', 'cloudinary').toLowerCase()) as 'local' | 'cloudinary' | 's3',
+      provider: getOr(env, 'STORAGE_PROVIDER', 'cloudinary').toLowerCase() as
+        | 'local'
+        | 'cloudinary'
+        | 's3',
       uploadDir: get(env, 'UPLOAD_DIR'),
       cloudinary: {
         cloudName: get(env, 'CLOUDINARY_CLOUD_NAME') ?? '',
@@ -101,6 +107,17 @@ export default function configuration(env: EnvSource = process.env) {
     health: {
       /** Max heap size in bytes for readiness check. Default 300 MB. Use lower (e.g. 256) on 512 MB containers. */
       heapLimitBytes: getNumber(env, 'HEALTH_HEAP_LIMIT_MB', 300) * 1024 * 1024,
+    },
+
+    /** Trigger GitHub Actions workflow_dispatch for main-website deploy (fine-grained PAT). Server-only; never expose to browsers. */
+    githubDeploy: {
+      token: get(env, 'GITHUB_DEPLOY_TOKEN'),
+      repo: get(env, 'GITHUB_REPO'),
+      workflowFile: getOr(
+        env,
+        'GITHUB_MAIN_WEBSITE_WORKFLOW',
+        'deploy-main-website-cloudflare.yml',
+      ),
     },
   };
 }

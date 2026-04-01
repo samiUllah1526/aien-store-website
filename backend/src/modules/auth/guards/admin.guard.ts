@@ -20,7 +20,9 @@ const ADMIN_PUBLIC_PATHS = new Set([
 export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
-    const path = (req.path || req.url || '').replace(/\?.*$/, '').replace(/\/$/, '') || '/';
+    const path =
+      (req.path || req.url || '').replace(/\?.*$/, '').replace(/\/$/, '') ||
+      '/';
 
     if (!path.startsWith('/admin')) {
       return true;

@@ -12,6 +12,7 @@ import { VouchersModule } from '../modules/vouchers/vouchers.module';
 import { MediaModule } from '../modules/media/media.module';
 import { EmailLogsModule } from '../modules/email-logs/email-logs.module';
 import { JobsModule } from '../modules/jobs/jobs.module';
+import { GithubModule } from '../modules/github/github.module';
 import { AdminAuthController } from './auth/admin-auth.controller';
 import { AdminDashboardController } from './dashboard/admin-dashboard.controller';
 import { AdminUsersController } from './users/admin-users.controller';
@@ -26,9 +27,11 @@ import { AdminMediaController } from './media/admin-media.controller';
 import { AdminEmailLogsController } from './email-logs/admin-email-logs.controller';
 import { AdminJobsController } from './jobs/admin-jobs.controller';
 import { AdminPermissionsController } from './permissions/admin-permissions.controller';
+import { AdminDeployController } from './deploy/admin-deploy.controller';
 
 @Module({
   imports: [
+    GithubModule,
     AuthModule,
     DashboardModule,
     UsersModule,
@@ -58,6 +61,7 @@ import { AdminPermissionsController } from './permissions/admin-permissions.cont
     AdminEmailLogsController,
     AdminJobsController,
     AdminPermissionsController,
+    AdminDeployController,
   ],
 })
 export class AdminModule {}

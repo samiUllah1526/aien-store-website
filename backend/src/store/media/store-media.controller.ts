@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Param, UseGuards, UseInterceptors, UploadedFile, Res, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -24,11 +36,16 @@ export class StoreMediaController {
 
   @Public()
   @Get('upload-params-payment-proof')
-  @ApiOperation({ summary: 'Get payment proof upload params (public)', security: [] })
+  @ApiOperation({
+    summary: 'Get payment proof upload params (public)',
+    security: [],
+  })
   getUploadParamsPaymentProof() {
     const provider = this.storageFactory.getRemoteProvider();
     if (!provider) {
-      throw new BadRequestException('No remote storage configured. Set CLOUDINARY_* or configure S3.');
+      throw new BadRequestException(
+        'No remote storage configured. Set CLOUDINARY_* or configure S3.',
+      );
     }
     const params = provider.getSignedUploadParams('payment-proofs');
     return ApiResponseDto.ok(params);
@@ -36,7 +53,10 @@ export class StoreMediaController {
 
   @Public()
   @Post('register-payment-proof')
-  @ApiOperation({ summary: 'Register payment proof upload (public)', security: [] })
+  @ApiOperation({
+    summary: 'Register payment proof upload (public)',
+    security: [],
+  })
   async registerPaymentProof(@Body() dto: RegisterMediaDto) {
     try {
       const { id } = await this.mediaService.registerUpload(
@@ -53,7 +73,9 @@ export class StoreMediaController {
       );
       return ApiResponseDto.ok({ id }, 'Payment proof registered');
     } catch (err) {
-      this.logger.error(`Payment proof register failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Payment proof register failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       try {
         await this.mediaService.createFailedUpload({
           source: 'payment_proof',
@@ -76,12 +98,19 @@ export class StoreMediaController {
       limits: { fileSize: MAX_SIZE },
       fileFilter: (_req, file, cb) => {
         if (ALLOWED_MIMES.includes(file.mimetype)) cb(null, true);
-        else cb(new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'), false);
+        else
+          cb(
+            new Error('Invalid file type. Use JPEG, PNG, WebP or GIF.'),
+            false,
+          );
       },
     }),
   )
   async uploadPaymentProof(
-    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
+    @UploadedFile()
+    file:
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
+      | undefined,
     @Body('orderId') orderId?: string,
   ) {
     if (!file) {
@@ -133,7 +162,16 @@ export class StoreMediaController {
       return res.status(404).send('Not found');
     }
     const ext = filename.split('.').pop()?.toLowerCase();
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'application/octet-stream';
+    const mime =
+      ext === 'jpg' || ext === 'jpeg'
+        ? 'image/jpeg'
+        : ext === 'png'
+          ? 'image/png'
+          : ext === 'webp'
+            ? 'image/webp'
+            : ext === 'gif'
+              ? 'image/gif'
+              : 'application/octet-stream';
     res.setHeader('Content-Type', mime);
     const stream = createReadStream(fullPath);
     stream.pipe(res);

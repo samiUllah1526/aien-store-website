@@ -38,6 +38,7 @@ const PERMISSIONS_WITH_CATEGORY: Array<{ name: string; category?: string }> = [
   { name: 'jobs:read', category: 'Audit' },
   { name: 'jobs:retry', category: 'Audit' },
   { name: 'jobs:cancel', category: 'Audit' },
+  { name: 'deploy:website', category: 'Deployment' },
   { name: 'superadmin:manage', category: 'Super Admin' },
 ];
 
@@ -96,7 +97,7 @@ async function main() {
   });
 
   for (const perm of permissions) {
-    if (perm.name === 'superadmin:manage') continue;
+    if (perm.name === 'superadmin:manage' || perm.name === 'deploy:website') continue;
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id },

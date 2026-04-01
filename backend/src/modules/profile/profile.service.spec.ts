@@ -18,7 +18,9 @@ const mockSavedShipping = {
 
 describe('ProfileService', () => {
   let service: ProfileService;
-  let prisma: { userSavedShipping: { findUnique: jest.Mock; upsert: jest.Mock } };
+  let prisma: {
+    userSavedShipping: { findUnique: jest.Mock; upsert: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = {
@@ -29,10 +31,7 @@ describe('ProfileService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ProfileService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [ProfileService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<ProfileService>(ProfileService);
@@ -77,7 +76,11 @@ describe('ProfileService', () => {
       expect(result.firstName).toBe('John');
       expect(prisma.userSavedShipping.upsert).toHaveBeenCalledWith({
         where: { userId },
-        create: expect.objectContaining({ userId, firstName: 'John', lastName: 'Doe' }),
+        create: expect.objectContaining({
+          userId,
+          firstName: 'John',
+          lastName: 'Doe',
+        }),
         update: expect.any(Object),
       });
     });

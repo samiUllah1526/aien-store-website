@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { Prisma } from '@prisma/client';
@@ -41,8 +45,19 @@ export class EmailLogsService {
     };
   }
 
-  async findAll(query: EmailLogQueryDto): Promise<{ data: unknown[]; total: number }> {
-    const { page = 1, limit = 20, status, type, email, orderId, fromDate, toDate } = query;
+  async findAll(
+    query: EmailLogQueryDto,
+  ): Promise<{ data: unknown[]; total: number }> {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      type,
+      email,
+      orderId,
+      fromDate,
+      toDate,
+    } = query;
     const skip = (page - 1) * limit;
 
     let orderLogIds: string[] | null = null;
@@ -70,10 +85,16 @@ export class EmailLogsService {
       if (!Number.isNaN(from.getTime())) createdAtFilter.gte = from;
     }
     if (toDate) {
-      const to = new Date(toDate.endsWith('Z') || toDate.includes('T') ? toDate : `${toDate}T23:59:59.999Z`);
-      if (!Number.isNaN(new Date(to).getTime())) createdAtFilter.lte = new Date(to);
+      const to = new Date(
+        toDate.endsWith('Z') || toDate.includes('T')
+          ? toDate
+          : `${toDate}T23:59:59.999Z`,
+      );
+      if (!Number.isNaN(new Date(to).getTime()))
+        createdAtFilter.lte = new Date(to);
     }
-    if (Object.keys(createdAtFilter).length > 0) where.createdAt = createdAtFilter;
+    if (Object.keys(createdAtFilter).length > 0)
+      where.createdAt = createdAtFilter;
 
     const [logs, total] = await Promise.all([
       this.prisma.emailLog.findMany({
@@ -121,7 +142,10 @@ export class EmailLogsService {
       switch (log.type) {
         case 'order-confirmation': {
           const orderId = metadata?.orderId;
-          if (!orderId) throw new BadRequestException('Missing orderId in email log metadata');
+          if (!orderId)
+            throw new BadRequestException(
+              'Missing orderId in email log metadata',
+            );
           const order = await this.prisma.order.findUnique({
             where: { id: orderId },
             include: {
@@ -147,37 +171,57 @@ export class EmailLogsService {
         case 'order-status-change': {
           const orderId = metadata?.orderId;
           const status = metadata?.status;
-          if (!orderId || !status) throw new BadRequestException('Missing orderId or status in email log metadata');
+          if (!orderId || !status)
+            throw new BadRequestException(
+              'Missing orderId or status in email log metadata',
+            );
           const order = await this.prisma.order.findUnique({
             where: { id: orderId },
-            include: { statusHistory: { orderBy: { createdAt: 'desc' }, take: 1 } },
+            include: {
+              statusHistory: { orderBy: { createdAt: 'desc' }, take: 1 },
+            },
           });
           if (!order) throw new NotFoundException(`Order ${orderId} not found`);
           const latest = order.statusHistory[0];
-          const statusUpdatedAt = latest?.createdAt.toISOString() ?? new Date().toISOString();
+          const statusUpdatedAt =
+            latest?.createdAt.toISOString() ?? new Date().toISOString();
           newLogId = await this.mail.sendOrderStatusChange({
             to: order.customerEmail,
             orderId: order.id,
-            status: status as string,
+            status: status,
             statusUpdatedAt,
             customerName: order.customerName ?? undefined,
           });
           break;
         }
         case 'welcome': {
-          const user = await this.prisma.user.findFirst({ where: { email: to } });
-          if (!user) throw new NotFoundException(`User with email ${to} not found`);
-          newLogId = await this.mail.sendWelcome({ to: user.email, name: user.name });
+          const user = await this.prisma.user.findFirst({
+            where: { email: to },
+          });
+          if (!user)
+            throw new NotFoundException(`User with email ${to} not found`);
+          newLogId = await this.mail.sendWelcome({
+            to: user.email,
+            name: user.name,
+          });
           break;
         }
         case 'user-created': {
-          const user = await this.prisma.user.findFirst({ where: { email: to } });
-          if (!user) throw new NotFoundException(`User with email ${to} not found`);
-          newLogId = await this.mail.sendUserCreated({ to: user.email, name: user.name });
+          const user = await this.prisma.user.findFirst({
+            where: { email: to },
+          });
+          if (!user)
+            throw new NotFoundException(`User with email ${to} not found`);
+          newLogId = await this.mail.sendUserCreated({
+            to: user.email,
+            name: user.name,
+          });
           break;
         }
         default:
-          throw new BadRequestException(`Resend not supported for type "${log.type}"`);
+          throw new BadRequestException(
+            `Resend not supported for type "${log.type}"`,
+          );
       }
       if (newLogId) {
         await this.prisma.emailLog.update({
@@ -187,7 +231,11 @@ export class EmailLogsService {
       }
       return { success: true, message: 'Email resent successfully' };
     } catch (err) {
-      if (err instanceof NotFoundException || err instanceof BadRequestException) throw err;
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException
+      )
+        throw err;
       const msg = err instanceof Error ? err.message : String(err);
       throw new BadRequestException(`Resend failed: ${msg}`);
     }

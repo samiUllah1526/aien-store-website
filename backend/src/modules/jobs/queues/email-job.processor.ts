@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PgbossService } from '../pgboss.service';
 import { MailService } from '../../mail/mail.service';
 import {
@@ -16,9 +21,15 @@ import type {
 } from '../../mail/interfaces/mail.interface';
 
 type EmailJobData =
-  | ({ type: typeof EMAIL_JOB_TYPES.PASSWORD_RESET } & PasswordResetEmailPayload)
-  | ({ type: typeof EMAIL_JOB_TYPES.ORDER_CONFIRMATION } & OrderConfirmationEmailPayload)
-  | ({ type: typeof EMAIL_JOB_TYPES.ORDER_STATUS_CHANGE } & OrderStatusEmailPayload)
+  | ({
+      type: typeof EMAIL_JOB_TYPES.PASSWORD_RESET;
+    } & PasswordResetEmailPayload)
+  | ({
+      type: typeof EMAIL_JOB_TYPES.ORDER_CONFIRMATION;
+    } & OrderConfirmationEmailPayload)
+  | ({
+      type: typeof EMAIL_JOB_TYPES.ORDER_STATUS_CHANGE;
+    } & OrderStatusEmailPayload)
   | ({ type: typeof EMAIL_JOB_TYPES.WELCOME } & WelcomeEmailPayload)
   | ({ type: typeof EMAIL_JOB_TYPES.USER_CREATED } & UserCreatedEmailPayload)
   | ({ type: typeof EMAIL_JOB_TYPES.INVITE } & InviteEmailPayload);
@@ -55,7 +66,9 @@ export class EmailJobProcessor implements OnModuleInit, OnModuleDestroy {
       (jobs) => this.processJobs(jobs),
     );
 
-    this.logger.log('Email job processor started (email-high: 5, email-default: 3)');
+    this.logger.log(
+      'Email job processor started (email-high: 5, email-default: 3)',
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -127,7 +140,9 @@ export class EmailJobProcessor implements OnModuleInit, OnModuleDestroy {
         });
         break;
       default:
-        throw new Error(`Unknown email job type: ${(data as { type: string }).type}`);
+        throw new Error(
+          `Unknown email job type: ${(data as { type: string }).type}`,
+        );
     }
   }
 }

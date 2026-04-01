@@ -3,12 +3,23 @@ import * as path from 'path';
 import mjml2html from 'mjml';
 
 /** Resolve path to a template file. Tries __dirname (dist) first, then src/ for dev/watch when assets aren't copied. */
-function resolveTemplatePath(templateName: string): { filePath: string; templatesDir: string } {
+function resolveTemplatePath(templateName: string): {
+  filePath: string;
+  templatesDir: string;
+} {
   const inDist = path.join(__dirname, `${templateName}.mjml`);
-  if (fs.existsSync(inDist)) return { filePath: inDist, templatesDir: __dirname };
-  const srcTemplatesDir = path.join(process.cwd(), 'src', 'modules', 'mail', 'templates');
+  if (fs.existsSync(inDist))
+    return { filePath: inDist, templatesDir: __dirname };
+  const srcTemplatesDir = path.join(
+    process.cwd(),
+    'src',
+    'modules',
+    'mail',
+    'templates',
+  );
   const inSrc = path.join(srcTemplatesDir, `${templateName}.mjml`);
-  if (fs.existsSync(inSrc)) return { filePath: inSrc, templatesDir: srcTemplatesDir };
+  if (fs.existsSync(inSrc))
+    return { filePath: inSrc, templatesDir: srcTemplatesDir };
   return { filePath: inDist, templatesDir: __dirname };
 }
 
@@ -31,8 +42,9 @@ export function replacePlaceholders(
 ): string {
   let out = template;
   for (const [key, value] of Object.entries(vars)) {
-    const safe =
-      key.endsWith('_html') ? String(value ?? '') : escapeHtml(String(value ?? ''));
+    const safe = key.endsWith('_html')
+      ? String(value ?? '')
+      : escapeHtml(String(value ?? ''));
     out = out.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), safe);
   }
   return out;
@@ -54,7 +66,10 @@ export function renderMjmlTemplate(
     filePath: templatesDir,
   });
   if (result.errors?.length) {
-    console.warn(`[Mail] MJML template ${templateName} warnings:`, result.errors);
+    console.warn(
+      `[Mail] MJML template ${templateName} warnings:`,
+      result.errors,
+    );
   }
   const html = result.html;
   const text = stripHtmlToText(html);

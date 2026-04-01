@@ -19,7 +19,10 @@ describe('DashboardService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DashboardService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        DashboardService,
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get<DashboardService>(DashboardService);
@@ -100,7 +103,9 @@ describe('DashboardService', () => {
         quantity: 1,
         unitCents: 500,
         product: {
-          productCategories: [{ category: { id: 'cat-a', name: 'Electronics' } }],
+          productCategories: [
+            { category: { id: 'cat-a', name: 'Electronics' } },
+          ],
         },
       },
       {
@@ -108,7 +113,9 @@ describe('DashboardService', () => {
         quantity: 1,
         unitCents: 1500,
         product: {
-          productCategories: [{ category: { id: 'cat-a', name: 'Electronics' } }],
+          productCategories: [
+            { category: { id: 'cat-a', name: 'Electronics' } },
+          ],
         },
       },
       {

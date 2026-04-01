@@ -13,7 +13,9 @@ export class DashboardController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   async getStats(@Query('days') days?: string) {
-    const daysNum = days ? Math.min(90, Math.max(7, parseInt(days, 10) || 30)) : 30;
+    const daysNum = days
+      ? Math.min(90, Math.max(7, parseInt(days, 10) || 30))
+      : 30;
     const data = await this.dashboardService.getStats(daysNum);
     return ApiResponseDto.ok(data);
   }

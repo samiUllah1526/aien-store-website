@@ -4,7 +4,11 @@ jest.mock('pg-boss', () => ({
   PgBoss: jest.fn(),
 }));
 
-import { UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -31,10 +35,18 @@ const mockCustomerRole = { id: 'role-uuid', name: 'Customer' };
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: {
-    user: { findUnique: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+    user: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
     role: { findFirst: jest.Mock };
   };
-  let emailQueue: { enqueueWelcome: jest.Mock; enqueuePasswordReset: jest.Mock };
+  let emailQueue: {
+    enqueueWelcome: jest.Mock;
+    enqueuePasswordReset: jest.Mock;
+  };
   let jwtSign: jest.Mock;
 
   beforeEach(async () => {
@@ -82,12 +94,22 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('creates user and returns accessToken', async () => {
-      const createdUser = { ...mockUser, id: 'new-id', email: 'new@test.com', name: 'Test User' };
+      const createdUser = {
+        ...mockUser,
+        id: 'new-id',
+        email: 'new@test.com',
+        name: 'Test User',
+      };
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.role.findFirst.mockResolvedValue(mockCustomerRole);
       prisma.user.create.mockResolvedValue(createdUser);
 
-      const result = await service.register('Test', 'User', 'new@test.com', 'password123');
+      const result = await service.register(
+        'Test',
+        'User',
+        'new@test.com',
+        'password123',
+      );
 
       expect(result.accessToken).toBe('jwt-token');
       expect(result.user.email).toBe('new@test.com');
@@ -102,7 +124,10 @@ describe('AuthService', () => {
           }),
         }),
       );
-      expect(emailQueue.enqueueWelcome).toHaveBeenCalledWith({ to: 'new@test.com', name: expect.any(String) });
+      expect(emailQueue.enqueueWelcome).toHaveBeenCalledWith({
+        to: 'new@test.com',
+        name: expect.any(String),
+      });
     });
 
     it('throws ConflictException when email exists', async () => {
@@ -155,24 +180,29 @@ describe('AuthService', () => {
         directPermissions: [],
       });
 
-      await expect(service.login('user@test.com', 'wrong')).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('user@test.com', 'wrong')).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('throws UnauthorizedException for non-existent user', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.login('nonexistent@test.com', 'any')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.login('nonexistent@test.com', 'any'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('throws UnauthorizedException for disabled user', async () => {
-      prisma.user.findFirst.mockResolvedValue({ ...mockUser, status: 'DISABLED' });
+      prisma.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        status: 'DISABLED',
+      });
 
-      await expect(service.login('user@test.com', 'password123')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.login('user@test.com', 'password123'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -214,7 +244,10 @@ describe('AuthService', () => {
       prisma.user.findFirst.mockResolvedValue(mockUser);
       prisma.user.update.mockResolvedValue(undefined);
 
-      const result = await service.resetPassword('valid-token-abc', 'newpassword123');
+      const result = await service.resetPassword(
+        'valid-token-abc',
+        'newpassword123',
+      );
 
       expect(result.message).toContain('password has been reset');
       expect(prisma.user.update).toHaveBeenCalledWith(
@@ -230,14 +263,18 @@ describe('AuthService', () => {
     });
 
     it('throws BadRequestException for empty token', async () => {
-      await expect(service.resetPassword('', 'newpass123')).rejects.toThrow(BadRequestException);
-      await expect(service.resetPassword('   ', 'newpass123')).rejects.toThrow(BadRequestException);
+      await expect(service.resetPassword('', 'newpass123')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.resetPassword('   ', 'newpass123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException for short password', async () => {
-      await expect(service.resetPassword('valid-token', 'short')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.resetPassword('valid-token', 'short'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException for invalid or expired token', async () => {

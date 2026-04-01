@@ -34,7 +34,11 @@ describe('MediaService', () => {
         { provide: StorageProviderFactory, useValue: storageFactory },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((key: string) => (key === 'storage.uploadDir' ? '/tmp/uploads' : undefined)) },
+          useValue: {
+            get: jest.fn((key: string) =>
+              key === 'storage.uploadDir' ? '/tmp/uploads' : undefined,
+            ),
+          },
         },
       ],
     }).compile();
@@ -73,7 +77,9 @@ describe('MediaService', () => {
     });
 
     it('throws BadRequestException when providerResponse invalid', async () => {
-      const mockProvider = { parseUploadResponse: jest.fn().mockReturnValue(null) };
+      const mockProvider = {
+        parseUploadResponse: jest.fn().mockReturnValue(null),
+      };
       storageFactory.getByType.mockReturnValue(mockProvider);
 
       await expect(
@@ -142,7 +148,9 @@ describe('MediaService', () => {
     it('throws BadRequestException when not found', async () => {
       prisma.media.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById('missing')).rejects.toThrow(BadRequestException);
+      await expect(service.getById('missing')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

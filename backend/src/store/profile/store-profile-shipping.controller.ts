@@ -21,7 +21,10 @@ export class StoreProfileShippingController {
   }
 
   @Put('shipping')
-  async saveShipping(@Req() req: { user?: { userId: string } }, @Body() dto: SaveShippingDto) {
+  async saveShipping(
+    @Req() req: { user?: { userId: string } },
+    @Body() dto: SaveShippingDto,
+  ) {
     const userId = req.user?.userId;
     if (!userId) throw new Error('User not authenticated');
     const data = await this.profileService.saveShipping(userId, dto);

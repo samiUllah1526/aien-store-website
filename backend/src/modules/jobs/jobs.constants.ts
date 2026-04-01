@@ -21,4 +21,5 @@ export const EMAIL_JOB_TYPES = {
   INVITE: 'invite',
 } as const;
 
-export type EmailJobType = (typeof EMAIL_JOB_TYPES)[keyof typeof EMAIL_JOB_TYPES];
+export type EmailJobType =
+  (typeof EMAIL_JOB_TYPES)[keyof typeof EMAIL_JOB_TYPES];

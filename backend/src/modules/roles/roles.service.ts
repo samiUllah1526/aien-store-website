@@ -1,10 +1,19 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/create-role.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/create-permission.dto';
-import type { RoleDetailDto, PermissionGroupDto, PermissionDetailDto } from './dto/role-response.dto';
+import type {
+  RoleDetailDto,
+  PermissionGroupDto,
+  PermissionDetailDto,
+} from './dto/role-response.dto';
 
 @Injectable()
 export class RolesService {
@@ -65,7 +74,11 @@ export class RolesService {
         name,
         description: dto.description?.trim() || null,
         permissions: dto.permissionIds?.length
-          ? { create: dto.permissionIds.map((permissionId) => ({ permissionId })) }
+          ? {
+              create: dto.permissionIds.map((permissionId) => ({
+                permissionId,
+              })),
+            }
           : undefined,
       },
       include: {
@@ -108,7 +121,8 @@ export class RolesService {
     }
     const data: { name?: string; description?: string | null } = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
-    if (dto.description !== undefined) data.description = dto.description?.trim() || null;
+    if (dto.description !== undefined)
+      data.description = dto.description?.trim() || null;
 
     await this.prisma.$transaction(async (tx) => {
       if (Object.keys(data).length > 0) {
@@ -118,7 +132,10 @@ export class RolesService {
         await tx.rolePermission.deleteMany({ where: { roleId: id } });
         if (dto.permissionIds.length > 0) {
           await tx.rolePermission.createMany({
-            data: dto.permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
+            data: dto.permissionIds.map((permissionId) => ({
+              roleId: id,
+              permissionId,
+            })),
             skipDuplicates: true,
           });
         }
@@ -137,22 +154,30 @@ export class RolesService {
       throw new NotFoundException(`Role with id "${id}" not found`);
     }
     if (role.name === 'Super Admin' || role.name === 'Customer') {
-      throw new BadRequestException('Cannot delete system roles (Super Admin, Customer)');
+      throw new BadRequestException(
+        'Cannot delete system roles (Super Admin, Customer)',
+      );
     }
     if (role._count.users > 0) {
       throw new BadRequestException(
-        `Cannot delete role "${role.name}": ${role._count.users} user(s) still have this role. Remove the role from users first.`
+        `Cannot delete role "${role.name}": ${role._count.users} user(s) still have this role. Remove the role from users first.`,
       );
     }
     await this.prisma.role.delete({ where: { id } });
   }
 
-  async listPermissions(): Promise<{ id: string; name: string; category: string | null }[]> {
+  async listPermissions(): Promise<
+    { id: string; name: string; category: string | null }[]
+  > {
     const list = await this.prisma.permission.findMany({
       orderBy: { name: 'asc' },
       select: { id: true, name: true, category: true },
     });
-    return list.map((p) => ({ id: p.id, name: p.name, category: p.category ?? null }));
+    return list.map((p) => ({
+      id: p.id,
+      name: p.name,
+      category: p.category ?? null,
+    }));
   }
 
   async listPermissionsGrouped(): Promise<PermissionGroupDto[]> {
@@ -160,7 +185,10 @@ export class RolesService {
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, description: true, category: true },
     });
-    const byCategory = new Map<string | null, PermissionGroupDto['permissions']>();
+    const byCategory = new Map<
+      string | null,
+      PermissionGroupDto['permissions']
+    >();
     for (const p of permissions) {
       const cat = p.category ?? null;
       if (!byCategory.has(cat)) {
@@ -183,7 +211,9 @@ export class RolesService {
     }));
   }
 
-  async createPermission(dto: CreatePermissionDto): Promise<PermissionDetailDto> {
+  async createPermission(
+    dto: CreatePermissionDto,
+  ): Promise<PermissionDetailDto> {
     const name = dto.name.trim().toLowerCase();
     const existing = await this.prisma.permission.findFirst({
       where: { name: { equals: name, mode: 'insensitive' } },
@@ -208,7 +238,10 @@ export class RolesService {
     };
   }
 
-  async updatePermission(id: string, dto: UpdatePermissionDto): Promise<PermissionDetailDto> {
+  async updatePermission(
+    id: string,
+    dto: UpdatePermissionDto,
+  ): Promise<PermissionDetailDto> {
     const permission = await this.prisma.permission.findUnique({
       where: { id },
     });
@@ -216,8 +249,10 @@ export class RolesService {
       throw new NotFoundException(`Permission with id "${id}" not found`);
     }
     const data: { description?: string | null; category?: string | null } = {};
-    if (dto.description !== undefined) data.description = dto.description?.trim() || null;
-    if (dto.category !== undefined) data.category = dto.category?.trim() || null;
+    if (dto.description !== undefined)
+      data.description = dto.description?.trim() || null;
+    if (dto.category !== undefined)
+      data.category = dto.category?.trim() || null;
     if (Object.keys(data).length === 0) {
       return {
         id: permission.id,
@@ -250,7 +285,9 @@ export class RolesService {
     const foundSet = new Set(found.map((p) => p.id));
     const missing = permissionIds.filter((id) => !foundSet.has(id));
     if (missing.length) {
-      throw new BadRequestException(`Permissions not found: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Permissions not found: ${missing.join(', ')}`,
+      );
     }
   }
 }

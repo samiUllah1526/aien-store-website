@@ -1,4 +1,10 @@
-import { IsInt, IsOptional, IsString, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 
 export class AdjustStockDto {
   /** Required when product has multiple variants. */

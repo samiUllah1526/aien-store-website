@@ -34,7 +34,9 @@ describe('Products API (e2e)', () => {
         .withDatabase('adab_test')
         .start();
     } catch (err) {
-      console.warn('Testcontainers could not start (Docker may be unavailable). Skipping products e2e.');
+      console.warn(
+        'Testcontainers could not start (Docker may be unavailable). Skipping products e2e.',
+      );
       return;
     }
     if (!container) return;

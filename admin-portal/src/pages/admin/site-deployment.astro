@@ -1,0 +1,14 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { SiteDeploymentPanel } from '../../components/SiteDeploymentPanel';
+---
+
+<AdminLayout title="Site deployment">
+  <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Site deployment</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Trigger a production rebuild of the public storefront (main website) via GitHub Actions.
+  </p>
+  <div class="mt-6">
+    <SiteDeploymentPanel client:load />
+  </div>
+</AdminLayout>

@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Body, BadRequestException, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  BadRequestException,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
@@ -17,12 +26,17 @@ export class AuthController {
   @ApiResponse({ status: 302, description: 'Redirects to Google' })
   async googleAuth(@Req() req: express.Request, @Res() res: express.Response) {
     const context = (req.query.context as string) || 'admin';
-    const state = Buffer.from(JSON.stringify({ context })).toString('base64url');
-    const base = process.env.API_URL?.replace(/\/$/, '') ?? 'http://localhost:3000';
+    const state = Buffer.from(JSON.stringify({ context })).toString(
+      'base64url',
+    );
+    const base =
+      process.env.API_URL?.replace(/\/$/, '') ?? 'http://localhost:3000';
     const callback = `${base}/auth/google/callback`;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${process.env.ADMIN_URL || 'http://localhost:4322'}/admin/login?error=Google+login+not+configured`);
+      return res.redirect(
+        `${process.env.ADMIN_URL || 'http://localhost:4322'}/admin/login?error=Google+login+not+configured`,
+      );
     }
     const params = new URLSearchParams({
       client_id: clientId,
@@ -33,7 +47,9 @@ export class AuthController {
       access_type: 'offline',
       prompt: 'consent',
     });
-    return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    return res.redirect(
+      `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+    );
   }
 
   @Public()
@@ -41,7 +57,10 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback', security: [] })
   @ApiResponse({ status: 302, description: 'Redirects to frontend with token' })
-  async googleCallback(@Req() req: express.Request, @Res() res: express.Response) {
+  async googleCallback(
+    @Req() req: express.Request,
+    @Res() res: express.Response,
+  ) {
     const result = req.user as GoogleLoginResult | undefined;
     let state: { context?: string } = {};
     try {
@@ -51,21 +70,36 @@ export class AuthController {
       state = { context: 'admin' };
     }
     const context = state.context || 'admin';
-    const adminUrl = (process.env.ADMIN_URL || 'http://localhost:4322').replace(/\/$/, '');
-    const appUrl = (process.env.APP_URL || 'http://localhost:4321').replace(/\/$/, '');
+    const adminUrl = (process.env.ADMIN_URL || 'http://localhost:4322').replace(
+      /\/$/,
+      '',
+    );
+    const appUrl = (process.env.APP_URL || 'http://localhost:4321').replace(
+      /\/$/,
+      '',
+    );
     const base = context === 'admin' ? adminUrl : appUrl;
     const loginPath = context === 'admin' ? '/admin/login' : '/login';
     if (!result?.accessToken) {
-      const error = (req as { query?: { error?: string } }).query?.error || 'Google sign-in failed';
-      return res.redirect(`${base}${loginPath}?error=${encodeURIComponent(error)}`);
+      const error =
+        (req as { query?: { error?: string } }).query?.error ||
+        'Google sign-in failed';
+      return res.redirect(
+        `${base}${loginPath}?error=${encodeURIComponent(error)}`,
+      );
     }
-    return res.redirect(`${base}${loginPath}?token=${encodeURIComponent(result.accessToken)}`);
+    return res.redirect(
+      `${base}${loginPath}?token=${encodeURIComponent(result.accessToken)}`,
+    );
   }
 
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new customer account', security: [] })
-  @ApiResponse({ status: 201, description: 'User created; returns accessToken and user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User created; returns accessToken and user',
+  })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(
@@ -74,16 +108,30 @@ export class AuthController {
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    if (!firstName || typeof firstName !== 'string' || firstName.trim() === '') {
+    if (
+      !firstName ||
+      typeof firstName !== 'string' ||
+      firstName.trim() === ''
+    ) {
       throw new BadRequestException('First name is required');
     }
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    if (
+      !email ||
+      typeof email !== 'string' ||
+      !password ||
+      typeof password !== 'string'
+    ) {
       throw new BadRequestException('Email and password are required');
     }
     if (password.length < 8) {
       throw new BadRequestException('Password must be at least 8 characters');
     }
-    return this.authService.register(firstName.trim(), lastName?.trim() || undefined, email, password);
+    return this.authService.register(
+      firstName.trim(),
+      lastName?.trim() || undefined,
+      email,
+      password,
+    );
   }
 
   @Public()
@@ -95,7 +143,12 @@ export class AuthController {
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    if (
+      !email ||
+      typeof email !== 'string' ||
+      !password ||
+      typeof password !== 'string'
+    ) {
       throw new BadRequestException('Email and password are required');
     }
     return this.authService.login(email.trim(), password);
@@ -104,7 +157,10 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @ApiOperation({ summary: 'Request password reset email', security: [] })
-  @ApiResponse({ status: 200, description: 'Reset email sent if account exists' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset email sent if account exists',
+  })
   async forgotPassword(
     @Body('email') email: string,
     @Body('context') context?: string,
@@ -118,7 +174,10 @@ export class AuthController {
 
   @Public()
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password with token from email', security: [] })
+  @ApiOperation({
+    summary: 'Reset password with token from email',
+    security: [],
+  })
   @ApiResponse({ status: 200, description: 'Password reset successful' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(

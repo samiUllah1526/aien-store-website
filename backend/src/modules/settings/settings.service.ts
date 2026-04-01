@@ -126,7 +126,9 @@ export class SettingsService {
   }
 
   /** Resolve logo media ID to URL for public API. Returns deliveryUrl (Cloudinary) or path for local. */
-  private async resolveLogoPath(logoMediaId: string | null | undefined): Promise<string | null> {
+  private async resolveLogoPath(
+    logoMediaId: string | null | undefined,
+  ): Promise<string | null> {
     if (!logoMediaId) return null;
     const media = await this.prisma.media.findUnique({
       where: { id: logoMediaId },
@@ -137,7 +139,18 @@ export class SettingsService {
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
-    const [general, about, footer, social, delivery, banking, seo, marketing, announcement, hero] = await Promise.all([
+    const [
+      general,
+      about,
+      footer,
+      social,
+      delivery,
+      banking,
+      seo,
+      marketing,
+      announcement,
+      hero,
+    ] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
       this.getByKey('footer'),
@@ -151,10 +164,13 @@ export class SettingsService {
     ]);
 
     const generalVal = general as GeneralValue | null;
-    const logoPath = await this.resolveLogoPath(generalVal?.logoMediaId ?? null);
+    const logoPath = await this.resolveLogoPath(
+      generalVal?.logoMediaId ?? null,
+    );
     const deliveryVal = delivery as DeliveryValue | null;
     const deliveryChargesCents =
-      typeof deliveryVal?.deliveryChargesCents === 'number' && deliveryVal.deliveryChargesCents >= 0
+      typeof deliveryVal?.deliveryChargesCents === 'number' &&
+      deliveryVal.deliveryChargesCents >= 0
         ? deliveryVal.deliveryChargesCents
         : 0;
     const bankingVal = banking as BankingValue | null;
@@ -168,17 +184,24 @@ export class SettingsService {
       social: (social as SocialValue) ?? {},
       announcement: (() => {
         const raw = (announcement as AnnouncementValue) ?? { items: [] };
-        const items = (raw.items ?? []).filter((item) => item.visible !== false);
+        const items = (raw.items ?? []).filter(
+          (item) => item.visible !== false,
+        );
         return { items };
       })(),
       hero: (() => {
         const raw = (hero as HeroValue) ?? { slides: [] };
         const slides = Array.isArray(raw.slides)
-          ? (raw.slides as HeroSlideValue[])
-              .filter((s) => s && typeof s.src === 'string' && (s.src as string).trim() !== '')
+          ? raw.slides
+              .filter(
+                (s) => s && typeof s.src === 'string' && s.src.trim() !== '',
+              )
               .map((s) => ({
-                src: (s.src as string).trim(),
-                alt: typeof s.alt === 'string' ? (s.alt as string).trim() || undefined : undefined,
+                src: s.src.trim(),
+                alt:
+                  typeof s.alt === 'string'
+                    ? s.alt.trim() || undefined
+                    : undefined,
               }))
           : [];
         return { slides };
@@ -199,16 +222,24 @@ export class SettingsService {
             defaultDescription: seoVal.defaultDescription?.trim() ?? '',
             siteUrl: (seoVal.siteUrl?.trim() ?? '').replace(/\/+$/, ''),
             ogImageDefault: seoVal.ogImageDefault?.trim() ?? '',
-            twitterHandle: (seoVal.twitterHandle?.trim() ?? '').replace(/^@/, ''),
+            twitterHandle: (seoVal.twitterHandle?.trim() ?? '').replace(
+              /^@/,
+              '',
+            ),
             googleSiteVerification: seoVal.googleSiteVerification?.trim() ?? '',
           }
         : {},
       marketing: marketingVal
         ? {
-            metaPixelId: (marketingVal.metaPixelId?.trim() ?? '').replace(/\D/g, '').slice(0, 20) || undefined,
+            metaPixelId:
+              (marketingVal.metaPixelId?.trim() ?? '')
+                .replace(/\D/g, '')
+                .slice(0, 20) || undefined,
             googleAnalyticsId: marketingVal.googleAnalyticsId?.trim() ?? '',
             googleTagManagerId: (() => {
-              const raw = (marketingVal.googleTagManagerId?.trim() ?? '').toUpperCase();
+              const raw = (
+                marketingVal.googleTagManagerId?.trim() ?? ''
+              ).toUpperCase();
               if (raw.startsWith('GTM')) return raw;
               const digits = raw.replace(/\D/g, '');
               return digits ? `GTM-${digits}` : undefined;

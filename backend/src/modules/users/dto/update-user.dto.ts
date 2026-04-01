@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsArray, IsEnum, MinLength, IsEmail, ValidateNested, IsBoolean, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  MinLength,
+  IsEmail,
+  ValidateNested,
+  IsBoolean,
+  IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum UpdateUserStatus {
@@ -34,7 +44,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters if provided' })
+  @MinLength(8, {
+    message: 'Password must be at least 8 characters if provided',
+  })
   password?: string;
 
   @IsOptional()

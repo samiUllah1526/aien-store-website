@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Body, BadRequestException, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  BadRequestException,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import * as express from 'express';
@@ -18,13 +27,20 @@ export class AdminAuthController {
   @ApiOperation({ summary: 'Redirect to Google OAuth (admin)', security: [] })
   @ApiResponse({ status: 302, description: 'Redirects to Google' })
   async googleAuth(@Req() req: express.Request, @Res() res: express.Response) {
-    const state = Buffer.from(JSON.stringify({ context: 'admin' })).toString('base64url');
-    const base = process.env.API_URL?.replace(/\/$/, '') ?? 'http://localhost:3000';
+    const state = Buffer.from(JSON.stringify({ context: 'admin' })).toString(
+      'base64url',
+    );
+    const base =
+      process.env.API_URL?.replace(/\/$/, '') ?? 'http://localhost:3000';
     const callback = `${base}/admin/auth/google/callback`;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      const adminUrl = (process.env.ADMIN_URL || 'http://localhost:4322').replace(/\/$/, '');
-      return res.redirect(`${adminUrl}/admin/login?error=Google+login+not+configured`);
+      const adminUrl = (
+        process.env.ADMIN_URL || 'http://localhost:4322'
+      ).replace(/\/$/, '');
+      return res.redirect(
+        `${adminUrl}/admin/login?error=Google+login+not+configured`,
+      );
     }
     const params = new URLSearchParams({
       client_id: clientId,
@@ -35,7 +51,9 @@ export class AdminAuthController {
       access_type: 'offline',
       prompt: 'consent',
     });
-    return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    return res.redirect(
+      `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+    );
   }
 
   @Public()
@@ -43,26 +61,46 @@ export class AdminAuthController {
   @UseGuards(AuthGuard('google-admin'))
   @ApiOperation({ summary: 'Google OAuth callback (admin)', security: [] })
   @ApiResponse({ status: 302, description: 'Redirects to frontend with token' })
-  async googleCallback(@Req() req: express.Request, @Res() res: express.Response) {
+  async googleCallback(
+    @Req() req: express.Request,
+    @Res() res: express.Response,
+  ) {
     const result = req.user as GoogleLoginResult | undefined;
-    const adminUrl = (process.env.ADMIN_URL || 'http://localhost:4322').replace(/\/$/, '');
+    const adminUrl = (process.env.ADMIN_URL || 'http://localhost:4322').replace(
+      /\/$/,
+      '',
+    );
     if (!result?.accessToken) {
-      const error = (req as { query?: { error?: string } }).query?.error || 'Google sign-in failed';
-      return res.redirect(`${adminUrl}/admin/login?error=${encodeURIComponent(error)}`);
+      const error =
+        (req as { query?: { error?: string } }).query?.error ||
+        'Google sign-in failed';
+      return res.redirect(
+        `${adminUrl}/admin/login?error=${encodeURIComponent(error)}`,
+      );
     }
-    return res.redirect(`${adminUrl}/admin/login?token=${encodeURIComponent(result.accessToken)}`);
+    return res.redirect(
+      `${adminUrl}/admin/login?token=${encodeURIComponent(result.accessToken)}`,
+    );
   }
 
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'Login with email and password (admin)', security: [] })
+  @ApiOperation({
+    summary: 'Login with email and password (admin)',
+    security: [],
+  })
   @ApiResponse({ status: 200, description: 'Returns accessToken and user' })
   @ApiResponse({ status: 400, description: 'Invalid credentials' })
   async login(
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    if (
+      !email ||
+      typeof email !== 'string' ||
+      !password ||
+      typeof password !== 'string'
+    ) {
       throw new BadRequestException('Email and password are required');
     }
     return this.authService.login(email.trim(), password, 'admin');
@@ -70,8 +108,14 @@ export class AdminAuthController {
 
   @Public()
   @Post('forgot-password')
-  @ApiOperation({ summary: 'Request password reset email (admin)', security: [] })
-  @ApiResponse({ status: 200, description: 'Reset email sent if account exists' })
+  @ApiOperation({
+    summary: 'Request password reset email (admin)',
+    security: [],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset email sent if account exists',
+  })
   async forgotPassword(@Body('email') email: string) {
     if (!email || typeof email !== 'string' || email.trim() === '') {
       throw new BadRequestException('Email is required');
@@ -81,7 +125,10 @@ export class AdminAuthController {
 
   @Public()
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password with token from email', security: [] })
+  @ApiOperation({
+    summary: 'Reset password with token from email',
+    security: [],
+  })
   @ApiResponse({ status: 200, description: 'Password reset successful' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(

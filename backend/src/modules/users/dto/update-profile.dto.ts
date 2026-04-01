@@ -16,6 +16,8 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters if provided' })
+  @MinLength(8, {
+    message: 'Password must be at least 8 characters if provided',
+  })
   password?: string;
 }

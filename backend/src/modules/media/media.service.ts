@@ -32,10 +32,12 @@ export interface CreateFailedUploadInput {
 
 /** Sanitize filename: remove path separators, control chars, limit length. */
 function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[/\\?:*"<>|]/g, '')
-    .replace(/\s+/g, '_')
-    .slice(0, 200) || 'file';
+  return (
+    name
+      .replace(/[/\\?:*"<>|]/g, '')
+      .replace(/\s+/g, '_')
+      .slice(0, 200) || 'file'
+  );
 }
 
 @Injectable()
@@ -48,7 +50,8 @@ export class MediaService {
     private readonly config: ConfigService,
   ) {
     this.uploadDir =
-      this.config.get<string>('storage.uploadDir') ?? join(process.cwd(), 'uploads');
+      this.config.get<string>('storage.uploadDir') ??
+      join(process.cwd(), 'uploads');
   }
 
   /**
@@ -72,9 +75,13 @@ export class MediaService {
         height: input.height,
       };
     } else if (input.providerResponse) {
-      const provider = this.storageFactory.getByType(input.provider as StorageProviderType);
+      const provider = this.storageFactory.getByType(
+        input.provider as StorageProviderType,
+      );
       if (!provider) {
-        throw new BadRequestException(`Unknown storage provider: ${input.provider}`);
+        throw new BadRequestException(
+          `Unknown storage provider: ${input.provider}`,
+        );
       }
       const parsed = provider.parseUploadResponse(input.providerResponse);
       if (!parsed) {
@@ -86,7 +93,9 @@ export class MediaService {
         mimeType: input.mimeType ?? parsed.mimeType,
       };
     } else {
-      throw new BadRequestException('Provide storageKey/deliveryUrl or providerResponse');
+      throw new BadRequestException(
+        'Provide storageKey/deliveryUrl or providerResponse',
+      );
     }
 
     const filename = payload.filename
@@ -110,9 +119,12 @@ export class MediaService {
     return { id: media.id };
   }
 
-  async createFromFile(
-    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
-  ): Promise<{ id: string }> {
+  async createFromFile(file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }): Promise<{ id: string }> {
     const ext = file.originalname.split('.').pop() ?? 'bin';
     const filename = `${randomUUID()}.${ext}`;
     const relativePath = `products/${filename}`;
@@ -133,9 +145,12 @@ export class MediaService {
   }
 
   /** Store payment proof image for checkout (public upload). Path: payment-proofs/uuid.ext */
-  async createFromFileForPaymentProof(
-    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
-  ): Promise<{ id: string }> {
+  async createFromFileForPaymentProof(file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }): Promise<{ id: string }> {
     const ext = file.originalname.split('.').pop() ?? 'bin';
     const filename = `${randomUUID()}.${ext}`;
     const relativePath = `payment-proofs/${filename}`;
@@ -162,8 +177,13 @@ export class MediaService {
   async createFailedUpload(input: CreateFailedUploadInput): Promise<void> {
     const err = input.error;
     const message = err instanceof Error ? err.message : String(err);
-    const code = err instanceof Error && 'code' in err ? String((err as NodeJS.ErrnoException).code) : undefined;
-    const filename = input.filename ? sanitizeFilename(input.filename) : 'unknown';
+    const code =
+      err instanceof Error && 'code' in err
+        ? String((err as NodeJS.ErrnoException).code)
+        : undefined;
+    const filename = input.filename
+      ? sanitizeFilename(input.filename)
+      : 'unknown';
 
     const uploadError = {
       message,

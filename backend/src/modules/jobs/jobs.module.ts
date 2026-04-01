@@ -10,7 +10,12 @@ import { MailModule } from '../mail/mail.module';
 @Module({
   imports: [ConfigModule, MailModule],
   controllers: [],
-  providers: [PgbossService, EmailQueueService, EmailJobProcessor, JobsAdminService],
+  providers: [
+    PgbossService,
+    EmailQueueService,
+    EmailJobProcessor,
+    JobsAdminService,
+  ],
   exports: [PgbossService, EmailQueueService, JobsAdminService],
 })
 export class JobsModule {}

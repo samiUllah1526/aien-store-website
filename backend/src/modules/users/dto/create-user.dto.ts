@@ -1,4 +1,11 @@
-import { IsString, IsEmail, IsOptional, IsArray, IsEnum, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  MinLength,
+} from 'class-validator';
 
 export enum CreateUserStatus {
   ACTIVE = 'ACTIVE',
