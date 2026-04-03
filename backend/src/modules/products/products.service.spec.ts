@@ -44,6 +44,7 @@ const mockProduct = {
 describe('ProductsService', () => {
   let service: ProductsService;
   let prisma: {
+    $transaction: jest.Mock;
     product: {
       findUnique: jest.Mock;
       findUniqueOrThrow: jest.Mock;
@@ -60,7 +61,9 @@ describe('ProductsService', () => {
       findMany: jest.Mock;
       update: jest.Mock;
       create: jest.Mock;
+      createMany: jest.Mock;
       updateMany: jest.Mock;
+      deleteMany: jest.Mock;
     };
     productCategory: { deleteMany: jest.Mock; createMany: jest.Mock };
     category: { findUnique: jest.Mock };
@@ -68,6 +71,9 @@ describe('ProductsService', () => {
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(
+        async (fn: (db: typeof prisma) => Promise<unknown>) => fn(prisma),
+      ),
       product: {
         findUnique: jest.fn(),
         findUniqueOrThrow: jest.fn(),
@@ -84,7 +90,9 @@ describe('ProductsService', () => {
         findMany: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
+        createMany: jest.fn(),
         updateMany: jest.fn(),
+        deleteMany: jest.fn(),
       },
       productCategory: { deleteMany: jest.fn(), createMany: jest.fn() },
       category: { findUnique: jest.fn() },
@@ -123,7 +131,7 @@ describe('ProductsService', () => {
         slug: mockProduct.slug,
         price: 4200,
         currency: 'PKR',
-        sizes: ['S', 'M', 'L'],
+        sizes: ['M'],
       });
       expect(prisma.product.create).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -13,8 +13,21 @@ import {
   ProductListResponseDto,
   ProductVariantResponseDto,
 } from './dto/product-response.dto';
+import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils';
 import { Prisma } from '@prisma/client';
-import { ProductVariantInputDto } from './dto/product-variant-input.dto';
+import type { PrismaClient } from '@prisma/client';
+import {
+  assertUniqueSkusAmongIncoming,
+  diffProductVariants,
+  normalizeVariantInputsForReplace,
+  variantCompositeKey,
+  type NormalizedVariantInput,
+} from './product-variant-replace.util';
+
+/** Interactive transaction client (subset of PrismaClient). */
+type TransactionClient = Parameters<
+  Parameters<PrismaClient['$transaction']>[0]
+>[0];
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,51 +67,6 @@ export class ProductsService {
     return validIds;
   }
 
-  private normalizeVariants(input: ProductVariantInputDto[]): Array<{
-    id?: string;
-    color: string;
-    size: string;
-    sku: string | null;
-    stockQuantity: number;
-    priceOverrideCents: number | null;
-    isActive: boolean;
-    mediaIds?: string[];
-  }> {
-    if (!input?.length) {
-      throw new BadRequestException('At least one variant is required');
-    }
-    const keys = new Set<string>();
-    return input.map((variant, idx) => {
-      const color = variant.color?.trim();
-      const size = variant.size?.trim();
-      if (!color || !size) {
-        throw new BadRequestException(
-          `Variant #${idx + 1} must include color and size`,
-        );
-      }
-      const key = `${color.toLowerCase()}__${size.toLowerCase()}`;
-      if (keys.has(key)) {
-        throw new BadRequestException(
-          `Duplicate variant combination: ${color} / ${size}`,
-        );
-      }
-      keys.add(key);
-      return {
-        ...(variant.id ? { id: variant.id } : {}),
-        color,
-        size,
-        sku: variant.sku?.trim() ? variant.sku.trim() : null,
-        stockQuantity: Math.max(0, variant.stockQuantity ?? 0),
-        priceOverrideCents:
-          variant.priceOverrideCents != null
-            ? Math.max(0, variant.priceOverrideCents)
-            : null,
-        isActive: variant.isActive ?? true,
-        mediaIds: variant.mediaIds,
-      };
-    });
-  }
-
   private summarizeVariantDimensions(
     variants: Array<{
       color: string;
@@ -128,6 +96,160 @@ export class ProductsService {
     return [...new Set(variants.flatMap((variant) => variant.mediaIds ?? []))];
   }
 
+  /**
+   * Full replacement of variants inside an interactive transaction: explicit diff by
+   * (color, size), ordered writes to avoid @@unique([productId, color, size]) and sku
+   * collisions, and denormalized sizes/stock on Product.
+   *
+   * Order: delete removable (no order FK) → soft-remove remainder (clear sku) → clear skus
+   * on updates → per-row updates → createMany → attach variant media → product rollup.
+   */
+  private async executeVariantFullReplace(
+    tx: TransactionClient,
+    productId: string,
+    normalized: NormalizedVariantInput[],
+  ): Promise<void> {
+    const existingRows = await tx.productVariant.findMany({
+      where: { productId },
+      select: { id: true, color: true, size: true },
+    });
+
+    const { toCreate, toUpdate, toRemoveIds } = diffProductVariants(
+      existingRows,
+      normalized,
+    );
+
+    if (toRemoveIds.length > 0) {
+      // Hard-delete only when no order_items reference the variant (onDelete: Restrict).
+      await tx.productVariant.deleteMany({
+        where: {
+          productId,
+          id: { in: toRemoveIds },
+          orderItems: { none: {} },
+        },
+      });
+
+      const stillPresent = await tx.productVariant.findMany({
+        where: { productId, id: { in: toRemoveIds } },
+        select: { id: true },
+      });
+
+      if (stillPresent.length > 0) {
+        await tx.productVariant.updateMany({
+          where: { id: { in: stillPresent.map((r) => r.id) } },
+          data: {
+            isActive: false,
+            stockQuantity: 0,
+            sku: null,
+          },
+        });
+      }
+    }
+
+    if (toUpdate.length > 0) {
+      await tx.productVariant.updateMany({
+        where: {
+          productId,
+          id: { in: toUpdate.map((u) => u.id) },
+        },
+        data: { sku: null },
+      });
+    }
+
+    for (const { id: variantId, input } of toUpdate) {
+      await tx.productVariant.update({
+        where: { id: variantId },
+        data: {
+          color: input.color,
+          size: input.size,
+          sku: input.sku,
+          stockQuantity: input.stockQuantity,
+          priceOverrideCents: input.priceOverrideCents,
+          isActive: input.isActive,
+        },
+      });
+      if (input.mediaIds !== undefined) {
+        await this.syncVariantMediaTx(tx, variantId, input.mediaIds);
+      }
+    }
+
+    if (toCreate.length > 0) {
+      await tx.productVariant.createMany({
+        data: toCreate.map((v) => ({
+          productId,
+          color: v.color,
+          size: v.size,
+          sku: v.sku,
+          stockQuantity: v.stockQuantity,
+          priceOverrideCents: v.priceOverrideCents,
+          isActive: v.isActive,
+        })),
+      });
+
+      const createdRows = await tx.productVariant.findMany({
+        where: {
+          productId,
+          OR: toCreate.map((v) => ({ color: v.color, size: v.size })),
+        },
+        select: { id: true, color: true, size: true },
+      });
+      const idByKey = new Map(
+        createdRows.map((r) => [variantCompositeKey(r.color, r.size), r.id]),
+      );
+      for (const v of toCreate) {
+        const vid = idByKey.get(variantCompositeKey(v.color, v.size));
+        if (vid && v.mediaIds?.length) {
+          await this.attachVariantMediaTx(tx, vid, v.mediaIds);
+        }
+      }
+    }
+
+    const allVariants = await tx.productVariant.findMany({
+      where: { productId },
+      select: { size: true, stockQuantity: true },
+    });
+    await tx.product.update({
+      where: { id: productId },
+      data: {
+        sizes: [...new Set(allVariants.map((v) => v.size))] as object,
+        stockQuantity: allVariants.reduce((sum, v) => sum + v.stockQuantity, 0),
+      },
+    });
+  }
+
+  private async syncVariantMediaTx(
+    tx: TransactionClient,
+    variantId: string,
+    mediaIds: string[],
+  ): Promise<void> {
+    await tx.productVariantMedia.deleteMany({ where: { variantId } });
+    if (mediaIds.length > 0) {
+      await tx.productVariantMedia.createMany({
+        data: mediaIds.map((mediaId, index) => ({
+          variantId,
+          mediaId,
+          sortOrder: index,
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  private async attachVariantMediaTx(
+    tx: TransactionClient,
+    variantId: string,
+    mediaIds: string[],
+  ): Promise<void> {
+    await tx.productVariantMedia.createMany({
+      data: mediaIds.map((mediaId, index) => ({
+        variantId,
+        mediaId,
+        sortOrder: index,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     const existing = await this.prisma.product.findUnique({
       where: { slug: dto.slug },
@@ -138,7 +260,7 @@ export class ProductsService {
       );
     }
     const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
-    const variants = this.normalizeVariants(dto.variants);
+    const variants = normalizeVariantInputsForReplace(dto.variants, false);
     const variantMediaIds = this.collectVariantMediaIds(variants);
     const allMediaIds = [
       ...new Set([...(dto.mediaIds ?? []), ...variantMediaIds]),
@@ -291,7 +413,7 @@ export class ProductsService {
     }
     const normalizedVariantsForMedia =
       dto.variants !== undefined
-        ? this.normalizeVariants(dto.variants)
+        ? normalizeVariantInputsForReplace(dto.variants, true)
         : undefined;
     const variantMediaIds = normalizedVariantsForMedia
       ? this.collectVariantMediaIds(normalizedVariantsForMedia)
@@ -317,71 +439,22 @@ export class ProductsService {
 
     if (dto.variants !== undefined) {
       const normalized = normalizedVariantsForMedia ?? [];
-      const existing = await this.prisma.productVariant.findMany({
-        where: { productId: id },
-        select: { id: true },
-      });
-      const existingIds = new Set(existing.map((v) => v.id));
-      const seenIds = new Set<string>();
-      for (const variant of normalized) {
-        if (variant.id && existingIds.has(variant.id)) {
-          seenIds.add(variant.id);
-          await this.prisma.productVariant.update({
-            where: { id: variant.id },
-            data: {
-              color: variant.color,
-              size: variant.size,
-              sku: variant.sku,
-              stockQuantity: variant.stockQuantity,
-              priceOverrideCents: variant.priceOverrideCents,
-              isActive: variant.isActive,
-            },
-          });
-          if (variant.mediaIds !== undefined) {
-            await this.syncVariantMedia(variant.id, variant.mediaIds);
-          }
-        } else {
-          const created = await this.prisma.productVariant.create({
-            data: {
-              productId: id,
-              color: variant.color,
-              size: variant.size,
-              sku: variant.sku,
-              stockQuantity: variant.stockQuantity,
-              priceOverrideCents: variant.priceOverrideCents,
-              isActive: variant.isActive,
-            },
-            select: { id: true },
-          });
-          seenIds.add(created.id);
-          if (variant.mediaIds?.length) {
-            await this.attachVariantMedia(created.id, variant.mediaIds);
-          }
-        }
-      }
-      const toDeactivate = [...existingIds].filter(
-        (variantId) => !seenIds.has(variantId),
-      );
-      if (toDeactivate.length) {
-        await this.prisma.productVariant.updateMany({
-          where: { id: { in: toDeactivate } },
-          data: { isActive: false, stockQuantity: 0 },
+      assertUniqueSkusAmongIncoming(normalized);
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await this.executeVariantFullReplace(tx, id, normalized);
         });
+      } catch (err) {
+        if (
+          err instanceof PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          throw new BadRequestException(
+            'Variant update failed: duplicate color/size or SKU already in use.',
+          );
+        }
+        throw err;
       }
-      const allVariants = await this.prisma.productVariant.findMany({
-        where: { productId: id },
-        select: { size: true, stockQuantity: true },
-      });
-      await this.prisma.product.update({
-        where: { id },
-        data: {
-          sizes: [...new Set(allVariants.map((v) => v.size))] as object,
-          stockQuantity: allVariants.reduce(
-            (sum, v) => sum + v.stockQuantity,
-            0,
-          ),
-        },
-      });
     }
 
     const updated = await this.prisma.product.update({
