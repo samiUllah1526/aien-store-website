@@ -13,7 +13,6 @@ import {
   ProductListResponseDto,
   ProductVariantResponseDto,
 } from './dto/product-response.dto';
-import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils';
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import {
@@ -440,21 +439,9 @@ export class ProductsService {
     if (dto.variants !== undefined) {
       const normalized = normalizedVariantsForMedia ?? [];
       assertUniqueSkusAmongIncoming(normalized);
-      try {
-        await this.prisma.$transaction(async (tx) => {
-          await this.executeVariantFullReplace(tx, id, normalized);
-        });
-      } catch (err) {
-        if (
-          err instanceof PrismaClientKnownRequestError &&
-          err.code === 'P2002'
-        ) {
-          throw new BadRequestException(
-            'Variant update failed: duplicate color/size or SKU already in use.',
-          );
-        }
-        throw err;
-      }
+      await this.prisma.$transaction(async (tx) => {
+        await this.executeVariantFullReplace(tx, id, normalized);
+      });
     }
 
     const updated = await this.prisma.product.update({

@@ -8,6 +8,10 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiResponseDto } from '../dto/api-response.dto';
+import { getPublicPrismaErrorResponse } from '../utils/prisma-public-error';
+
+const GENERIC_SERVER_MESSAGE =
+  'Something went wrong. Please try again later.';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -18,6 +22,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
 
+    const prismaPublic = getPublicPrismaErrorResponse(exception);
+    if (prismaPublic) {
+      const { status, message } = prismaPublic;
+      if (status >= 500) {
+        this.logger.error(
+          `${req.method} ${req.url} ${status} (Prisma)`,
+          exception instanceof Error ? exception.stack : undefined,
+        );
+      }
+      return res.status(status).json(ApiResponseDto.fail(message));
+    }
+
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
@@ -27,9 +43,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? ((exception.getResponse() as { message?: string | string[] })
             .message ?? exception.message)
-        : exception instanceof Error
-          ? exception.message
-          : 'Internal server error';
+        : GENERIC_SERVER_MESSAGE;
 
     const normalizedMessage = Array.isArray(message) ? message[0] : message;
 
