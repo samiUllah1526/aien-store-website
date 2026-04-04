@@ -72,6 +72,8 @@ export interface PublicAbout {
 
 export interface PublicSettings {
   logoPath: string | null;
+  /** When set, used as storefront favicon href at build time; otherwise use config `PUBLIC_FAVICON`. */
+  faviconPath: string | null;
   about: PublicAbout;
   footer: PublicFooter;
   social: PublicSocial;
@@ -85,6 +87,18 @@ let cached: PublicSettings | null = null;
 
 const isDev = typeof import.meta !== 'undefined' && (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
 
+/** Guess `<link rel="icon" type="...">` from URL path (query stripped). */
+export function faviconMimeTypeForUrl(href: string): string {
+  const path = href.split('?')[0].toLowerCase();
+  if (path.endsWith('.svg')) return 'image/svg+xml';
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.ico')) return 'image/x-icon';
+  if (path.endsWith('.webp')) return 'image/webp';
+  if (path.endsWith('.gif')) return 'image/gif';
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+  return 'image/png';
+}
+
 export async function getPublicSettings(): Promise<PublicSettings> {
   if (cached && !isDev) return cached;
   try {
@@ -97,6 +111,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       const footer = (data.footer as Record<string, unknown>) ?? {};
       const social = (data.social as Record<string, unknown>) ?? {};
       const logoPath = (data.logoPath as string)?.trim() || null;
+      const faviconPath = (data.faviconPath as string)?.trim() || null;
       // Support both lowercase and capitalized keys (e.g. youtube vs YouTube from API)
       const youtubeUrl = (social.youtube as string) ?? (social.YouTube as string);
       const youtubeVisibleVal = social.youtubeVisible ?? social.YouTubeVisible;
@@ -107,6 +122,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
         : [];
       const next: PublicSettings = {
         logoPath,
+        faviconPath,
         about: {
           title: typeof rawAbout.title === 'string' ? rawAbout.title.trim() : undefined,
           subtitle: typeof rawAbout.subtitle === 'string' ? rawAbout.subtitle.trim() : undefined,
@@ -167,6 +183,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
   }
   return {
     logoPath: null,
+    faviconPath: null,
     about: {},
     footer: {
       tagline: '',

@@ -194,7 +194,7 @@ async function main() {
 
   const currentYear = new Date().getFullYear();
   const defaultSettings = [
-    { key: 'general', value: { logoMediaId: null } },
+    { key: 'general', value: { logoMediaId: null, faviconMediaId: null } },
     {
       key: 'about',
       value: {

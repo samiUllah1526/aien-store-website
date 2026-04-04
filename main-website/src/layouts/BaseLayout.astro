@@ -5,8 +5,8 @@
  */
 import '../styles/global.css';
 import LayoutShell from '../components/LayoutShell';
-import { getPublicSettings } from '../lib/settings';
-import { faviconPath, themeStorageKey, storeApiBaseUrl } from '../config';
+import { getPublicSettings, faviconMimeTypeForUrl } from '../lib/settings';
+import { faviconPath as defaultFaviconPath, themeStorageKey, storeApiBaseUrl } from '../config';
 
 interface Props {
   title?: string;
@@ -42,6 +42,8 @@ const landingCategories = await (async () => {
 })();
 const seo = settings.seo;
 const marketing = settings.marketing;
+const faviconHref = (settings.faviconPath?.trim() || defaultFaviconPath).trim();
+const faviconType = faviconMimeTypeForUrl(faviconHref);
 const siteSettings = {
   logoPath: settings.logoPath,
   footer: settings.footer,
@@ -83,7 +85,7 @@ const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pat
     {jsonLd && (
       <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     )}
-    <link rel="icon" type="image/svg+xml" href={faviconPath} />
+    <link rel="icon" type={faviconType} href={faviconHref} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

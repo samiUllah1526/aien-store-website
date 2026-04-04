@@ -103,6 +103,7 @@ describe('SettingsService', () => {
       const result = await service.getPublic();
 
       expect(result.logoPath).toBeNull();
+      expect(result.faviconPath).toBeNull();
       expect(result.deliveryChargesCents).toBe(0);
       expect(result.about).toEqual({});
       expect(result.footer).toEqual({});
@@ -129,6 +130,26 @@ describe('SettingsService', () => {
       const result = await service.getPublic();
 
       expect(result.logoPath).toBe('https://cdn/logo.png');
+      expect(result.faviconPath).toBeNull();
+    });
+
+    it('resolves faviconPath from media when general has faviconMediaId', async () => {
+      prisma.siteSetting.findUnique.mockImplementation(
+        ({ where }: { where: { key: string } }) =>
+          Promise.resolve(
+            where.key === 'general'
+              ? { value: { logoMediaId: null, faviconMediaId: 'fav-1' } }
+              : null,
+          ),
+      );
+      prisma.media.findUnique.mockResolvedValue({
+        path: '/img/favicon.ico',
+        deliveryUrl: 'https://cdn/favicon.ico',
+      });
+
+      const result = await service.getPublic();
+
+      expect(result.faviconPath).toBe('https://cdn/favicon.ico');
     });
 
     it('returns null logoPath when media not found', async () => {

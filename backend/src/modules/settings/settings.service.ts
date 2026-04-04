@@ -4,6 +4,8 @@ import type { SettingsKey } from './dto/update-setting.dto';
 
 export interface GeneralValue {
   logoMediaId?: string | null;
+  /** Site favicon (PNG, ICO, SVG, etc.); resolved to URL in public settings. */
+  faviconMediaId?: string | null;
 }
 
 export interface AboutValue {
@@ -82,6 +84,8 @@ export interface HeroValue {
 
 export interface PublicSettingsDto {
   logoPath: string | null;
+  /** Resolved favicon URL when set in general settings; storefront falls back to env/static default when null. */
+  faviconPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
@@ -127,13 +131,13 @@ export class SettingsService {
     });
   }
 
-  /** Resolve logo media ID to URL for public API. Returns deliveryUrl (Cloudinary) or path for local. */
-  private async resolveLogoPath(
-    logoMediaId: string | null | undefined,
+  /** Resolve media ID to URL for public API. Returns deliveryUrl (Cloudinary) or path for local. */
+  private async resolveMediaPath(
+    mediaId: string | null | undefined,
   ): Promise<string | null> {
-    if (!logoMediaId) return null;
+    if (!mediaId) return null;
     const media = await this.prisma.media.findUnique({
-      where: { id: logoMediaId },
+      where: { id: mediaId },
       select: { path: true, deliveryUrl: true },
     });
     if (!media) return null;
@@ -166,8 +170,11 @@ export class SettingsService {
     ]);
 
     const generalVal = general as GeneralValue | null;
-    const logoPath = await this.resolveLogoPath(
+    const logoPath = await this.resolveMediaPath(
       generalVal?.logoMediaId ?? null,
+    );
+    const faviconPath = await this.resolveMediaPath(
+      generalVal?.faviconMediaId ?? null,
     );
     const deliveryVal = delivery as DeliveryValue | null;
     const deliveryChargesCents =
@@ -181,6 +188,7 @@ export class SettingsService {
 
     return {
       logoPath,
+      faviconPath,
       about: (about as AboutValue) ?? {},
       footer: (footer as FooterValue) ?? {},
       social: (social as SocialValue) ?? {},

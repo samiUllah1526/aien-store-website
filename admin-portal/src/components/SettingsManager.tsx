@@ -22,6 +22,7 @@ import {
 
 interface GeneralValue {
   logoMediaId?: string | null;
+  faviconMediaId?: string | null;
 }
 interface AboutValue {
   title?: string;
@@ -95,6 +96,7 @@ interface HeroValue {
 
 interface PublicSettings {
   logoPath: string | null;
+  faviconPath: string | null;
   about: AboutValue;
   footer: FooterValue;
   social: SocialValue;
@@ -242,6 +244,36 @@ export function SettingsManager() {
 
   const handleRemoveLogo = async () => {
     const next = { ...general, logoMediaId: null };
+    setGeneral(next);
+    await saveKey('general', next);
+    fetchSettings();
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    try {
+      let id: string;
+      try {
+        const result = await uploadMedia(file, 'products');
+        id = result.id;
+      } catch {
+        const res = await uploadFile(file);
+        id = res.id;
+      }
+      const next = { ...general, faviconMediaId: id };
+      setGeneral(next);
+      await saveKey('general', next);
+      fetchSettings();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveFavicon = async () => {
+    const next = { ...general, faviconMediaId: null };
     setGeneral(next);
     await saveKey('general', next);
     fetchSettings();
@@ -451,6 +483,7 @@ export function SettingsManager() {
   }
 
   const logoUrl = publicSettings?.logoPath ? logoFullUrl(publicSettings.logoPath) : '';
+  const faviconPreviewUrl = publicSettings?.faviconPath ? logoFullUrl(publicSettings.faviconPath) : '';
 
   return (
     <div className="space-y-8">
@@ -522,6 +555,40 @@ export function SettingsManager() {
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleLogoUpload}
+              disabled={saving === 'general'}
+              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-slate-700 dark:file:bg-slate-700 dark:file:text-slate-200"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Favicon</h2>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+          Browser tab icon for the main storefront. Use a square image (PNG, ICO, or SVG). After saving, rebuild and
+          redeploy the main website so the new favicon is baked into the site. If you remove the favicon here, the
+          storefront falls back to the default configured at deploy time (<code className="rounded bg-slate-100 px-1 text-xs dark:bg-slate-700">PUBLIC_FAVICON</code>).
+        </p>
+        <div className="flex flex-wrap items-start gap-4">
+          {faviconPreviewUrl && (
+            <div className="flex flex-col items-start gap-2">
+              <img src={faviconPreviewUrl} alt="Favicon preview" className="h-12 w-12 rounded object-contain ring-1 ring-slate-200 dark:ring-slate-600" />
+              <button
+                type="button"
+                onClick={handleRemoveFavicon}
+                disabled={saving === 'general'}
+                className="text-sm text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+              >
+                Remove favicon
+              </button>
+            </div>
+          )}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Upload favicon</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.ico,image/x-icon,image/vnd.microsoft.icon"
+              onChange={handleFaviconUpload}
               disabled={saving === 'general'}
               className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-slate-700 dark:file:bg-slate-700 dark:file:text-slate-200"
             />
