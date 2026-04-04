@@ -5,7 +5,7 @@
 
 import type { ReactNode } from 'react';
 
-const SITE_CONTAINER_CLASS = 'max-w-site mx-auto px-4 sm:px-6 lg:px-10';
+const SITE_CONTAINER_CLASS = 'max-w-site mx-auto px-4 sm:px-6 lg:px-10 w-full';
 
 interface SiteContainerProps {
   children: ReactNode;
