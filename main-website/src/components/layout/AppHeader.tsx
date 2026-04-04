@@ -33,10 +33,9 @@ const ABOUT_LINK: NavLinkItem = {
 
 function buildNavLinks(categories: LandingCategory[]): NavLinkItem[] {
   const middle = categories.map((cat) => ({
-    href: `/shop?category=${encodeURIComponent(cat.slug)}`,
+    href: `/shop/category/${encodeURIComponent(cat.slug)}`,
     label: cat.name.toUpperCase(),
-    match: (path: string, search: string) =>
-      path === '/shop' && search.includes(`category=${encodeURIComponent(cat.slug)}`),
+    match: (path: string, _search: string) => path === `/shop/category/${cat.slug}`,
   }));
   return [HOME_LINK, ...middle, ABOUT_LINK];
 }

@@ -48,8 +48,8 @@ export default function AppFooter({ copyrightText, tagline, email, phone, hours,
             <h3 className="font-display font-bold text-xs uppercase tracking-widest text-off-white/90 mb-4">Shop</h3>
             <ul className="space-y-3">
               <li><a href="/shop" className="text-sm text-off-white/70 hover:text-off-white transition-colors">All Products</a></li>
-              <li><a href="/shop?category=beggy-tees" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Beggy T-Shirts</a></li>
-              <li><a href="/shop?category=hoodies" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Hoodies</a></li>
+              <li><a href="/shop/category/beggy-tees" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Beggy T-Shirts</a></li>
+              <li><a href="/shop/category/hoodies" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Hoodies</a></li>
               <li><a href="/cart" className="text-sm text-off-white/70 hover:text-off-white transition-colors">Cart</a></li>
             </ul>
           </div>

@@ -1,7 +1,7 @@
 ---
 /**
- * Product detail: poem-first. Large garment image, animated Urdu verse,
- * philosophical English description, quiet details, subtle Add to Cart.
+ * Product detail only: `/shop/:productSlug`.
+ * Category listings live under `/shop/category/:categorySlug`.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductDetailSection from '../../components/product/ProductDetailSection';
@@ -26,11 +26,11 @@ export async function getStaticPaths() {
       hasMore = slugs.length < total && pageSlugs.length === limit;
       page += 1;
     }
-    return slugs.map((slug: string) => ({ params: { slug } }));
   } catch (err) {
-    console.error('[getStaticPaths] error:', err);
-    return [];
+    console.error('[getStaticPaths] products error:', err);
   }
+
+  return slugs.map((slug: string) => ({ params: { slug } }));
 }
 
 const slug = Astro.params.slug;
@@ -43,7 +43,32 @@ function toFullImageUrl(url: string): string {
   return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-let product: { id: string; name: string; slug: string; description: string | null; price: number; currency: string; image: string; images: string[]; variants: Array<{ id: string; color: string; size: string; stockQuantity: number; priceOverrideCents?: number | null; isActive: boolean; image?: string; images?: string[] }>; sizes?: string[]; inStock: boolean; urduVerse?: string | null; urduVerseTransliteration?: string | null; categories?: Array<{ name: string; slug: string }> } | null = null;
+let product: {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  image: string;
+  images: string[];
+  variants: Array<{
+    id: string;
+    color: string;
+    size: string;
+    stockQuantity: number;
+    priceOverrideCents?: number | null;
+    isActive: boolean;
+    image?: string;
+    images?: string[];
+  }>;
+  sizes?: string[];
+  inStock: boolean;
+  urduVerse?: string | null;
+  urduVerseTransliteration?: string | null;
+  categories?: Array<{ name: string; slug: string }>;
+} | null = null;
+
 try {
   const productUrl = `${storeApiBaseUrl}/products/slug/${encodeURIComponent(slug)}`;
   const res = await fetch(productUrl);
@@ -97,16 +122,17 @@ const defaultVariantImages = defaultVariant?.images?.length
   : defaultVariant?.image
     ? [defaultVariant.image]
     : [];
-const displayImages = defaultVariantImages.length > 0
-  ? [...defaultVariantImages, ...product.images.filter((img) => !defaultVariantImages.includes(img))]
-  : product.images;
+const displayImages =
+  defaultVariantImages.length > 0
+    ? [...defaultVariantImages, ...product.images.filter((img) => !defaultVariantImages.includes(img))]
+    : product.images;
 
 const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
 const ogImage = displayImages?.[0] ?? product.image;
 const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || storeApiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
 
 const productImages = (displayImages ?? (product.image ? [product.image] : [])).map((img: string) =>
-  img.startsWith('http') ? img : `${siteUrl || storeApiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`
+  img.startsWith('http') ? img : `${siteUrl || storeApiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`,
 );
 const productJsonLd = {
   '@context': 'https://schema.org',

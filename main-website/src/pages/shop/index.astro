@@ -1,12 +1,53 @@
 ---
 /**
- * Shop: static shell. Products and categories fetched client-side.
+ * Shop: products and landing banner fetched at build time.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ShopPage from '../../components/shop/ShopPage';
-import { brandName, shopMetaDescription } from '../../config';
+import CategoryBanner from '../../components/home/CategoryBanner';
+import ShopGrid from '../../components/shop/ShopGrid';
+import { brandName, shopMetaDescription, storeApiBaseUrl } from '../../config';
+import { fetchAllProductsAtBuild } from '../../lib/fetchStoreProductsBuild';
+
+const DEFAULT_BANNER_IMAGE = 'https://picsum.photos/seed/shop/1920/600';
+const DEFAULT_SHOP_DESCRIPTION =
+  'Return to silence. Hoodies and oversized shirts with poetry on fabric.';
+
+function toFullImageUrl(url: string): string {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+let bannerImage = DEFAULT_BANNER_IMAGE;
+let shopDescription = DEFAULT_SHOP_DESCRIPTION;
+try {
+  const res = await fetch(`${storeApiBaseUrl}/categories/landing`);
+  const json = await res.json();
+  if (res.ok && json.success && Array.isArray(json.data) && json.data.length > 0) {
+    const cat = json.data[0] as { bannerImageUrl?: string | null; description?: string | null };
+    const raw = cat.bannerImageUrl?.trim();
+    if (raw) bannerImage = toFullImageUrl(raw);
+    const desc = cat.description?.trim();
+    if (desc) shopDescription = desc;
+  }
+} catch (err) {
+  console.error('[shop index] landing categories error:', err);
+}
+
+let products: Awaited<ReturnType<typeof fetchAllProductsAtBuild>> = [];
+try {
+  products = await fetchAllProductsAtBuild(storeApiBaseUrl);
+} catch (err) {
+  console.error('[shop index] products error:', err);
+}
 ---
 
 <BaseLayout title={`Shop — ${brandName}`} description={shopMetaDescription}>
-  <ShopPage client:load />
+  <CategoryBanner imageSrc={bannerImage} imageAlt="Shop" />
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+    <header class="mb-16">
+      <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
+      <p class="mt-4 text-ash max-w-prose">{shopDescription}</p>
+    </header>
+    <ShopGrid products={products} client:load />
+  </div>
 </BaseLayout>

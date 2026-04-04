@@ -1,0 +1,92 @@
+---
+/**
+ * Category listing: `/shop/category/:categorySlug` — products in that category only.
+ * Product detail pages live at `/shop/:productSlug` (separate route).
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CategoryBanner from '../../../components/home/CategoryBanner';
+import ShopGrid from '../../../components/shop/ShopGrid';
+import { storeApiBaseUrl, brandName, siteUrl } from '../../../config';
+import { fetchAllProductsAtBuild } from '../../../lib/fetchStoreProductsBuild';
+
+type StoreCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  bannerImageUrl: string | null;
+};
+
+export async function getStaticPaths() {
+  let categories: StoreCategory[] = [];
+  try {
+    const res = await fetch(`${storeApiBaseUrl}/categories`);
+    const json = await res.json();
+    if (res.ok && json.success && Array.isArray(json.data)) {
+      categories = json.data as StoreCategory[];
+    }
+  } catch (err) {
+    console.error('[getStaticPaths category] categories error:', err);
+  }
+
+  return categories
+    .filter((c) => c.slug?.trim())
+    .map((cat) => ({
+      params: { slug: cat.slug },
+      props: { category: cat },
+    }));
+}
+
+const { category } = Astro.props as { category: StoreCategory };
+
+function toFullImageUrl(url: string): string {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+const DEFAULT_CATEGORY_BANNER = 'https://picsum.photos/seed/shop/1920/600';
+
+let products: Awaited<ReturnType<typeof fetchAllProductsAtBuild>> = [];
+try {
+  products = await fetchAllProductsAtBuild(storeApiBaseUrl, { categorySlug: category.slug });
+} catch (err) {
+  console.error('[category page] fetch error:', err);
+}
+
+const bannerRaw = category.bannerImageUrl?.trim();
+const bannerImage = bannerRaw ? toFullImageUrl(bannerRaw) : DEFAULT_CATEGORY_BANNER;
+const description =
+  category.description?.trim() ||
+  `Browse ${category.name} — cultural-art streetwear with poetry on fabric.`;
+const canonicalUrl = siteUrl ? `${siteUrl}/shop/category/${category.slug}` : undefined;
+const ogImageAbs =
+  bannerImage &&
+  (bannerImage.startsWith('http') ? bannerImage : `${siteUrl || storeApiBaseUrl}${bannerImage.startsWith('/') ? '' : '/'}${bannerImage}`);
+
+const categoryJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: category.name,
+  description,
+  ...(canonicalUrl && { url: canonicalUrl }),
+};
+---
+
+<BaseLayout
+  title={`${category.name} — ${brandName}`}
+  description={description}
+  image={ogImageAbs}
+  canonical={canonicalUrl}
+  jsonLd={categoryJsonLd}
+>
+  <CategoryBanner client:load imageSrc={bannerImage} imageAlt={category.name} />
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+    <header class="mb-16">
+      <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">
+        {category.name}
+      </h1>
+      <p class="mt-4 text-ash max-w-prose">{description}</p>
+    </header>
+    <ShopGrid client:load products={products} />
+  </div>
+</BaseLayout>
