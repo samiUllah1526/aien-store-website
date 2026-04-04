@@ -1,25 +1,27 @@
 ---
 /**
- * About: content from site settings (admin-editable). Falls back to defaults if API unavailable.
+ * About: content and optional full-bleed banner from site settings (admin-editable).
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { aboutMetaDescription, storeApiBaseUrl, brandName } from '../config';
-let aboutTitle = brandName;
-let aboutSubtitle = 'Cultural-art collective. Poetry on fabric.';
-let aboutContent = '';
+import { getPublicSettings } from '../lib/settings';
 
-try {
-  const res = await fetch(`${storeApiBaseUrl}/settings/public`);
-  const json = await res.json();
-  if (json?.success && json?.data?.about) {
-    const a = json.data.about;
-    if (a.title) aboutTitle = a.title;
-    if (a.subtitle) aboutSubtitle = a.subtitle;
-    if (a.content) aboutContent = a.content;
-  }
-} catch {
-  // use defaults above
+const settings = await getPublicSettings();
+const a = settings.about;
+
+const aboutTitle = (a.title?.trim() || brandName) as string;
+const aboutSubtitle = (a.subtitle?.trim() || 'Cultural-art collective. Poetry on fabric.') as string;
+const aboutContent = (a.content?.trim() || '') as string;
+
+function absoluteImageUrl(path: string): string {
+  const p = path.trim();
+  if (!p) return '';
+  if (p.startsWith('http')) return p;
+  const base = storeApiBaseUrl.replace(/\/$/, '');
+  return p.startsWith('/') ? `${base}${p}` : `${base}/${p}`;
 }
+
+const bannerSrc = a.bannerImageUrl ? absoluteImageUrl(a.bannerImageUrl) : '';
 
 // Fallback static content if no HTML from settings
 const fallbackContent = `
@@ -32,10 +34,26 @@ const fallbackContent = `
   <p class="text-ash text-sm italic">Return to silence.</p>
   <p>Thank you for wearing the verse with us.</p>
 `;
-const displayContent = aboutContent.trim() || fallbackContent;
+const displayContent = aboutContent.trim() ? aboutContent : fallbackContent;
 ---
 
 <BaseLayout title={`About — ${brandName}`} description={aboutMetaDescription}>
+  {bannerSrc && (
+    <section
+      class="relative w-full aspect-video min-h-[280px] max-h-[85vh] overflow-hidden"
+      aria-label="About"
+    >
+      <div class="absolute inset-0">
+        <img
+          src={bannerSrc}
+          alt=""
+          class="w-full h-full object-cover object-center"
+          fetchpriority="high"
+          draggable="false"
+        />
+      </div>
+    </section>
+  )}
   <article class="max-w-prose mx-auto px-4 sm:px-6 py-16 md:py-24">
     <header class="mb-14">
       <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">
@@ -47,11 +65,5 @@ const displayContent = aboutContent.trim() || fallbackContent;
     </header>
 
     <div class="space-y-10 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed about-content" set:html={displayContent} />
-
-    <div class="mt-14">
-      <a href="/shop" class="inline-block text-ash hover:text-soft-charcoal dark:hover:text-off-white font-medium transition-colors text-sm">
-        View all
-      </a>
-    </div>
   </article>
 </BaseLayout>

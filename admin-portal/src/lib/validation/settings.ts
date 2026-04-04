@@ -43,6 +43,7 @@ export const aboutSettingsSchema = z.object({
   title: z.string().optional().or(z.literal('')),
   subtitle: z.string().optional().or(z.literal('')),
   content: z.string().optional().or(z.literal('')),
+  bannerImageUrl: z.string().optional().or(z.literal('')),
 });
 
 export const footerSettingsSchema = z.object({

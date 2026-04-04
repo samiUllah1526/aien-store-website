@@ -62,8 +62,17 @@ export interface PublicHero {
   slides: PublicHeroSlide[];
 }
 
+export interface PublicAbout {
+  title?: string;
+  subtitle?: string;
+  content?: string;
+  /** Full-bleed banner on /about */
+  bannerImageUrl?: string;
+}
+
 export interface PublicSettings {
   logoPath: string | null;
+  about: PublicAbout;
   footer: PublicFooter;
   social: PublicSocial;
   announcement: PublicAnnouncement;
@@ -91,12 +100,22 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       // Support both lowercase and capitalized keys (e.g. youtube vs YouTube from API)
       const youtubeUrl = (social.youtube as string) ?? (social.YouTube as string);
       const youtubeVisibleVal = social.youtubeVisible ?? social.YouTubeVisible;
+      const rawAbout = (data.about as Record<string, unknown>) ?? {};
       const rawAnnouncement = (data.announcement as { items?: { text: string }[] }) ?? {};
       const announcementItems = Array.isArray(rawAnnouncement.items)
         ? rawAnnouncement.items.map((item) => ({ text: (item?.text ?? '').trim() })).filter((item) => item.text !== '')
         : [];
       const next: PublicSettings = {
         logoPath,
+        about: {
+          title: typeof rawAbout.title === 'string' ? rawAbout.title.trim() : undefined,
+          subtitle: typeof rawAbout.subtitle === 'string' ? rawAbout.subtitle.trim() : undefined,
+          content: typeof rawAbout.content === 'string' ? rawAbout.content : undefined,
+          bannerImageUrl:
+            typeof rawAbout.bannerImageUrl === 'string' && rawAbout.bannerImageUrl.trim() !== ''
+              ? rawAbout.bannerImageUrl.trim()
+              : undefined,
+        },
         footer: {
           tagline: (footer.tagline as string)?.trim() || '',
           copyright: (footer.copyright as string)?.trim() || '',
@@ -148,6 +167,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
   }
   return {
     logoPath: null,
+    about: {},
     footer: {
       tagline: '',
       copyright: '',

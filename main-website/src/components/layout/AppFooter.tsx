@@ -69,7 +69,16 @@ export default function AppFooter({ copyrightText, tagline, email, phone, hours,
           </div>
         </div>
         <div className="mt-10 pt-8 border-t border-white/10 flex flex-wrap items-center justify-between gap-6">
-          <span className="font-display text-xs uppercase tracking-widest text-off-white/80">Connect</span>
+          {email ? (
+            <a
+              href={`mailto:${email}`}
+              className="font-display text-xs uppercase tracking-widest text-off-white/80 hover:text-off-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-off-white/40 rounded-sm"
+            >
+              Connect
+            </a>
+          ) : (
+            <span className="font-display text-xs uppercase tracking-widest text-off-white/80">Connect</span>
+          )}
           <div className="flex items-center gap-4">
             {social.facebook && social.facebookVisible === true ? (
               <a href={social.facebook} target="_blank" rel="noopener noreferrer" className={`${SOCIAL_ICON_BASE} ${SOCIAL_HOVER.facebook}`} aria-label="Facebook">

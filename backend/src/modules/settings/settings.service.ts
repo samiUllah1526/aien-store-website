@@ -10,6 +10,8 @@ export interface AboutValue {
   title?: string;
   subtitle?: string;
   content?: string;
+  /** Full-bleed banner on /about (URL or path; same as hero slides). */
+  bannerImageUrl?: string;
 }
 
 export interface FooterValue {

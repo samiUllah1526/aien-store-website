@@ -3,6 +3,8 @@ import { Controller, useFieldArray } from 'react-hook-form';
 import { api, getApiBaseUrl, uploadFile } from '../lib/api';
 import { uploadMedia } from '../lib/media-upload';
 import { toastSuccess, toastError } from '../lib/toast';
+import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
+import { AdminImagePreviewModal } from './AdminImagePreviewModal';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -24,6 +26,7 @@ interface AboutValue {
   title?: string;
   subtitle?: string;
   content?: string;
+  bannerImageUrl?: string;
 }
 interface FooterValue {
   tagline?: string;
@@ -114,10 +117,17 @@ export function SettingsManager() {
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [uploadingHeroSlideIndex, setUploadingHeroSlideIndex] = useState<number | null>(null);
+  const [uploadingAboutBanner, setUploadingAboutBanner] = useState(false);
+  const [aboutBannerDragOver, setAboutBannerDragOver] = useState(false);
+  const [aboutBannerPreviewOpen, setAboutBannerPreviewOpen] = useState(false);
+  const aboutBannerFileInputRef = useRef<HTMLInputElement | null>(null);
   const heroFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const [general, setGeneral] = useState<GeneralValue>({});
-  const aboutForm = useZodForm({ schema: aboutSettingsSchema, defaultValues: { title: '', subtitle: '', content: '' } });
+  const aboutForm = useZodForm({
+    schema: aboutSettingsSchema,
+    defaultValues: { title: '', subtitle: '', content: '', bannerImageUrl: '' },
+  });
   const footerForm = useZodForm({ schema: footerSettingsSchema, defaultValues: { tagline: '', copyright: '', email: '', phone: '', hours: '' } });
   const socialForm = useZodForm({
     schema: socialSettingsSchema,
@@ -226,6 +236,46 @@ export function SettingsManager() {
   };
 
   const handleSaveAbout = aboutForm.handleSubmit(async (values) => saveKey('about', values));
+
+  const uploadAboutBannerFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
+      return;
+    }
+    setUploadingAboutBanner(true);
+    setError(null);
+    try {
+      let src: string;
+      try {
+        const result = await uploadMedia(file, 'products');
+        src = result.deliveryUrl;
+      } catch {
+        const base = getApiBaseUrl().replace(/\/$/, '');
+        const res = await uploadFile(file);
+        src = `${base}/media/file/${res.id}`;
+      }
+      if (src) {
+        aboutForm.setValue('bannerImageUrl', src, { shouldDirty: true });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingAboutBanner(false);
+    }
+  };
+
+  const handleAboutBannerFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) void uploadAboutBannerFile(file);
+  };
+
+  const handleAboutBannerDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setAboutBannerDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void uploadAboutBannerFile(file);
+  };
 
   const handleSaveFooter = footerForm.handleSubmit(async (values) => saveKey('footer', values));
 
@@ -540,6 +590,9 @@ export function SettingsManager() {
       {/* About */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">About page</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Optional full-bleed banner at the top of /about (same style as shop category banners). Upload or paste an image URL, then save.
+        </p>
         <form onSubmit={handleSaveAbout} className="space-y-4">
           <div>
             <label htmlFor="about-title" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -564,6 +617,130 @@ export function SettingsManager() {
             />
           </div>
           <div>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Banner image (optional)</span>
+            <input
+              ref={aboutBannerFileInputRef}
+              id="about-banner-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              disabled={uploadingAboutBanner}
+              onChange={handleAboutBannerFileInputChange}
+            />
+            {(aboutForm.watch('bannerImageUrl') ?? '').trim() ? (
+              <button
+                type="button"
+                className="mb-3 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0 text-left dark:border-slate-600 dark:bg-slate-900/40 cursor-zoom-in"
+                onClick={() => setAboutBannerPreviewOpen(true)}
+                aria-label="View banner full size"
+              >
+                <img
+                  src={resolveAdminImageUrl(aboutForm.watch('bannerImageUrl'))}
+                  alt=""
+                  className="max-h-40 w-full object-contain"
+                />
+              </button>
+            ) : (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (!uploadingAboutBanner) aboutBannerFileInputRef.current?.click();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (!uploadingAboutBanner) aboutBannerFileInputRef.current?.click();
+                  }
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAboutBannerDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setAboutBannerDragOver(false);
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={handleAboutBannerDrop}
+                className={`mb-3 flex min-h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors ${
+                  aboutBannerDragOver
+                    ? 'border-slate-500 bg-slate-100 dark:border-slate-400 dark:bg-slate-700/50'
+                    : 'border-slate-300 bg-slate-50/80 hover:border-slate-400 hover:bg-slate-100/80 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-slate-500 dark:hover:bg-slate-800/70'
+                } ${uploadingAboutBanner ? 'pointer-events-none opacity-60' : ''}`}
+              >
+                {uploadingAboutBanner ? (
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Uploading…</span>
+                ) : (
+                  <>
+                    <svg
+                      className="h-10 w-10 text-slate-400 dark:text-slate-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Drag and drop an image here</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">or click to browse — JPEG, PNG, WebP, GIF</p>
+                  </>
+                )}
+              </div>
+            )}
+            <label htmlFor="about-banner-url" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Banner image URL (optional)
+            </label>
+            <input
+              id="about-banner-url"
+              type="url"
+              {...aboutForm.register('bannerImageUrl')}
+              placeholder="https://…"
+              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            {(aboutForm.watch('bannerImageUrl') ?? '').trim() ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={uploadingAboutBanner}
+                  onClick={() => aboutBannerFileInputRef.current?.click()}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  {uploadingAboutBanner ? 'Uploading…' : 'Replace image'}
+                </button>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400"
+                  onClick={() => aboutForm.setValue('bannerImageUrl', '', { shouldDirty: true })}
+                >
+                  Remove banner
+                </button>
+              </div>
+            ) : null}
+            <AdminImagePreviewModal
+              open={aboutBannerPreviewOpen}
+              onClose={() => setAboutBannerPreviewOpen(false)}
+              images={
+                (aboutForm.watch('bannerImageUrl') ?? '').trim()
+                  ? [resolveAdminImageUrl(aboutForm.watch('bannerImageUrl') ?? '')]
+                  : []
+              }
+              initialIndex={0}
+            />
+          </div>
+          <div>
             <label htmlFor="about-content" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Content
             </label>
@@ -583,10 +760,10 @@ export function SettingsManager() {
           </div>
           <button
             type="submit"
-            disabled={saving === 'about'}
+            disabled={saving === 'about' || uploadingAboutBanner}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
-            {saving === 'about' ? 'Saving…' : 'Save about'}
+            {saving === 'about' ? 'Saving…' : uploadingAboutBanner ? 'Uploading…' : 'Save about'}
           </button>
         </form>
       </section>

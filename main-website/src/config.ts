@@ -105,7 +105,7 @@ export const footerContact = {
 export const featureStrip = {
   supportText: envStr('PUBLIC_FEATURE_SUPPORT', 'Full customer support — we\'re here whenever you need us.'),
   supportHours: envStr('PUBLIC_FEATURE_SUPPORT_HOURS', 'MON - SAT | 9am - 5pm'), // kept for backwards compatibility if used elsewhere
-  exchangeText: envStr('PUBLIC_FEATURE_EXCHANGE', '14 days easy exchange. Exchange only.'),
+  exchangeText: envStr('PUBLIC_FEATURE_EXCHANGE', '3 Days 100% Cash Back Gurantee.'),
   shippingText: envStr('PUBLIC_FEATURE_SHIPPING', 'Free delivery on every order.'),
 };
 
