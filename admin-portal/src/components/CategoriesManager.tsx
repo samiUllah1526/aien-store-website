@@ -316,7 +316,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null);
   const [bannerCropSourceFile, setBannerCropSourceFile] = useState<File | null>(null);
   const [bannerCropApplying, setBannerCropApplying] = useState(false);
+  const [bannerDragOver, setBannerDragOver] = useState(false);
   const bannerCropUrlRef = useRef<string | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
   const rootError = form.formState.errors.root?.serverError?.message;
   const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
 
@@ -366,6 +368,13 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
+    if (file) openBannerCrop(file);
+  };
+
+  const handleBannerDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setBannerDragOver(false);
+    const file = e.dataTransfer.files?.[0];
     if (file) openBannerCrop(file);
   };
 
@@ -489,63 +498,131 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Banner image (optional)
             </span>
-            <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-900/40">
-              {bannerDisplayUrl ? (
+            <input
+              ref={bannerFileInputRef}
+              id="cat-banner-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              disabled={uploadingBanner || bannerCropOpen}
+              onChange={handleBannerFileChange}
+            />
+            {bannerDisplayUrl ? (
+              <>
                 <button
                   type="button"
                   onClick={() => setBannerPreviewOpen(true)}
-                  className="relative flex max-h-48 w-full cursor-zoom-in items-center justify-center bg-[length:12px_12px] p-2 [background-image:repeating-conic-gradient(#94a3b8_0%_25%,#cbd5e1_0%_50%)] dark:[background-image:repeating-conic-gradient(#475569_0%_25%,#64748b_0%_50%)]"
+                  className="mb-3 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0 text-left dark:border-slate-600 dark:bg-slate-900/40 cursor-zoom-in"
                   aria-label="View banner full size"
                 >
-                  <img
-                    src={bannerDisplayUrl}
-                    alt=""
-                    className="max-h-44 max-w-full object-contain"
+                  <img src={bannerDisplayUrl} alt="" className="max-h-40 w-full object-contain" />
+                </button>
+                <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/50">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Set image URL manually
+                  </summary>
+                  <input
+                    id="cat-banner"
+                    type="url"
+                    {...form.register('bannerImageUrl')}
+                    placeholder="https://…"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
                   />
-                </button>
-              ) : (
-                <div className="flex min-h-[7rem] items-center justify-center px-4 py-8 text-sm text-slate-500 dark:text-slate-400">
-                  No banner image — upload or set a URL below.
+                </details>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={uploadingBanner || bannerCropOpen}
+                    onClick={() => bannerFileInputRef.current?.click()}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    {uploadingBanner ? 'Uploading…' : bannerCropOpen ? 'Cropping…' : 'Replace image'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      form.setValue('bannerImageUrl', '', { shouldValidate: true, shouldDirty: true });
+                    }}
+                    className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Remove banner
+                  </button>
                 </div>
-              )}
-            </div>
-            <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/50">
-              <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-300">
-                Set image URL manually
-              </summary>
-              <input
-                id="cat-banner"
-                type="url"
-                {...form.register('bannerImageUrl')}
-                placeholder="https://…"
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-              />
-            </details>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="sr-only"
-                  disabled={uploadingBanner || bannerCropOpen}
-                  onChange={handleBannerFileChange}
-                />
-                {uploadingBanner ? 'Uploading…' : bannerCropOpen ? 'Cropping…' : 'Upload image'}
-              </label>
-              
-              {bannerDisplayUrl && (
-                <button
-                  type="button"
+              </>
+            ) : (
+              <>
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
-                    form.setValue('bannerImageUrl', '', { shouldValidate: true, shouldDirty: true });
+                    if (!uploadingBanner && !bannerCropOpen) bannerFileInputRef.current?.click();
                   }}
-                  className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!uploadingBanner && !bannerCropOpen) bannerFileInputRef.current?.click();
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setBannerDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setBannerDragOver(false);
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'copy';
+                  }}
+                  onDrop={handleBannerDrop}
+                  className={`mb-3 flex min-h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors ${
+                    bannerDragOver
+                      ? 'border-slate-500 bg-slate-100 dark:border-slate-400 dark:bg-slate-700/50'
+                      : 'border-slate-300 bg-slate-50/80 hover:border-slate-400 hover:bg-slate-100/80 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-slate-500 dark:hover:bg-slate-800/70'
+                  } ${uploadingBanner || bannerCropOpen ? 'pointer-events-none opacity-60' : ''}`}
                 >
-                  Remove banner
-                </button>
-              )}
-            </div>
-            
+                  {uploadingBanner ? (
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Uploading…</span>
+                  ) : (
+                    <>
+                      <svg
+                        className="h-10 w-10 text-slate-400 dark:text-slate-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Drag and drop an image here</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">or click to browse — JPEG, PNG, WebP, GIF</p>
+                    </>
+                  )}
+                </div>
+                <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/50">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Set image URL manually
+                  </summary>
+                  <input
+                    id="cat-banner"
+                    type="url"
+                    {...form.register('bannerImageUrl')}
+                    placeholder="https://…"
+                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+                  />
+                </details>
+              </>
+            )}
             {bannerUploadError && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{bannerUploadError}</p>
             )}
