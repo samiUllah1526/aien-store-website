@@ -11,11 +11,14 @@ import { showToast } from '../../store/toastStore';
 
 const PAGE_SIZE = 20;
 const DEFAULT_BANNER_IMAGE = 'https://picsum.photos/seed/shop/1920/600';
+const DEFAULT_SHOP_DESCRIPTION =
+  'Return to silence. Hoodies and oversized shirts with poetry on fabric.';
 
 interface LandingCategory {
   id: string;
   name: string;
   slug: string;
+  description: string | null;
   bannerImageUrl: string | null;
 }
 
@@ -64,6 +67,7 @@ export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [bannerImage, setBannerImage] = useState<string>(DEFAULT_BANNER_IMAGE);
+  const [shopDescription, setShopDescription] = useState<string>(DEFAULT_SHOP_DESCRIPTION);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,6 +99,8 @@ export default function ShopPage() {
             ? landingData.data.find((c) => (c.slug || '').toLowerCase() === slug)
             : landingData.data[0];
           setBannerImage(cat?.bannerImageUrl ?? DEFAULT_BANNER_IMAGE);
+          const desc = cat?.description?.trim();
+          setShopDescription(desc || DEFAULT_SHOP_DESCRIPTION);
         }
       } catch (err) {
         if (!cancelled) showToast(err instanceof Error ? err.message : 'Failed to load');
@@ -113,7 +119,7 @@ export default function ShopPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
           <header className="mb-16">
             <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
-            <p className="mt-4 text-ash max-w-prose">Return to silence. Hoodies and oversized shirts with poetry on fabric.</p>
+            <p className="mt-4 text-ash max-w-prose">{DEFAULT_SHOP_DESCRIPTION}</p>
           </header>
           <p className="text-ash py-12 text-center">Loading…</p>
         </div>
@@ -127,9 +133,7 @@ export default function ShopPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
         <header className="mb-16">
           <h1 className="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">Shop</h1>
-          <p className="mt-4 text-ash max-w-prose">
-            Return to silence. Hoodies and oversized shirts with poetry on fabric.
-          </p>
+          <p className="mt-4 text-ash max-w-prose">{shopDescription}</p>
         </header>
         <ShopGrid
           initialProducts={products}
