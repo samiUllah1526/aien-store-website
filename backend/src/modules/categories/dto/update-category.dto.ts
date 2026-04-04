@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -6,6 +7,8 @@ import {
   ValidateIf,
   IsBoolean,
   IsInt,
+  IsArray,
+  IsUUID,
 } from 'class-validator';
 
 export class UpdateCategoryDto {
@@ -43,4 +46,14 @@ export class UpdateCategoryDto {
   @ValidateIf((_, v) => v != null)
   @IsString()
   parentId?: string | null;
+
+  /**
+   * When set, replaces all product–category links for this category (transactional with other fields).
+   * Omit to leave memberships unchanged. Use [] to remove all products from this category.
+   */
+  @IsOptional()
+  @Transform(({ value }) => (value === null ? undefined : value))
+  @IsArray()
+  @IsUUID('all', { each: true })
+  productIds?: string[];
 }

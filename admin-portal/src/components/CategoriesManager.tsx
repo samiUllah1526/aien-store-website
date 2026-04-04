@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { z } from 'zod';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
+import type { ProductListItem } from '../lib/types';
+import { toastSuccess } from '../lib/toast';
+import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { useDebounce } from '../hooks/useDebounce';
 import type { Category } from '../lib/types';
 import { useZodForm } from '../lib/forms/useZodForm';
@@ -294,6 +297,9 @@ const categoryFormSchema = z.object({
 });
 
 function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: CategoryFormModalProps) {
+  const canAssignProducts =
+    !!category && hasPermission('categories:write') && hasPermission('products:read');
+
   const form = useZodForm({
     schema: categoryFormSchema,
     defaultValues: {
@@ -321,6 +327,63 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
   const rootError = form.formState.errors.root?.serverError?.message;
   const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
+
+  const [memberProducts, setMemberProducts] = useState<ProductListItem[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [pickerSelectedIds, setPickerSelectedIds] = useState<string[]>([]);
+
+  const fetchCategoryMembers = useCallback(async () => {
+    if (!category?.id) return;
+    setMembersLoading(true);
+    try {
+      const res = await api.getList<ProductListItem>('/products', {
+        categoryId: category.id,
+        limit: 100,
+        page: 1,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      });
+      setMemberProducts(res.data ?? []);
+    } catch {
+      setMemberProducts([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [category?.id]);
+
+  useEffect(() => {
+    if (category?.id && canAssignProducts) {
+      void fetchCategoryMembers();
+    } else {
+      setMemberProducts([]);
+    }
+  }, [category?.id, canAssignProducts, fetchCategoryMembers]);
+
+  const fetchProductsForPicker = useCallback(
+    async ({ search, page }: { search: string; page: number }) => {
+      const res = await api.getList<ProductListItem>('/products', {
+        search: search || undefined,
+        page,
+        limit: 20,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      });
+      const limit = 20;
+      const total = res.meta?.total ?? 0;
+      const hasMore = page * limit < total;
+      const inCategory = new Set(memberProducts.map((m) => m.id));
+      const items = (res.data ?? [])
+        .filter((p) => !inCategory.has(p.id))
+        .map((p) => ({ id: p.id, label: p.name }));
+      return { items, hasMore };
+    },
+    [memberProducts],
+  );
+
+  const removeMemberProduct = (productId: string) => {
+    setMemberProducts((prev) => prev.filter((p) => p.id !== productId));
+    setPickerSelectedIds((prev) => prev.filter((id) => id !== productId));
+  };
 
   const closeBannerCrop = useCallback(() => {
     if (bannerCropUrlRef.current) {
@@ -383,7 +446,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
     setSubmitting(true);
     try {
       const landingOrder = values.landingOrder?.trim();
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: values.name.trim(),
         slug: values.slug.trim(),
         description: values.description?.trim() || undefined,
@@ -392,11 +455,19 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
         landingOrder: landingOrder ? Number.parseInt(landingOrder, 10) : category ? null : undefined,
         parentId: values.parentId || null,
       };
+      if (category && canAssignProducts) {
+        const ids = [
+          ...new Set([...memberProducts.map((p) => p.id), ...pickerSelectedIds]),
+        ];
+        payload.productIds = ids;
+      }
       if (category) {
         await api.put(`/categories/${category.id}`, payload);
       } else {
         await api.post('/categories', payload);
       }
+      toastSuccess('Category saved.');
+      setPickerSelectedIds([]);
       onSuccess();
     } catch (err) {
       mapApiErrorToForm(err, form.setError);
@@ -408,7 +479,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/50 dark:bg-black/60" aria-hidden onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {category ? 'Edit category' : 'Add category'}
@@ -643,6 +714,55 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               applying={bannerCropApplying}
             />
           </div>
+          {canAssignProducts && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-600 dark:bg-slate-900/30">
+              <span className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
+                Products in this category
+              </span>
+              {membersLoading ? (
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">Loading products…</p>
+              ) : memberProducts.length === 0 ? (
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">No products in this category yet.</p>
+              ) : (
+                <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800">
+                  {memberProducts.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between gap-2 rounded px-1 py-1.5 text-sm text-slate-800 dark:text-slate-200"
+                    >
+                      <span className="min-w-0 truncate" title={p.name}>
+                        {p.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeMemberProduct(p.id)}
+                        className="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <SearchableMultiSelect
+                label="Add existing products"
+                placeholder="Search products…"
+                emptyMessage="No products found"
+                selectedIds={pickerSelectedIds}
+                onSelectedIdsChange={setPickerSelectedIds}
+                fetchItems={fetchProductsForPicker}
+              />
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Changes to this list (add from search, remove) are applied when you click{' '}
+                <span className="font-medium">Update</span> — category fields and product membership save together.
+              </p>
+            </div>
+          )}
+          {!category && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              After you create this category, edit it to assign products from here or from each product&apos;s page.
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <input
               id="cat-show-landing"
@@ -672,7 +792,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={submitting || uploadingBanner}
+              disabled={submitting || uploadingBanner || (canAssignProducts && membersLoading)}
               className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
             >
               {submitting ? 'Saving…' : uploadingBanner ? 'Uploading…' : category ? 'Update' : 'Create'}
