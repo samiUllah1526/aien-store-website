@@ -56,13 +56,9 @@ function logUnauthorizedDebug(path: string, message: string, token: string | nul
 
 async function request<T>(
   path: string,
-  options: RequestInit & {
-    params?: Record<string, string | number | undefined>;
-    /** When true, failed requests do not call toastError (caller handles). 401 still toasts and redirects. */
-    suppressErrorToast?: boolean;
-  } = {},
+  options: RequestInit & { params?: Record<string, string | number | undefined> } = {}
 ): Promise<T> {
-  const { params, suppressErrorToast, ...init } = options;
+  const { params, ...init } = options;
   const base = adminApiBaseUrl.replace(/\/$/, '');
   const url = new URL(path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`);
   if (params) {
@@ -109,7 +105,7 @@ async function request<T>(
 
     if (!res.ok) {
       const msg = normalizeErrorMessage(json.message, res.statusText || `Request failed (${res.status})`);
-      if (!suppressErrorToast) toastError(msg);
+      toastError(msg);
       throw new Error(msg);
     }
     return json as T;
@@ -157,16 +153,8 @@ export async function uploadFile(file: File): Promise<{ id: string }> {
 }
 
 export const api = {
-  get<T>(
-    path: string,
-    params?: Record<string, string | number | undefined>,
-    options?: { suppressErrorToast?: boolean },
-  ) {
-    return request<ApiSingleResponse<T>>(path, {
-      method: 'GET',
-      params,
-      suppressErrorToast: options?.suppressErrorToast,
-    });
+  get<T>(path: string, params?: Record<string, string | number | undefined>) {
+    return request<ApiSingleResponse<T>>(path, { method: 'GET', params });
   },
   getList<T>(path: string, params?: Record<string, string | number | undefined>) {
     return request<ApiListResponse<T>>(path, { method: 'GET', params });
@@ -195,28 +183,5 @@ export async function deployMainWebsite(reason?: string): Promise<{ actionsUrl: 
     throw new Error(msg);
   }
   toastSuccess(json.message || 'Rebuild queued in GitHub Actions.');
-  return json.data;
-}
-
-export interface MainWebsiteDeployStatusData {
-  actionsUrl: string;
-  run: {
-    htmlUrl: string;
-    status: string;
-    conclusion: string | null;
-    createdAt: string;
-    updatedAt: string;
-  } | null;
-}
-
-/** Latest GitHub Actions run for main-website deploy (branch main). Does not toast on failure. */
-export async function getMainWebsiteDeployStatus(): Promise<MainWebsiteDeployStatusData> {
-  const json = await api.get<MainWebsiteDeployStatusData>('/deploy/main-website/status', undefined, {
-    suppressErrorToast: true,
-  });
-  if (!json.success || !json.data) {
-    const msg = typeof json.message === 'string' ? json.message : 'Could not load deploy status';
-    throw new Error(msg);
-  }
   return json.data;
 }

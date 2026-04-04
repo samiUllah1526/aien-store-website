@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
@@ -14,13 +14,6 @@ import { DeployMainWebsiteDto } from './dto/deploy-main-website.dto';
 @ApiBearerAuth('bearer')
 export class AdminDeployController {
   constructor(private readonly githubActions: GithubActionsService) {}
-
-  @Get('main-website/status')
-  @RequirePermission('deploy:website')
-  async getMainWebsiteDeployStatus() {
-    const data = await this.githubActions.getMainWebsiteWorkflowLatestRun();
-    return ApiResponseDto.ok(data);
-  }
 
   @Post('main-website')
   @RequirePermission('deploy:website')
