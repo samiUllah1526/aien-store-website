@@ -1,9 +1,26 @@
- ---
+---
 /**
  * Footer: minimal, with tagline and links.
- * White space and typography aligned with brand.
+ * Shop category links are resolved at build time from the store API.
  */
+import { storeApiBaseUrl } from '../config';
+
+type FooterCategory = { name: string; slug: string };
+
+let shopCategories: FooterCategory[] = [];
+try {
+  const res = await fetch(`${storeApiBaseUrl}/categories`);
+  const json = await res.json();
+  if (res.ok && json.success && Array.isArray(json.data)) {
+    shopCategories = (json.data as { name: string; slug: string }[])
+      .filter((c) => c.slug?.trim())
+      .map((c) => ({ name: c.name, slug: c.slug.trim() }));
+  }
+} catch (err) {
+  console.error('[Footer] categories fetch:', err);
+}
 ---
+
 <footer class="bg-charcoal text-cream mt-auto">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-16">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
@@ -16,8 +33,15 @@
       <div>
         <h3 class="font-display text-cream text-sm uppercase tracking-wider mb-3">Shop</h3>
         <ul class="space-y-2 text-sand/90 text-sm">
-          <li><a href="/shop/category/shirts" class="hover:text-gold transition-colors">Shirts</a></li>
-          <li><a href="/shop/category/hoodies" class="hover:text-gold transition-colors">Hoodies</a></li>
+          {
+            shopCategories.map((cat) => (
+              <li>
+                <a href={`/shop/category/${cat.slug}`} class="hover:text-gold transition-colors">
+                  {cat.name}
+                </a>
+              </li>
+            ))
+          }
           <li><a href="/shop" class="hover:text-gold transition-colors">All</a></li>
         </ul>
       </div>
