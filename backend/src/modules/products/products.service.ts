@@ -438,9 +438,72 @@ export class ProductsService {
 
     if (dto.variants !== undefined) {
       const normalized = normalizedVariantsForMedia ?? [];
-      assertUniqueSkusAmongIncoming(normalized);
       await this.prisma.$transaction(async (tx) => {
-        await this.executeVariantFullReplace(tx, id, normalized);
+        const existing = await tx.productVariant.findMany({
+          where: { productId: id },
+          select: { id: true },
+        });
+        const existingIds = new Set(existing.map((v) => v.id));
+        const seenIds = new Set<string>();
+        for (const variant of normalized) {
+          if (variant.id && existingIds.has(variant.id)) {
+            seenIds.add(variant.id);
+            await tx.productVariant.update({
+              where: { id: variant.id },
+              data: {
+                color: variant.color,
+                size: variant.size,
+                sku: variant.sku,
+                stockQuantity: variant.stockQuantity,
+                priceOverrideCents: variant.priceOverrideCents,
+                isActive: variant.isActive,
+              },
+            });
+            if (variant.mediaIds !== undefined) {
+              await this.syncVariantMedia(variant.id, variant.mediaIds, tx);
+            }
+          } else {
+            const created = await tx.productVariant.create({
+              data: {
+                productId: id,
+                color: variant.color,
+                size: variant.size,
+                sku: variant.sku,
+                stockQuantity: variant.stockQuantity,
+                priceOverrideCents: variant.priceOverrideCents,
+                isActive: variant.isActive,
+              },
+              select: { id: true },
+            });
+            seenIds.add(created.id);
+            if (variant.mediaIds?.length) {
+              await this.attachVariantMedia(created.id, variant.mediaIds, tx);
+            }
+          }
+        }
+        const toDeactivate = [...existingIds].filter(
+          (variantId) => !seenIds.has(variantId),
+        );
+        if (toDeactivate.length) {
+          await tx.productVariant.updateMany({
+            where: { id: { in: toDeactivate } },
+            data: { isActive: false, stockQuantity: 0 },
+          });
+        }
+        const allVariants = await tx.productVariant.findMany({
+          where: { productId: id },
+          select: { size: true, stockQuantity: true },
+        });
+        await tx.product.update({
+          where: { id },
+          data: {
+            sizes: [...new Set(allVariants.map((v) => v.size))] as object,
+            stockQuantity: allVariants.reduce(
+              (sum, v) => sum + v.stockQuantity,
+              0,
+            ),
+          },
+        });
       });
     }
 
@@ -576,8 +639,9 @@ export class ProductsService {
   private async attachVariantMedia(
     variantId: string,
     mediaIds: string[],
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<void> {
-    await this.prisma.productVariantMedia.createMany({
+    await client.productVariantMedia.createMany({
       data: mediaIds.map((mediaId, index) => ({
         variantId,
         mediaId,
@@ -590,10 +654,11 @@ export class ProductsService {
   private async syncVariantMedia(
     variantId: string,
     mediaIds: string[],
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<void> {
-    await this.prisma.productVariantMedia.deleteMany({ where: { variantId } });
+    await client.productVariantMedia.deleteMany({ where: { variantId } });
     if (mediaIds.length > 0) {
-      await this.attachVariantMedia(variantId, mediaIds);
+      await this.attachVariantMedia(variantId, mediaIds, client);
     }
   }
 
