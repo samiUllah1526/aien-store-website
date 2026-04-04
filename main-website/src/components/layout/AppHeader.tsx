@@ -52,6 +52,63 @@ interface SearchProduct {
 const SEARCH_DEBOUNCE_MS = 280;
 const SEARCH_LIMIT = 6;
 
+function NavSearchResults({
+  searchLoading,
+  searchResults,
+  searchQuery,
+  onPickResult,
+}: {
+  searchLoading: boolean;
+  searchResults: SearchProduct[];
+  searchQuery: string;
+  onPickResult: () => void;
+}) {
+  return (
+    <>
+      {searchLoading ? (
+        <div className="px-4 py-6 text-center text-sm text-ash">Searching…</div>
+      ) : searchResults.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-ash">No products found.</div>
+      ) : (
+        <ul className="divide-y divide-ash/20">
+          {searchResults.map((product) => (
+            <li key={product.id} role="option">
+              <a
+                href={`/shop/${product.slug}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-ash/10 dark:hover:bg-ash/20 transition-colors text-left"
+                onClick={onPickResult}
+              >
+                <span className="flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 rounded overflow-hidden bg-ash/10">
+                  {product.image ? (
+                    <img src={product.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center text-ash text-xs" aria-hidden>—</span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-soft-charcoal dark:text-off-white truncate">{product.name}</span>
+                  <span className="block text-xs text-ash mt-0.5">{formatMoney(product.price, product.currency)}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!searchLoading && searchResults.length > 0 && (
+        <div className="border-t border-ash/20 pt-2 mt-1">
+          <a
+            href={`/shop?q=${encodeURIComponent(searchQuery.trim())}`}
+            className="block px-4 py-2 text-sm font-medium text-mehndi hover:bg-ash/10 dark:hover:bg-ash/20 text-center"
+            onClick={onPickResult}
+          >
+            View all results
+          </a>
+        </div>
+      )}
+    </>
+  );
+}
+
 interface AppHeaderProps {
   logoSrc: string;
   landingCategories?: LandingCategory[];
@@ -76,7 +133,6 @@ function NavLink({
       }`}
     >
       <span className="relative z-10">{label}</span>
-      {/* Hover: underline animates left to right */}
       <span
         className={`absolute bottom-2 left-1 right-1 h-0.5 bg-mehndi transition-transform duration-300 ease-out origin-left ${
           isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
@@ -97,7 +153,8 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
 
   const runSearch = useCallback((q: string) => {
     const term = q.trim();
@@ -148,9 +205,10 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setSearchOpen(false);
-      }
+      const t = e.target as Node;
+      const inDesktop = desktopSearchRef.current?.contains(t);
+      const inMobile = mobileSearchRef.current?.contains(t);
+      if (!inDesktop && !inMobile) setSearchOpen(false);
     };
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSearchOpen(false);
@@ -174,10 +232,12 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  const closeSearch = () => setSearchOpen(false);
+
   return (
     <header className="sticky top-0 z-50 bg-bone dark:bg-charcoal border-b border-ash/20 transition-colors duration-400">
       <nav className="w-full" aria-label="Main">
-        <div className="grid grid-cols-3 items-center gap-2 sm:gap-4 h-14 sm:h-16 min-h-[3.5rem]">
+        <div className="grid grid-cols-[1fr_auto] sm:grid-cols-3 items-center gap-2 sm:gap-4 h-14 sm:h-16 min-h-[3.5rem]">
           <a
             href="/"
             className="font-display text-lg sm:text-xl text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 focus-ring rounded justify-self-start"
@@ -189,7 +249,10 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
               <span className="text-xl sm:text-2xl" aria-hidden>ع</span>
             )}
           </a>
-          <div ref={searchContainerRef} className="hidden sm:flex justify-center min-w-0 px-2 col-start-2 relative">
+          <div
+            ref={desktopSearchRef}
+            className="hidden sm:flex col-start-2 justify-center min-w-0 px-2 relative w-full max-w-md mx-auto"
+          >
             <label htmlFor="nav-search" className="sr-only">Search products</label>
             <div className="relative w-full max-w-md min-w-0">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft-charcoal dark:text-off-white" aria-hidden>
@@ -219,55 +282,64 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
                   role="listbox"
                   aria-label="Search results"
                 >
-                  {searchLoading ? (
-                    <div className="px-4 py-6 text-center text-sm text-ash">Searching…</div>
-                  ) : searchResults.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-sm text-ash">No products found.</div>
-                  ) : (
-                    <ul className="divide-y divide-ash/20">
-                      {searchResults.map((product) => (
-                        <li key={product.id} role="option">
-                          <a
-                            href={`/shop/${product.slug}`}
-                            className="flex items-center gap-3 px-4 py-3 hover:bg-ash/10 dark:hover:bg-ash/20 transition-colors text-left"
-                            onClick={() => setSearchOpen(false)}
-                          >
-                            <span className="flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 rounded overflow-hidden bg-ash/10">
-                              {product.image ? (
-                                <img src={product.image} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="w-full h-full flex items-center justify-center text-ash text-xs" aria-hidden>—</span>
-                              )}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-medium text-soft-charcoal dark:text-off-white truncate">{product.name}</span>
-                              <span className="block text-xs text-ash mt-0.5">{formatMoney(product.price, product.currency)}</span>
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {searchOpen && searchQuery.trim() !== '' && !searchLoading && searchResults.length > 0 && (
-                    <div className="border-t border-ash/20 pt-2 mt-1">
-                      <a
-                        href={`/shop?q=${encodeURIComponent(searchQuery.trim())}`}
-                        className="block px-4 py-2 text-sm font-medium text-mehndi hover:bg-ash/10 dark:hover:bg-ash/20 text-center"
-                        onClick={() => setSearchOpen(false)}
-                      >
-                        View all results
-                      </a>
-                    </div>
-                  )}
+                  <NavSearchResults
+                    searchLoading={searchLoading}
+                    searchResults={searchResults}
+                    searchQuery={searchQuery}
+                    onPickResult={closeSearch}
+                  />
                 </div>
               )}
             </div>
           </div>
-          <ul className="flex items-center gap-2 sm:gap-4 justify-self-end col-start-3">
+          <ul className="flex items-center gap-2 sm:gap-4 justify-self-end col-start-2 sm:col-start-3">
             <li className="flex items-center"><ThemeToggle /></li>
             <li><CartIcon /></li>
             <ProfileMenu />
           </ul>
+        </div>
+        <div
+          ref={mobileSearchRef}
+          className="sm:hidden border-t border-ash/10 pb-3 pt-2.5 w-full relative z-[55]"
+        >
+          <label htmlFor="nav-search-mobile" className="sr-only">Search products</label>
+          <div className="relative w-full min-w-0">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft-charcoal dark:text-off-white" aria-hidden>
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </span>
+            <input
+              id="nav-search-mobile"
+              type="search"
+              autoComplete="off"
+              placeholder="Search Product"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runSearch(searchQuery);
+                }
+              }}
+              onFocus={() => searchQuery.trim() && setSearchOpen(true)}
+              className="w-full min-w-0 pl-9 pr-3 py-2 rounded-lg border border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white placeholder:text-ash focus:outline-none focus:ring-2 focus:ring-mehndi/50 text-sm"
+            />
+            {searchOpen && searchQuery.trim() !== '' && (
+              <div
+                className="absolute left-0 right-0 top-full mt-1 py-2 rounded-lg border border-ash/30 bg-bone dark:bg-charcoal-light shadow-lg z-[60] max-h-[min(50vh,280px)] overflow-y-auto"
+                role="listbox"
+                aria-label="Search results"
+              >
+                <NavSearchResults
+                  searchLoading={searchLoading}
+                  searchResults={searchResults}
+                  searchQuery={searchQuery}
+                  onPickResult={closeSearch}
+                />
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-8 py-2.5 sm:py-3 border-t border-ash/10 w-full">
           {navLinks.map((link) => (
