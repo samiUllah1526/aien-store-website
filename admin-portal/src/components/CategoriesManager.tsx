@@ -259,7 +259,6 @@ export function CategoriesManager() {
       {formOpen && (
         <CategoryFormModal
           category={formOpen === 'edit' ? editingCategory : null}
-          parentOptions={categories}
           onClose={() => {
             setFormOpen(null);
             setEditingCategory(null);
@@ -277,7 +276,6 @@ export function CategoriesManager() {
 
 interface CategoryFormModalProps {
   category: Category | null;
-  parentOptions: Category[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -296,7 +294,7 @@ const categoryFormSchema = z.object({
   parentId: z.string().optional(),
 });
 
-function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: CategoryFormModalProps) {
+function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalProps) {
   const canAssignProducts =
     !!category && hasPermission('categories:write') && hasPermission('products:read');
 
@@ -328,9 +326,8 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const rootError = form.formState.errors.root?.serverError?.message;
   const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
 
-  const [memberProducts, setMemberProducts] = useState<ProductListItem[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [pickerSelectedIds, setPickerSelectedIds] = useState<string[]>([]);
 
   const fetchCategoryMembers = useCallback(async () => {
     if (!category?.id) return;
@@ -343,9 +340,9 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
         sortBy: 'name',
         sortOrder: 'asc',
       });
-      setMemberProducts(res.data ?? []);
+      setSelectedProductIds((res.data ?? []).map((p) => p.id));
     } catch {
-      setMemberProducts([]);
+      setSelectedProductIds([]);
     } finally {
       setMembersLoading(false);
     }
@@ -355,35 +352,24 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
     if (category?.id && canAssignProducts) {
       void fetchCategoryMembers();
     } else {
-      setMemberProducts([]);
+      setSelectedProductIds([]);
     }
   }, [category?.id, canAssignProducts, fetchCategoryMembers]);
 
-  const fetchProductsForPicker = useCallback(
-    async ({ search, page }: { search: string; page: number }) => {
-      const res = await api.getList<ProductListItem>('/products', {
-        search: search || undefined,
-        page,
-        limit: 20,
-        sortBy: 'name',
-        sortOrder: 'asc',
-      });
-      const limit = 20;
-      const total = res.meta?.total ?? 0;
-      const hasMore = page * limit < total;
-      const inCategory = new Set(memberProducts.map((m) => m.id));
-      const items = (res.data ?? [])
-        .filter((p) => !inCategory.has(p.id))
-        .map((p) => ({ id: p.id, label: p.name }));
-      return { items, hasMore };
-    },
-    [memberProducts],
-  );
-
-  const removeMemberProduct = (productId: string) => {
-    setMemberProducts((prev) => prev.filter((p) => p.id !== productId));
-    setPickerSelectedIds((prev) => prev.filter((id) => id !== productId));
-  };
+  const fetchProductsForPicker = useCallback(async ({ search, page }: { search: string; page: number }) => {
+    const res = await api.getList<ProductListItem>('/products', {
+      search: search || undefined,
+      page,
+      limit: 20,
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+    const limit = 20;
+    const total = res.meta?.total ?? 0;
+    const hasMore = page * limit < total;
+    const items = (res.data ?? []).map((p) => ({ id: p.id, label: p.name }));
+    return { items, hasMore };
+  }, []);
 
   const closeBannerCrop = useCallback(() => {
     if (bannerCropUrlRef.current) {
@@ -456,10 +442,7 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
         parentId: values.parentId || null,
       };
       if (category && canAssignProducts) {
-        const ids = [
-          ...new Set([...memberProducts.map((p) => p.id), ...pickerSelectedIds]),
-        ];
-        payload.productIds = ids;
+        payload.productIds = [...new Set(selectedProductIds)];
       }
       if (category) {
         await api.put(`/categories/${category.id}`, payload);
@@ -467,7 +450,6 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
         await api.post('/categories', payload);
       }
       toastSuccess('Category saved.');
-      setPickerSelectedIds([]);
       onSuccess();
     } catch (err) {
       mapApiErrorToForm(err, form.setError);
@@ -546,25 +528,25 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
-          <div>
-            <label htmlFor="cat-parent" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Parent category (optional)
-            </label>
-            <select
-              id="cat-parent"
-              {...form.register('parentId')}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value="">None</option>
-              {parentOptions
-                .filter((c) => !category || c.id !== category.id)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-          </div>
+          <input type="hidden" {...form.register('parentId')} />
+          {canAssignProducts &&
+            (membersLoading ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading products…</p>
+            ) : (
+              <div>
+                <SearchableMultiSelect
+                  label="Products"
+                  placeholder="Search products…"
+                  emptyMessage="No products found"
+                  selectedIds={selectedProductIds}
+                  onSelectedIdsChange={setSelectedProductIds}
+                  fetchItems={fetchProductsForPicker}
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Category membership matches your selection here. Save with Update.
+                </p>
+              </div>
+            ))}
           <div>
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Banner image (optional)
@@ -714,50 +696,6 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               applying={bannerCropApplying}
             />
           </div>
-          {canAssignProducts && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-600 dark:bg-slate-900/30">
-              <span className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
-                Products in this category
-              </span>
-              {membersLoading ? (
-                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">Loading products…</p>
-              ) : memberProducts.length === 0 ? (
-                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">No products in this category yet.</p>
-              ) : (
-                <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800">
-                  {memberProducts.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between gap-2 rounded px-1 py-1.5 text-sm text-slate-800 dark:text-slate-200"
-                    >
-                      <span className="min-w-0 truncate" title={p.name}>
-                        {p.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeMemberProduct(p.id)}
-                        className="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <SearchableMultiSelect
-                label="Add existing products"
-                placeholder="Search products…"
-                emptyMessage="No products found"
-                selectedIds={pickerSelectedIds}
-                onSelectedIdsChange={setPickerSelectedIds}
-                fetchItems={fetchProductsForPicker}
-              />
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                Changes to this list (add from search, remove) are applied when you click{' '}
-                <span className="font-medium">Update</span> — category fields and product membership save together.
-              </p>
-            </div>
-          )}
           {!category && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               After you create this category, edit it to assign products from here or from each product&apos;s page.
