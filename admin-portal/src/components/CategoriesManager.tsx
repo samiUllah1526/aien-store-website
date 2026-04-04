@@ -7,6 +7,8 @@ import type { Category } from '../lib/types';
 import { useZodForm } from '../lib/forms/useZodForm';
 import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 import { uploadMedia } from '../lib/media-upload';
+import { AdminImagePreviewModal } from './AdminImagePreviewModal';
+import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 
 function slugFromName(value: string): string {
   return value
@@ -304,10 +306,13 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
     },
   });
   const showOnLanding = form.watch('showOnLanding');
+  const bannerImageUrl = form.watch('bannerImageUrl');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const [bannerPreviewOpen, setBannerPreviewOpen] = useState(false);
   const rootError = form.formState.errors.root?.serverError?.message;
+  const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
 
   const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -442,16 +447,41 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
             </select>
           </div>
           <div>
-            <label htmlFor="cat-banner" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Banner image URL (optional)
-            </label>
-            <input
-              id="cat-banner"
-              type="url"
-              {...form.register('bannerImageUrl')}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Banner image (optional)
+            </span>
+            <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-900/40">
+              {bannerDisplayUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setBannerPreviewOpen(true)}
+                  className="relative flex max-h-48 w-full cursor-zoom-in items-center justify-center bg-[length:12px_12px] p-2 [background-image:repeating-conic-gradient(#94a3b8_0%_25%,#cbd5e1_0%_50%)] dark:[background-image:repeating-conic-gradient(#475569_0%_25%,#64748b_0%_50%)]"
+                  aria-label="View banner full size"
+                >
+                  <img
+                    src={bannerDisplayUrl}
+                    alt=""
+                    className="max-h-44 max-w-full object-contain"
+                  />
+                </button>
+              ) : (
+                <div className="flex min-h-[7rem] items-center justify-center px-4 py-8 text-sm text-slate-500 dark:text-slate-400">
+                  No banner image — upload or set a URL below.
+                </div>
+              )}
+            </div>
+            <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/50">
+              <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-300">
+                Set image URL manually
+              </summary>
+              <input
+                id="cat-banner"
+                type="url"
+                {...form.register('bannerImageUrl')}
+                placeholder="https://…"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              />
+            </details>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
                 <input
@@ -463,10 +493,29 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
                 />
                 {uploadingBanner ? 'Uploading…' : 'Upload image'}
               </label>
+              
+              {bannerDisplayUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    form.setValue('bannerImageUrl', '', { shouldValidate: true, shouldDirty: true });
+                  }}
+                  className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  Remove banner
+                </button>
+              )}
             </div>
+            
             {bannerUploadError && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">{bannerUploadError}</p>
             )}
+            <AdminImagePreviewModal
+              open={bannerPreviewOpen}
+              onClose={() => setBannerPreviewOpen(false)}
+              images={bannerDisplayUrl ? [bannerDisplayUrl] : []}
+              initialIndex={0}
+            />
           </div>
           <div className="flex items-center gap-2">
             <input
