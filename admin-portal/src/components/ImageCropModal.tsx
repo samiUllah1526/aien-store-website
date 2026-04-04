@@ -5,6 +5,8 @@ import { getCroppedImageFile } from '../lib/cropImage';
 export const ASPECT_PRODUCT = 1;
 /** Matches storefront category/about full-bleed banners (Tailwind aspect-video ≈ 16:9). */
 export const ASPECT_BANNER = 16 / 9;
+/** Wide header / navbar logo (horizontal wordmark). */
+export const ASPECT_LOGO = 3;
 
 interface ImageCropModalProps {
   open: boolean;

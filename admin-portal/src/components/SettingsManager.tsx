@@ -5,7 +5,7 @@ import { uploadMedia } from '../lib/media-upload';
 import { toastSuccess, toastError } from '../lib/toast';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
-import { ImageCropModal, ASPECT_BANNER } from './ImageCropModal';
+import { ImageCropModal, ASPECT_BANNER, ASPECT_LOGO, ASPECT_PRODUCT } from './ImageCropModal';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -112,6 +112,12 @@ function logoFullUrl(logoPath: string | null): string {
   return logoPath.startsWith('http') ? logoPath : `${base}/media/file/${logoPath}`;
 }
 
+/** Raster types supported by canvas crop export (see lib/cropImage.ts). */
+function canCropWithCanvas(file: File): boolean {
+  const t = file.type.toLowerCase();
+  return t === 'image/jpeg' || t === 'image/png' || t === 'image/webp' || t === 'image/gif';
+}
+
 export function SettingsManager() {
   const [settings, setSettings] = useState<SettingsMap | null>(null);
   const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
@@ -136,6 +142,22 @@ export function SettingsManager() {
   const [heroCropSourceFile, setHeroCropSourceFile] = useState<File | null>(null);
   const [heroCropApplying, setHeroCropApplying] = useState(false);
   const heroFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  const logoCropUrlRef = useRef<string | null>(null);
+  const [logoCropOpen, setLogoCropOpen] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [logoCropSourceFile, setLogoCropSourceFile] = useState<File | null>(null);
+  const [logoCropApplying, setLogoCropApplying] = useState(false);
+  const [logoPreviewOpen, setLogoPreviewOpen] = useState(false);
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const faviconCropUrlRef = useRef<string | null>(null);
+  const [faviconCropOpen, setFaviconCropOpen] = useState(false);
+  const [faviconCropSrc, setFaviconCropSrc] = useState<string | null>(null);
+  const [faviconCropSourceFile, setFaviconCropSourceFile] = useState<File | null>(null);
+  const [faviconCropApplying, setFaviconCropApplying] = useState(false);
+  const [faviconPreviewOpen, setFaviconPreviewOpen] = useState(false);
+  const faviconFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [general, setGeneral] = useState<GeneralValue>({});
   const aboutForm = useZodForm({
@@ -219,27 +241,97 @@ export function SettingsManager() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    try {
-      let id: string;
+  const performLogoUpload = useCallback(
+    async (file: File) => {
+      setError(null);
       try {
-        const result = await uploadMedia(file, 'products');
-        id = result.id;
-      } catch {
-        const res = await uploadFile(file);
-        id = res.id;
+        let id: string;
+        try {
+          const result = await uploadMedia(file, 'products');
+          id = result.id;
+        } catch {
+          const res = await uploadFile(file);
+          id = res.id;
+        }
+        const next = { ...general, logoMediaId: id };
+        setGeneral(next);
+        await saveKey('general', next);
+        fetchSettings();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed');
       }
-      const next = { ...general, logoMediaId: id };
-      setGeneral(next);
-      await saveKey('general', next);
-      fetchSettings();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+    },
+    [general],
+  );
+
+  const performFaviconUpload = useCallback(
+    async (file: File) => {
+      setError(null);
+      try {
+        let id: string;
+        try {
+          const result = await uploadMedia(file, 'products');
+          id = result.id;
+        } catch {
+          const res = await uploadFile(file);
+          id = res.id;
+        }
+        const next = { ...general, faviconMediaId: id };
+        setGeneral(next);
+        await saveKey('general', next);
+        fetchSettings();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed');
+      }
+    },
+    [general],
+  );
+
+  const closeLogoCrop = useCallback(() => {
+    if (logoCropUrlRef.current) {
+      URL.revokeObjectURL(logoCropUrlRef.current);
+      logoCropUrlRef.current = null;
     }
+    setLogoCropOpen(false);
+    setLogoCropSrc(null);
+    setLogoCropSourceFile(null);
+  }, []);
+
+  const openLogoCrop = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        toastError('Please choose an image file.');
+        return;
+      }
+      setError(null);
+      if (!canCropWithCanvas(file)) {
+        void performLogoUpload(file);
+        return;
+      }
+      if (logoCropUrlRef.current) URL.revokeObjectURL(logoCropUrlRef.current);
+      const url = URL.createObjectURL(file);
+      logoCropUrlRef.current = url;
+      setLogoCropSrc(url);
+      setLogoCropSourceFile(file);
+      setLogoCropOpen(true);
+    },
+    [performLogoUpload],
+  );
+
+  const handleLogoCropApply = async (croppedFile: File) => {
+    setLogoCropApplying(true);
+    try {
+      closeLogoCrop();
+      await performLogoUpload(croppedFile);
+    } finally {
+      setLogoCropApplying(false);
+    }
+  };
+
+  const handleLogoFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     e.target.value = '';
+    if (file) openLogoCrop(file);
   };
 
   const handleRemoveLogo = async () => {
@@ -249,27 +341,51 @@ export function SettingsManager() {
     fetchSettings();
   };
 
-  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    try {
-      let id: string;
-      try {
-        const result = await uploadMedia(file, 'products');
-        id = result.id;
-      } catch {
-        const res = await uploadFile(file);
-        id = res.id;
-      }
-      const next = { ...general, faviconMediaId: id };
-      setGeneral(next);
-      await saveKey('general', next);
-      fetchSettings();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+  const closeFaviconCrop = useCallback(() => {
+    if (faviconCropUrlRef.current) {
+      URL.revokeObjectURL(faviconCropUrlRef.current);
+      faviconCropUrlRef.current = null;
     }
+    setFaviconCropOpen(false);
+    setFaviconCropSrc(null);
+    setFaviconCropSourceFile(null);
+  }, []);
+
+  const openFaviconCrop = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        toastError('Please choose an image file.');
+        return;
+      }
+      setError(null);
+      if (!canCropWithCanvas(file)) {
+        void performFaviconUpload(file);
+        return;
+      }
+      if (faviconCropUrlRef.current) URL.revokeObjectURL(faviconCropUrlRef.current);
+      const url = URL.createObjectURL(file);
+      faviconCropUrlRef.current = url;
+      setFaviconCropSrc(url);
+      setFaviconCropSourceFile(file);
+      setFaviconCropOpen(true);
+    },
+    [performFaviconUpload],
+  );
+
+  const handleFaviconCropApply = async (croppedFile: File) => {
+    setFaviconCropApplying(true);
+    try {
+      closeFaviconCrop();
+      await performFaviconUpload(croppedFile);
+    } finally {
+      setFaviconCropApplying(false);
+    }
+  };
+
+  const handleFaviconFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     e.target.value = '';
+    if (file) openFaviconCrop(file);
   };
 
   const handleRemoveFavicon = async () => {
@@ -533,67 +649,140 @@ export function SettingsManager() {
       {/* General: Logo */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Logo</h2>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+          Header wordmark. JPEG, PNG, WebP, and GIF can be cropped to a wide frame (3:1). SVG uploads without cropping.
+          Click the image for a full-size preview.
+        </p>
+        <input
+          ref={logoFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+          className="sr-only"
+          disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+          onChange={handleLogoFileInputChange}
+        />
         <div className="flex flex-wrap items-start gap-4">
-          {logoUrl && (
+          {logoUrl ? (
             <div className="flex flex-col items-start gap-2">
-              <img src={logoUrl} alt="Site logo" className="h-16 object-contain" />
               <button
                 type="button"
-                onClick={handleRemoveLogo}
-                disabled={saving === 'general'}
-                className="text-sm text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                onClick={() => setLogoPreviewOpen(true)}
+                className="cursor-zoom-in rounded-lg border border-slate-200 bg-slate-50 p-3 text-left dark:border-slate-600 dark:bg-slate-900/40"
+                aria-label="View logo full size"
               >
-                Remove logo
+                <img src={logoUrl} alt="Site logo" className="h-16 max-w-[min(100%,280px)] object-contain" />
+              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => logoFileInputRef.current?.click()}
+                  disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Replace logo
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                  className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400"
+                >
+                  Remove logo
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Upload logo</label>
+              <button
+                type="button"
+                onClick={() => logoFileInputRef.current?.click()}
+                disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                className="block w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800/40 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Choose file…
               </button>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Upload new logo
-            </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={handleLogoUpload}
-              disabled={saving === 'general'}
-              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-slate-700 dark:file:bg-slate-700 dark:file:text-slate-200"
-            />
-          </div>
         </div>
+        <AdminImagePreviewModal
+          open={logoPreviewOpen}
+          onClose={() => setLogoPreviewOpen(false)}
+          images={logoUrl ? [logoUrl] : []}
+          initialIndex={0}
+        />
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Favicon</h2>
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          Browser tab icon for the main storefront. Use a square image (PNG, ICO, or SVG). After saving, rebuild and
-          redeploy the main website so the new favicon is baked into the site. If you remove the favicon here, the
-          storefront falls back to the default configured at deploy time (<code className="rounded bg-slate-100 px-1 text-xs dark:bg-slate-700">PUBLIC_FAVICON</code>).
+          Browser tab icon for the main storefront. Raster images can be cropped square. SVG and ICO upload without
+          cropping. After saving, rebuild and redeploy the main website so the new favicon is baked into the site. If you
+          remove the favicon here, the storefront falls back to the default configured at deploy time (
+          <code className="rounded bg-slate-100 px-1 text-xs dark:bg-slate-700">PUBLIC_FAVICON</code>).
         </p>
+        <input
+          ref={faviconFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.ico,image/x-icon,image/vnd.microsoft.icon"
+          className="sr-only"
+          disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+          onChange={handleFaviconFileInputChange}
+        />
         <div className="flex flex-wrap items-start gap-4">
-          {faviconPreviewUrl && (
+          {faviconPreviewUrl ? (
             <div className="flex flex-col items-start gap-2">
-              <img src={faviconPreviewUrl} alt="Favicon preview" className="h-12 w-12 rounded object-contain ring-1 ring-slate-200 dark:ring-slate-600" />
               <button
                 type="button"
-                onClick={handleRemoveFavicon}
-                disabled={saving === 'general'}
-                className="text-sm text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                onClick={() => setFaviconPreviewOpen(true)}
+                className="cursor-zoom-in rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-600 dark:bg-slate-900/40"
+                aria-label="View favicon full size"
               >
-                Remove favicon
+                <img
+                  src={faviconPreviewUrl}
+                  alt="Favicon preview"
+                  className="h-16 w-16 rounded object-contain ring-1 ring-slate-200 dark:ring-slate-600"
+                />
+              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => faviconFileInputRef.current?.click()}
+                  disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Replace favicon
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveFavicon}
+                  disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                  className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400"
+                >
+                  Remove favicon
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Upload favicon</label>
+              <button
+                type="button"
+                onClick={() => faviconFileInputRef.current?.click()}
+                disabled={saving === 'general' || logoCropOpen || faviconCropOpen}
+                className="block w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800/40 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Choose file…
               </button>
             </div>
           )}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Upload favicon</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.ico,image/x-icon,image/vnd.microsoft.icon"
-              onChange={handleFaviconUpload}
-              disabled={saving === 'general'}
-              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-slate-700 dark:file:bg-slate-700 dark:file:text-slate-200"
-            />
-          </div>
         </div>
+        <AdminImagePreviewModal
+          open={faviconPreviewOpen}
+          onClose={() => setFaviconPreviewOpen(false)}
+          images={faviconPreviewUrl ? [faviconPreviewUrl] : []}
+          initialIndex={0}
+        />
       </section>
       </> )}
 
@@ -1381,6 +1570,26 @@ export function SettingsManager() {
         onCancel={closeHeroCrop}
         onApply={handleHeroCropApply}
         applying={heroCropApplying}
+      />
+      <ImageCropModal
+        open={logoCropOpen}
+        imageSrc={logoCropSrc}
+        sourceFile={logoCropSourceFile}
+        aspect={ASPECT_LOGO}
+        title="Crop logo"
+        onCancel={closeLogoCrop}
+        onApply={handleLogoCropApply}
+        applying={logoCropApplying}
+      />
+      <ImageCropModal
+        open={faviconCropOpen}
+        imageSrc={faviconCropSrc}
+        sourceFile={faviconCropSourceFile}
+        aspect={ASPECT_PRODUCT}
+        title="Crop favicon"
+        onCancel={closeFaviconCrop}
+        onApply={handleFaviconCropApply}
+        applying={faviconCropApplying}
       />
     </div>
   );
