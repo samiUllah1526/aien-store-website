@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { z } from 'zod';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
@@ -8,6 +8,7 @@ import { useZodForm } from '../lib/forms/useZodForm';
 import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 import { uploadMedia } from '../lib/media-upload';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
+import { ImageCropModal, ASPECT_BANNER } from './ImageCropModal';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 
 function slugFromName(value: string): string {
@@ -311,23 +312,61 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
   const [bannerPreviewOpen, setBannerPreviewOpen] = useState(false);
+  const [bannerCropOpen, setBannerCropOpen] = useState(false);
+  const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null);
+  const [bannerCropSourceFile, setBannerCropSourceFile] = useState<File | null>(null);
+  const [bannerCropApplying, setBannerCropApplying] = useState(false);
+  const bannerCropUrlRef = useRef<string | null>(null);
   const rootError = form.formState.errors.root?.serverError?.message;
   const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
 
-  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const closeBannerCrop = useCallback(() => {
+    if (bannerCropUrlRef.current) {
+      URL.revokeObjectURL(bannerCropUrlRef.current);
+      bannerCropUrlRef.current = null;
+    }
+    setBannerCropOpen(false);
+    setBannerCropSrc(null);
+    setBannerCropSourceFile(null);
+  }, []);
+
+  const openBannerCrop = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        setBannerUploadError('Please choose an image file.');
+        return;
+      }
+      setBannerUploadError(null);
+      if (bannerCropUrlRef.current) URL.revokeObjectURL(bannerCropUrlRef.current);
+      const url = URL.createObjectURL(file);
+      bannerCropUrlRef.current = url;
+      setBannerCropSrc(url);
+      setBannerCropSourceFile(file);
+      setBannerCropOpen(true);
+    },
+    [],
+  );
+
+  const handleBannerCropApply = async (croppedFile: File) => {
+    setBannerCropApplying(true);
     setBannerUploadError(null);
-    setUploadingBanner(true);
     try {
-      const { deliveryUrl } = await uploadMedia(file, 'products');
+      closeBannerCrop();
+      setUploadingBanner(true);
+      const { deliveryUrl } = await uploadMedia(croppedFile, 'products');
       form.setValue('bannerImageUrl', deliveryUrl, { shouldValidate: true });
     } catch (err) {
       setBannerUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploadingBanner(false);
-      e.target.value = '';
+      setBannerCropApplying(false);
     }
+  };
+
+  const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) openBannerCrop(file);
   };
 
   const handleSubmit = form.handleSubmit(async (values) => {
@@ -488,10 +527,10 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   className="sr-only"
-                  disabled={uploadingBanner}
+                  disabled={uploadingBanner || bannerCropOpen}
                   onChange={handleBannerFileChange}
                 />
-                {uploadingBanner ? 'Uploading…' : 'Upload image'}
+                {uploadingBanner ? 'Uploading…' : bannerCropOpen ? 'Cropping…' : 'Upload image'}
               </label>
               
               {bannerDisplayUrl && (
@@ -515,6 +554,16 @@ function CategoryFormModal({ category, parentOptions, onClose, onSuccess }: Cate
               onClose={() => setBannerPreviewOpen(false)}
               images={bannerDisplayUrl ? [bannerDisplayUrl] : []}
               initialIndex={0}
+            />
+            <ImageCropModal
+              open={bannerCropOpen}
+              imageSrc={bannerCropSrc}
+              sourceFile={bannerCropSourceFile}
+              aspect={ASPECT_BANNER}
+              title="Crop category banner"
+              onCancel={closeBannerCrop}
+              onApply={handleBannerCropApply}
+              applying={bannerCropApplying}
             />
           </div>
           <div className="flex items-center gap-2">

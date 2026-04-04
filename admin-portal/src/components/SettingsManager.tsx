@@ -5,6 +5,7 @@ import { uploadMedia } from '../lib/media-upload';
 import { toastSuccess, toastError } from '../lib/toast';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
+import { ImageCropModal, ASPECT_BANNER } from './ImageCropModal';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -121,6 +122,17 @@ export function SettingsManager() {
   const [aboutBannerDragOver, setAboutBannerDragOver] = useState(false);
   const [aboutBannerPreviewOpen, setAboutBannerPreviewOpen] = useState(false);
   const aboutBannerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const aboutBannerCropUrlRef = useRef<string | null>(null);
+  const [aboutBannerCropOpen, setAboutBannerCropOpen] = useState(false);
+  const [aboutBannerCropSrc, setAboutBannerCropSrc] = useState<string | null>(null);
+  const [aboutBannerCropSourceFile, setAboutBannerCropSourceFile] = useState<File | null>(null);
+  const [aboutBannerCropApplying, setAboutBannerCropApplying] = useState(false);
+  const heroCropUrlRef = useRef<string | null>(null);
+  const heroCropSlideIndexRef = useRef<number | null>(null);
+  const [heroCropOpen, setHeroCropOpen] = useState(false);
+  const [heroCropSrc, setHeroCropSrc] = useState<string | null>(null);
+  const [heroCropSourceFile, setHeroCropSourceFile] = useState<File | null>(null);
+  const [heroCropApplying, setHeroCropApplying] = useState(false);
   const heroFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const [general, setGeneral] = useState<GeneralValue>({});
@@ -237,11 +249,31 @@ export function SettingsManager() {
 
   const handleSaveAbout = aboutForm.handleSubmit(async (values) => saveKey('about', values));
 
-  const uploadAboutBannerFile = async (file: File) => {
+  const closeAboutBannerCrop = useCallback(() => {
+    if (aboutBannerCropUrlRef.current) {
+      URL.revokeObjectURL(aboutBannerCropUrlRef.current);
+      aboutBannerCropUrlRef.current = null;
+    }
+    setAboutBannerCropOpen(false);
+    setAboutBannerCropSrc(null);
+    setAboutBannerCropSourceFile(null);
+  }, []);
+
+  const openAboutBannerCrop = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
       setError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
       return;
     }
+    setError(null);
+    if (aboutBannerCropUrlRef.current) URL.revokeObjectURL(aboutBannerCropUrlRef.current);
+    const url = URL.createObjectURL(file);
+    aboutBannerCropUrlRef.current = url;
+    setAboutBannerCropSrc(url);
+    setAboutBannerCropSourceFile(file);
+    setAboutBannerCropOpen(true);
+  }, []);
+
+  const performAboutBannerUpload = async (file: File) => {
     setUploadingAboutBanner(true);
     setError(null);
     try {
@@ -264,17 +296,80 @@ export function SettingsManager() {
     }
   };
 
+  const handleAboutBannerCropApply = async (croppedFile: File) => {
+    setAboutBannerCropApplying(true);
+    try {
+      closeAboutBannerCrop();
+      await performAboutBannerUpload(croppedFile);
+    } finally {
+      setAboutBannerCropApplying(false);
+    }
+  };
+
   const handleAboutBannerFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) void uploadAboutBannerFile(file);
+    if (file) openAboutBannerCrop(file);
   };
 
   const handleAboutBannerDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setAboutBannerDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void uploadAboutBannerFile(file);
+    if (file) openAboutBannerCrop(file);
+  };
+
+  const closeHeroCrop = useCallback(() => {
+    if (heroCropUrlRef.current) {
+      URL.revokeObjectURL(heroCropUrlRef.current);
+      heroCropUrlRef.current = null;
+    }
+    heroCropSlideIndexRef.current = null;
+    setHeroCropOpen(false);
+    setHeroCropSrc(null);
+    setHeroCropSourceFile(null);
+  }, []);
+
+  const openHeroCrop = useCallback((slideIndex: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toastError('Please choose an image file.');
+      return;
+    }
+    heroCropSlideIndexRef.current = slideIndex;
+    if (heroCropUrlRef.current) URL.revokeObjectURL(heroCropUrlRef.current);
+    const url = URL.createObjectURL(file);
+    heroCropUrlRef.current = url;
+    setHeroCropSrc(url);
+    setHeroCropSourceFile(file);
+    setHeroCropOpen(true);
+  }, []);
+
+  const handleHeroCropApply = async (croppedFile: File) => {
+    const idx = heroCropSlideIndexRef.current;
+    setHeroCropApplying(true);
+    setError(null);
+    try {
+      closeHeroCrop();
+      if (idx == null) return;
+      setUploadingHeroSlideIndex(idx);
+      let deliveryUrl: string;
+      try {
+        const result = await uploadMedia(croppedFile, 'products');
+        deliveryUrl = result.deliveryUrl;
+      } catch {
+        const base = getApiBaseUrl().replace(/\/$/, '');
+        const res = await uploadFile(croppedFile);
+        deliveryUrl = `${base}/media/file/${res.id}`;
+      }
+      heroForm.setValue(`slides.${idx}.src`, deliveryUrl, { shouldValidate: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setError(msg);
+      toastError(msg);
+    } finally {
+      setUploadingHeroSlideIndex(null);
+      setHeroCropApplying(false);
+    }
   };
 
   const handleSaveFooter = footerForm.handleSubmit(async (values) => saveKey('footer', values));
@@ -289,32 +384,13 @@ export function SettingsManager() {
     heroForm.setValue('slides', slides);
   });
 
-  const handleHeroImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
     const fields = heroArray.fields;
     if (index < 0 || index >= fields.length) return;
-    setUploadingHeroSlideIndex(index);
-    setError(null);
-    try {
-      let deliveryUrl: string;
-      try {
-        const result = await uploadMedia(file, 'products');
-        deliveryUrl = result.deliveryUrl;
-      } catch {
-        const base = getApiBaseUrl().replace(/\/$/, '');
-        const res = await uploadFile(file);
-        deliveryUrl = `${base}/media/file/${res.id}`;
-      }
-      heroForm.setValue(`slides.${index}.src`, deliveryUrl, { shouldValidate: true });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
-      setError(msg);
-      toastError(msg);
-    } finally {
-      setUploadingHeroSlideIndex(null);
-    }
+    openHeroCrop(index, file);
   };
 
   const triggerHeroFileInput = (index: number) => {
@@ -624,7 +700,7 @@ export function SettingsManager() {
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               className="sr-only"
-              disabled={uploadingAboutBanner}
+              disabled={uploadingAboutBanner || aboutBannerCropOpen}
               onChange={handleAboutBannerFileInputChange}
             />
             {(aboutForm.watch('bannerImageUrl') ?? '').trim() ? (
@@ -645,12 +721,12 @@ export function SettingsManager() {
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  if (!uploadingAboutBanner) aboutBannerFileInputRef.current?.click();
+                  if (!uploadingAboutBanner && !aboutBannerCropOpen) aboutBannerFileInputRef.current?.click();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    if (!uploadingAboutBanner) aboutBannerFileInputRef.current?.click();
+                    if (!uploadingAboutBanner && !aboutBannerCropOpen) aboutBannerFileInputRef.current?.click();
                   }
                 }}
                 onDragEnter={(e) => {
@@ -674,7 +750,7 @@ export function SettingsManager() {
                   aboutBannerDragOver
                     ? 'border-slate-500 bg-slate-100 dark:border-slate-400 dark:bg-slate-700/50'
                     : 'border-slate-300 bg-slate-50/80 hover:border-slate-400 hover:bg-slate-100/80 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-slate-500 dark:hover:bg-slate-800/70'
-                } ${uploadingAboutBanner ? 'pointer-events-none opacity-60' : ''}`}
+                } ${uploadingAboutBanner || aboutBannerCropOpen ? 'pointer-events-none opacity-60' : ''}`}
               >
                 {uploadingAboutBanner ? (
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Uploading…</span>
@@ -714,11 +790,11 @@ export function SettingsManager() {
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  disabled={uploadingAboutBanner}
+                  disabled={uploadingAboutBanner || aboutBannerCropOpen}
                   onClick={() => aboutBannerFileInputRef.current?.click()}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
-                  {uploadingAboutBanner ? 'Uploading…' : 'Replace image'}
+                  {uploadingAboutBanner ? 'Uploading…' : aboutBannerCropOpen ? 'Cropping…' : 'Replace image'}
                 </button>
                 <button
                   type="button"
@@ -760,10 +836,10 @@ export function SettingsManager() {
           </div>
           <button
             type="submit"
-            disabled={saving === 'about' || uploadingAboutBanner}
+            disabled={saving === 'about' || uploadingAboutBanner || aboutBannerCropOpen}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
-            {saving === 'about' ? 'Saving…' : uploadingAboutBanner ? 'Uploading…' : 'Save about'}
+            {saving === 'about' ? 'Saving…' : uploadingAboutBanner ? 'Uploading…' : aboutBannerCropOpen ? 'Cropping…' : 'Save about'}
           </button>
         </form>
       </section>
@@ -850,7 +926,7 @@ export function SettingsManager() {
                       ref={(el) => {
                         heroFileInputRefs.current[index] = el;
                       }}
-                      disabled={uploadingHeroSlideIndex !== null}
+                      disabled={uploadingHeroSlideIndex !== null || heroCropOpen}
                       onChange={(e) => handleHeroImageUpload(index, e)}
                     />
                     <button
@@ -860,10 +936,14 @@ export function SettingsManager() {
                         ev.stopPropagation();
                         triggerHeroFileInput(index);
                       }}
-                      disabled={uploadingHeroSlideIndex !== null}
+                      disabled={uploadingHeroSlideIndex !== null || heroCropOpen}
                       className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
-                      {uploadingHeroSlideIndex === index ? 'Uploading…' : 'Upload image'}
+                      {uploadingHeroSlideIndex === index
+                        ? 'Uploading…'
+                        : heroCropOpen
+                          ? 'Cropping…'
+                          : 'Upload image'}
                     </button>
                   </div>
                 </div>
@@ -901,10 +981,10 @@ export function SettingsManager() {
           </button>
           <button
             type="submit"
-            disabled={saving === 'hero' || uploadingHeroSlideIndex !== null}
+            disabled={saving === 'hero' || uploadingHeroSlideIndex !== null || heroCropOpen}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
-            {saving === 'hero' ? 'Saving…' : uploadingHeroSlideIndex !== null ? 'Uploading…' : 'Save hero carousel'}
+            {saving === 'hero' ? 'Saving…' : uploadingHeroSlideIndex !== null ? 'Uploading…' : heroCropOpen ? 'Cropping…' : 'Save hero carousel'}
           </button>
         </form>
       </section>
@@ -1214,6 +1294,27 @@ export function SettingsManager() {
       </section>
       </> )}
       </div>
+
+      <ImageCropModal
+        open={aboutBannerCropOpen}
+        imageSrc={aboutBannerCropSrc}
+        sourceFile={aboutBannerCropSourceFile}
+        aspect={ASPECT_BANNER}
+        title="Crop about page banner"
+        onCancel={closeAboutBannerCrop}
+        onApply={handleAboutBannerCropApply}
+        applying={aboutBannerCropApplying}
+      />
+      <ImageCropModal
+        open={heroCropOpen}
+        imageSrc={heroCropSrc}
+        sourceFile={heroCropSourceFile}
+        aspect={ASPECT_BANNER}
+        title="Crop hero slide"
+        onCancel={closeHeroCrop}
+        onApply={handleHeroCropApply}
+        applying={heroCropApplying}
+      />
     </div>
   );
 }

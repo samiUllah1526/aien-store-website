@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import type { Product, ProductFormData } from '../lib/types';
 import { api, uploadFile } from '../lib/api';
@@ -14,6 +14,7 @@ import {
   inputBase,
   labelBase,
 } from './product';
+import { ImageCropModal, ASPECT_PRODUCT } from './ImageCropModal';
 import type { UseFormReturn } from 'react-hook-form';
 
 interface ProductFormProps {
@@ -98,6 +99,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropSourceFile, setCropSourceFile] = useState<File | null>(null);
+  const [cropApplying, setCropApplying] = useState(false);
+  const cropQueueRef = useRef<File[]>([]);
+  const cropVariantIndexRef = useRef<number | null>(null);
+  const cropObjectUrlRef = useRef<string | null>(null);
+
   const error = form.formState.errors.root?.serverError?.message;
   const mediaIds = form.watch('mediaIds') ?? [];
 
@@ -137,73 +146,108 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   }, []);
 
+  const revokeCropObjectUrl = useCallback(() => {
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+  }, []);
+
+  const startCropQueue = useCallback((files: File[], variantIndex: number | null) => {
+    const list = files.filter((f) => f.type.startsWith('image/'));
+    if (!list.length) return;
+    revokeCropObjectUrl();
+    cropVariantIndexRef.current = variantIndex;
+    cropQueueRef.current = list;
+    const first = list[0];
+    const url = URL.createObjectURL(first);
+    cropObjectUrlRef.current = url;
+    setCropSourceFile(first);
+    setCropImageSrc(url);
+    setCropOpen(true);
+  }, [revokeCropObjectUrl]);
+
+  const advanceCropQueue = useCallback(() => {
+    revokeCropObjectUrl();
+    cropQueueRef.current = cropQueueRef.current.slice(1);
+    if (cropQueueRef.current.length) {
+      const next = cropQueueRef.current[0];
+      const url = URL.createObjectURL(next);
+      cropObjectUrlRef.current = url;
+      setCropSourceFile(next);
+      setCropImageSrc(url);
+    } else {
+      setCropOpen(false);
+      setCropImageSrc(null);
+      setCropSourceFile(null);
+    }
+  }, [revokeCropObjectUrl]);
+
+  const handleCropCancel = useCallback(() => {
+    revokeCropObjectUrl();
+    cropQueueRef.current = [];
+    setCropOpen(false);
+    setCropImageSrc(null);
+    setCropSourceFile(null);
+  }, [revokeCropObjectUrl]);
+
+  const handleCropApply = useCallback(
+    async (croppedFile: File) => {
+      setCropApplying(true);
+      setUploading(true);
+      try {
+        const r = await doUpload(croppedFile);
+        const vIdx = cropVariantIndexRef.current;
+        if (vIdx === null) {
+          const ids = form.getValues('mediaIds') ?? [];
+          form.setValue('mediaIds', [...ids, r.id], { shouldValidate: true });
+        } else {
+          const fieldName = `variants.${vIdx}.mediaIds` as const;
+          const current = form.getValues(fieldName) ?? [];
+          form.setValue(fieldName, [...current, r.id], { shouldValidate: true, shouldDirty: true });
+        }
+        setMediaPreviews((prev) => {
+          const next = { ...prev };
+          if (r.preview) next[r.id] = r.preview;
+          return next;
+        });
+        advanceCropQueue();
+      } catch (err) {
+        mapApiErrorToForm(err, form.setError);
+        setUploading(false);
+        setUploadProgress({});
+        handleCropCancel();
+      } finally {
+        setCropApplying(false);
+        if (cropQueueRef.current.length === 0) {
+          setUploading(false);
+          setUploadProgress({});
+        }
+      }
+    },
+    [advanceCropQueue, doUpload, form, handleCropCancel],
+  );
+
   const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files?.length) return;
       form.clearErrors('root.serverError');
-      setUploading(true);
-      try {
-        const results: { id: string; preview?: string }[] = [];
-        for (let i = 0; i < files.length; i++) {
-          const r = await doUpload(files[i]);
-          results.push(r);
-        }
-        form.setValue('mediaIds', [...(form.getValues('mediaIds') ?? []), ...results.map((r) => r.id)], {
-          shouldValidate: true,
-        });
-        setMediaPreviews((prev) => {
-          const next = { ...prev };
-          results.forEach((r) => {
-            if (r.preview) next[r.id] = r.preview;
-          });
-          return next;
-        });
-      } catch (err) {
-        mapApiErrorToForm(err, form.setError);
-      } finally {
-        setUploading(false);
-        setUploadProgress({});
-        e.target.value = '';
-      }
+      e.target.value = '';
+      startCropQueue(Array.from(files), null);
     },
-    [doUpload, form]
+    [form, startCropQueue],
   );
 
   const handleVariantFileSelect = useCallback(
-    async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files?.length) return;
       form.clearErrors('root.serverError');
-      setUploading(true);
-      try {
-        const results: { id: string; preview?: string }[] = [];
-        for (let i = 0; i < files.length; i++) {
-          const r = await doUpload(files[i]);
-          results.push(r);
-        }
-        const fieldName = `variants.${index}.mediaIds` as const;
-        const current = form.getValues(fieldName) ?? [];
-        form.setValue(fieldName, [...current, ...results.map((r) => r.id)], {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-        setMediaPreviews((prev) => {
-          const next = { ...prev };
-          results.forEach((r) => {
-            if (r.preview) next[r.id] = r.preview;
-          });
-          return next;
-        });
-      } catch (err) {
-        mapApiErrorToForm(err, form.setError);
-      } finally {
-        setUploading(false);
-        setUploadProgress({});
-        e.target.value = '';
-      }
+      e.target.value = '';
+      startCropQueue(Array.from(files), index);
     },
-    [doUpload, form],
+    [form, startCropQueue],
   );
 
   const removeImage = useCallback(
@@ -359,6 +403,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         onAddFiles={handleFileSelect}
         onRemoveImage={removeImage}
         uploading={uploading}
+        cropPending={cropOpen}
       />
 
       <VariantsSection
@@ -370,6 +415,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         onAddVariantFiles={handleVariantFileSelect}
         onRemoveVariantImage={removeVariantImage}
         uploading={uploading}
+        cropPending={cropOpen}
+      />
+
+      <ImageCropModal
+        open={cropOpen}
+        imageSrc={cropImageSrc}
+        sourceFile={cropSourceFile}
+        aspect={ASPECT_PRODUCT}
+        title="Crop product image"
+        onCancel={handleCropCancel}
+        onApply={handleCropApply}
+        applying={cropApplying}
       />
 
 
@@ -403,6 +460,7 @@ function VariantsSection({
   onAddVariantFiles,
   onRemoveVariantImage,
   uploading,
+  cropPending,
 }: {
   fields: { id: string }[];
   onAppend: () => void;
@@ -412,6 +470,7 @@ function VariantsSection({
   onAddVariantFiles: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveVariantImage: (variantIndex: number, imageIndex: number) => void;
   uploading: boolean;
+  cropPending: boolean;
 }) {
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
@@ -438,6 +497,7 @@ function VariantsSection({
           onAddFiles={(e) => onAddVariantFiles(index, e)}
           onRemoveImage={(imageIndex) => onRemoveVariantImage(index, imageIndex)}
           uploading={uploading}
+          cropPending={cropPending}
         />
       ))}
     </div>

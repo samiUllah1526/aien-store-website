@@ -9,6 +9,8 @@ interface ProductFormImagesProps {
   onAddFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: (index: number) => void;
   uploading: boolean;
+  /** True while crop modal is open (disables picking more files). */
+  cropPending?: boolean;
   uploadLabel?: string;
 }
 
@@ -19,6 +21,7 @@ export function ProductFormImages({
   onAddFiles,
   onRemoveImage,
   uploading,
+  cropPending = false,
   uploadLabel = 'Add images',
 }: ProductFormImagesProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -88,11 +91,11 @@ export function ProductFormImages({
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
-          disabled={uploading}
+          disabled={uploading || cropPending}
           onChange={onAddFiles}
           className="sr-only"
         />
-        {uploading ? 'Uploading…' : uploadLabel}
+        {uploading ? 'Uploading…' : cropPending ? 'Cropping…' : uploadLabel}
       </label>
       <AdminImagePreviewModal
         open={previewOpen}

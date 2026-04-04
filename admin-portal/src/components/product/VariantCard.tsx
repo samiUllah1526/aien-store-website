@@ -13,6 +13,7 @@ interface VariantCardProps {
   onAddFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: (index: number) => void;
   uploading: boolean;
+  cropPending?: boolean;
 }
 
 const defaultVariant: ProductFormValues['variants'][number] = {
@@ -34,6 +35,7 @@ export function VariantCard({
   onAddFiles,
   onRemoveImage,
   uploading,
+  cropPending = false,
 }: VariantCardProps) {
   const { register, setValue, watch } = form;
   const variantMediaIds = watch(`variants.${index}.mediaIds`) ?? [];
@@ -148,6 +150,7 @@ export function VariantCard({
           onAddFiles={onAddFiles}
           onRemoveImage={onRemoveImage}
           uploading={uploading}
+          cropPending={cropPending}
           uploadLabel="Add variant images"
         />
       </div>
