@@ -42,5 +42,5 @@ html {
   100% { transform: translateX(-50%); }
 }
 .announcement-marquee-track {
-  animation: announcement-marquee 20s linear infinite;
+  animation: announcement-marquee 35s linear infinite;
 }
