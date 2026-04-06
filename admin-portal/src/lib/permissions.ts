@@ -4,14 +4,23 @@
  * User's permissions for show/hide come from the JWT (getStoredPermissions in auth.ts).
  */
 
+export type NavGroup = 'store' | 'admin';
+
 export interface NavItem {
   href: string;
   label: string;
   icon: string;
+  group: NavGroup;
   /** Required permission name (must match backend). User must have this permission to see the item. */
   permission?: string;
   /** If true, only show when user has superadmin:manage (overrides permission for this item). */
   superAdminOnly?: boolean;
+}
+
+export interface NavSection {
+  key: NavGroup;
+  label: string;
+  items: NavItem[];
 }
 
 /**
@@ -20,26 +29,43 @@ export interface NavItem {
  */
 export function getNavItems(): NavItem[] {
   return [
-    { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard:read' },
-    { href: '/admin/orders', label: 'Orders', icon: 'orders', permission: 'orders:read' },
-    { href: '/admin/products', label: 'Products', icon: 'products', permission: 'products:read' },
-    { href: '/admin/inventory', label: 'Inventory', icon: 'inventory', permission: 'inventory:read' },
-    { href: '/admin/categories', label: 'Categories', icon: 'categories', permission: 'categories:read' },
-    { href: '/admin/users', label: 'Users', icon: 'users', permission: 'users:read' },
+    { href: '/admin', label: 'Dashboard', icon: 'dashboard', group: 'store', permission: 'dashboard:read' },
+    { href: '/admin/orders', label: 'Orders', icon: 'orders', group: 'store', permission: 'orders:read' },
+    { href: '/admin/products', label: 'Products', icon: 'products', group: 'store', permission: 'products:read' },
+    { href: '/admin/inventory', label: 'Inventory', icon: 'inventory', group: 'store', permission: 'inventory:read' },
+    { href: '/admin/categories', label: 'Categories', icon: 'categories', group: 'store', permission: 'categories:read' },
+    { href: '/admin/vouchers', label: 'Vouchers', icon: 'vouchers', group: 'store', permission: 'vouchers:read' },
+    { href: '/admin/sales-campaigns', label: 'Sales Campaigns', icon: 'vouchers', group: 'store', permission: 'sales-campaigns:read' },
+    { href: '/admin/users', label: 'Users', icon: 'users', group: 'admin', permission: 'users:read' },
     {
       href: '/admin/admin-settings',
       label: 'User Management',
       icon: 'settings',
+      group: 'admin',
       superAdminOnly: true,
     },
-    { href: '/admin/vouchers', label: 'Vouchers', icon: 'vouchers', permission: 'vouchers:read' },
-    { href: '/admin/sales-campaigns', label: 'Sales Campaigns', icon: 'vouchers', permission: 'sales-campaigns:read' },
-    { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'settings:read' },
-    { href: '/admin/site-deployment', label: 'Site deployment', icon: 'deploy', permission: 'deploy:website' },
-    { href: '/admin/email-logs', label: 'Email Logs', icon: 'emaillogs', permission: 'emaillogs:read' },
-    { href: '/admin/jobs', label: 'Jobs', icon: 'jobs', permission: 'jobs:read' },
-    { href: '/admin/docs', label: 'Documentation', icon: 'docs', permission: 'docs:read' },
+    { href: '/admin/settings', label: 'Settings', icon: 'settings', group: 'admin', permission: 'settings:read' },
+    { href: '/admin/site-deployment', label: 'Site deployment', icon: 'deploy', group: 'admin', permission: 'deploy:website' },
+    { href: '/admin/email-logs', label: 'Email Logs', icon: 'emaillogs', group: 'admin', permission: 'emaillogs:read' },
+    { href: '/admin/jobs', label: 'Jobs', icon: 'jobs', group: 'admin', permission: 'jobs:read' },
+    { href: '/admin/docs', label: 'Documentation', icon: 'docs', group: 'admin', permission: 'docs:read' },
   ];
+}
+
+const GROUP_LABELS: Record<NavGroup, string> = {
+  store: 'Store',
+  admin: 'Administration',
+};
+
+const GROUP_ORDER: NavGroup[] = ['store', 'admin'];
+
+export function getNavSections(): NavSection[] {
+  const items = getNavItems();
+  return GROUP_ORDER.map((key) => ({
+    key,
+    label: GROUP_LABELS[key],
+    items: items.filter((item) => item.group === key),
+  }));
 }
 
 /**

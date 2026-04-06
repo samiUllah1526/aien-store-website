@@ -8,14 +8,14 @@ const pageTitle = `${title} | ${appName}`;
 const currentPath = Astro.url.pathname;
 import '../styles/global.css';
 import { iconPaths } from '../lib/iconPaths';
-import { getNavItems } from '../lib/permissions';
+import { getNavSections } from '../lib/permissions';
 import { adminApiBaseUrl, appName, faviconPath, themeStorageKey, authTokenKey } from '../lib/config';
 import AdminUserMenu from '../components/AdminUserMenu';
 import PermissionsLoader from '../components/PermissionsLoader';
 import { AdminToaster } from '../components/AdminToaster';
 import { GlobalLoader } from '../components/GlobalLoader';
 
-const navItems = getNavItems();
+const navSections = getNavSections();
 const isActive = (href: string) =>
   href === '/admin' ? currentPath === '/admin' || currentPath === '/admin/' : currentPath.startsWith(href);
 ---
@@ -69,33 +69,42 @@ const isActive = (href: string) =>
             </svg>
           </button>
         </div>
-        <nav class="p-3 space-y-0.5" aria-label="Sidebar">
-          {navItems.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <a
-                href={item.href}
-                class={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-slate-700 dark:text-slate-100'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100'
-                }`}
-                {...(item.permission ? { 'data-required-permission': item.permission } : {})}
-                {...(item.superAdminOnly ? { 'data-super-admin-only': 'true' } : {})}
-              >
-                <svg
-                  class="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPaths[item.icon]} />
-                </svg>
-                {item.label}
-              </a>
-            );
-          })}
+        <nav class="overflow-y-auto p-3" aria-label="Sidebar">
+          {navSections.map((section, sIdx) => (
+            <div class={sIdx > 0 ? 'mt-6' : ''}>
+              <p class="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {section.label}
+              </p>
+              <div class="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <a
+                      href={item.href}
+                      class={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-slate-700 dark:text-slate-100'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100'
+                      }`}
+                      {...(item.permission ? { 'data-required-permission': item.permission } : {})}
+                      {...(item.superAdminOnly ? { 'data-super-admin-only': 'true' } : {})}
+                    >
+                      <svg
+                        class="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPaths[item.icon]} />
+                      </svg>
+                      {item.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </aside>
 
