@@ -1,0 +1,194 @@
+---
+layout: ../../../layouts/AdminLayout.astro
+title: Sales Campaigns
+---
+
+<a href="/admin/docs" class="mb-6 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+  ← Documentation
+</a>
+
+# Sales Campaigns
+
+Guide for creating and managing time-bound sales that automatically reduce product prices on the storefront.
+
+---
+
+## How it works
+
+A sales campaign applies a discount (percentage or fixed amount) to products for a specific time window. Unlike vouchers, customers **do not enter a code** — the sale price is applied automatically.
+
+When a campaign is active:
+
+- **Storefront** shows a sale badge and strikethrough pricing on affected products.
+- **Checkout** uses the sale price as the unit price (before any voucher discount).
+- **Orders** record which campaign was applied and the original price, so you have full attribution.
+
+> **Vouchers vs Sales Campaigns:** Vouchers require a code at checkout and discount the *order total*. Sales campaigns reduce *product prices* directly — no code needed. They can stack: a product on sale can still have a voucher applied on top.
+
+---
+
+## Creating a campaign
+
+1. Go to **Sales Campaigns** in the sidebar.
+2. Click **Create campaign**.
+3. Fill in the form:
+
+### Name & slug
+
+- **Name** — A descriptive name (e.g. "Eid Sale 2026", "Summer Clearance").
+- **Slug** — Auto-generated from the name as you type. Edit it to customise. Used internally.
+
+### Discount type & value
+
+| Type | Value field | Example |
+|------|-------------|---------|
+| **Percentage off** | 1–100 (percent) | `30` = 30% off each product |
+| **Fixed amount off** | Amount in cents | `50000` = PKR 500 off each product |
+
+### Start & end dates
+
+- **Starts At** — When the sale goes live.
+- **Ends At** — When the sale stops.
+- Status is derived automatically from these dates (no manual activation needed once published).
+
+### Apply to (scope)
+
+| Scope | Description |
+|-------|-------------|
+| **All products** | Every product in the store gets the discount. |
+| **Specific products** | Only selected products. Use the searchable dropdown to pick them. |
+| **Specific categories** | All products in the selected categories. |
+
+### Badge text
+
+- The label shown on the storefront sale badge (e.g. "EID SALE", "30% OFF").
+- If left empty, a default is generated from the discount value (e.g. "30% OFF").
+
+### Priority
+
+- When a product is in **multiple active campaigns**, the one with the highest priority wins.
+- Range: 0–100. Default: 0.
+- Example: "Eid Sale" (priority 10) + "Flash Sale" (priority 20) both include the same t-shirt → Flash Sale price applies.
+
+---
+
+## Campaign lifecycle
+
+A campaign goes through these states:
+
+| Status | What it means | How to get here |
+|--------|---------------|-----------------|
+| **Draft** | Saved but not live. Safe to edit freely. | Initial state on creation. |
+| **Scheduled** | Published and waiting. Will become Active when start date arrives. | Click **Publish** on a Draft. |
+| **Active** | Live right now. Products show sale prices on the storefront. | Automatic when current time is between start and end. |
+| **Paused** | Temporarily suspended. Products revert to normal prices. | Click **Pause** on an Active campaign. |
+| **Ended** | Past the end date. Cannot be reactivated. | Automatic when end date passes. |
+
+### Key actions
+
+- **Publish** — Moves from Draft to Scheduled. The campaign will activate automatically at the start date.
+- **Pause** — Stops an active campaign immediately. Products revert to regular prices.
+- **Resume** — Restarts a paused campaign (if it hasn't passed its end date).
+- **Duplicate** — Creates a copy in Draft status. Useful for recurring sales.
+
+---
+
+## Examples
+
+### Example 1: Store-wide Eid sale
+
+> 25% off everything for one week.
+
+| Field | Value |
+|-------|-------|
+| Name | Eid Sale 2026 |
+| Type | Percentage off |
+| Value | 25 |
+| Starts At | 2026-03-28 00:00 |
+| Ends At | 2026-04-04 23:59 |
+| Apply to | All products |
+| Badge text | EID SALE |
+| Priority | 0 |
+
+### Example 2: Category-specific clearance
+
+> 40% off all Hoodies to clear stock.
+
+| Field | Value |
+|-------|-------|
+| Name | Hoodie Clearance |
+| Type | Percentage off |
+| Value | 40 |
+| Starts At | 2026-04-10 00:00 |
+| Ends At | 2026-04-20 23:59 |
+| Apply to | Specific categories |
+| Categories | Hoodies |
+| Badge text | CLEARANCE |
+
+### Example 3: Flash sale on specific products
+
+> PKR 300 off on 3 selected t-shirts, for 24 hours.
+
+| Field | Value |
+|-------|-------|
+| Name | Flash Friday |
+| Type | Fixed amount off |
+| Value | 30000 (= PKR 300) |
+| Starts At | 2026-04-11 10:00 |
+| Ends At | 2026-04-12 10:00 |
+| Apply to | Specific products |
+| Products | (select the 3 t-shirts) |
+| Badge text | FLASH SALE |
+| Priority | 10 |
+
+---
+
+## How pricing works at checkout
+
+When a customer places an order:
+
+1. The system checks if any active campaign covers the product.
+2. If yes, the **sale price** becomes the unit price (variant override → base price, then campaign discount applied).
+3. The order item records `campaignId` and `originalUnitCents` for attribution.
+4. Voucher discounts are applied **on top** of the already-reduced sale price.
+
+**Example flow:**
+
+- T-shirt base price: PKR 2,500
+- Active campaign: 20% off → Sale price: PKR 2,000
+- Customer also applies voucher `EXTRA10` (10% off order): −PKR 200
+- Final price for that item: PKR 1,800
+
+---
+
+## Storefront display
+
+When a product is in an active campaign, the storefront shows:
+
+- A **red sale badge** in the product carousel (text from the campaign's Badge Text field).
+- **Strikethrough original price** next to the discounted price.
+- These appear on the home page, category pages, and product detail.
+
+If no campaign is active, products display at their normal price with no badge — no manual cleanup needed.
+
+---
+
+## Tips
+
+1. **Start in Draft** — Build your campaign, review products and dates, then Publish when ready.
+2. **Use Pause for emergencies** — If something is wrong with a live sale, pause it instantly. Fix and resume.
+3. **Set priority for overlapping sales** — If you run a store-wide sale and a category-specific sale simultaneously, the higher priority wins per product.
+4. **Duplicate for recurring sales** — After a sale ends, duplicate it, adjust dates, and publish again.
+5. **Fixed amount in cents** — Remember that 50000 = PKR 500. The backend stores all amounts in minor units.
+6. **Badge text matters** — Keep it short (max 30 chars). It appears directly on the product card.
+
+---
+
+## Permissions
+
+| Permission | Who needs it |
+|------------|-------------|
+| `sales-campaigns:read` | View campaigns list and details |
+| `sales-campaigns:write` | Create, edit, publish, pause, resume, duplicate, delete |
+
+Both are granted to **Admin** and **Super Admin** roles by default.
