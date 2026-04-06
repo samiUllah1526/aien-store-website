@@ -40,6 +40,7 @@ export interface Product {
   description?: string | null;
   sizes?: string[];
   compareAtPrice?: number | null;
+  saleBadgeText?: string | null;
 }
 
 /** Landing category from GET /categories/landing */

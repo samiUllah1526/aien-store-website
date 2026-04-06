@@ -46,6 +46,13 @@ export class ProductResponseDto {
   inStock: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Sale campaign fields (null when no active campaign). */
+  salePrice: number | null;
+  originalPrice: number | null;
+  onSale: boolean;
+  saleBadgeText: string | null;
+  saleEndsAt: string | null;
+  saleCampaignId: string | null;
 }
 
 export class ProductListResponseDto {
@@ -65,4 +72,11 @@ export class ProductListResponseDto {
   inStock: boolean;
   /** Category names for display/tags. */
   categories: string[];
+  /** Sale campaign fields (null when no active campaign). */
+  salePrice: number | null;
+  originalPrice: number | null;
+  onSale: boolean;
+  saleBadgeText: string | null;
+  saleEndsAt: string | null;
+  saleCampaignId: string | null;
 }

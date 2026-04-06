@@ -16,6 +16,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
+import { SalesCampaignsModule } from './modules/sales-campaigns/sales-campaigns.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { JobsModule } from './modules/jobs/jobs.module';
@@ -49,6 +50,7 @@ import { AdminModule } from './admin/admin.module';
     InventoryModule,
     EmailLogsModule,
     VouchersModule,
+    SalesCampaignsModule,
     FavoritesModule,
     ProfileModule,
     JobsModule,

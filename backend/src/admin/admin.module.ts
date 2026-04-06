@@ -9,6 +9,7 @@ import { CategoriesModule } from '../modules/categories/categories.module';
 import { InventoryModule } from '../modules/inventory/inventory.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { VouchersModule } from '../modules/vouchers/vouchers.module';
+import { SalesCampaignsModule } from '../modules/sales-campaigns/sales-campaigns.module';
 import { MediaModule } from '../modules/media/media.module';
 import { EmailLogsModule } from '../modules/email-logs/email-logs.module';
 import { JobsModule } from '../modules/jobs/jobs.module';
@@ -28,6 +29,7 @@ import { AdminEmailLogsController } from './email-logs/admin-email-logs.controll
 import { AdminJobsController } from './jobs/admin-jobs.controller';
 import { AdminPermissionsController } from './permissions/admin-permissions.controller';
 import { AdminDeployController } from './deploy/admin-deploy.controller';
+import { AdminSalesCampaignsController } from './sales-campaigns/admin-sales-campaigns.controller';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { AdminDeployController } from './deploy/admin-deploy.controller';
     InventoryModule,
     SettingsModule,
     VouchersModule,
+    SalesCampaignsModule,
     MediaModule,
     EmailLogsModule,
     JobsModule,
@@ -62,6 +65,7 @@ import { AdminDeployController } from './deploy/admin-deploy.controller';
     AdminJobsController,
     AdminPermissionsController,
     AdminDeployController,
+    AdminSalesCampaignsController,
   ],
 })
 export class AdminModule {}

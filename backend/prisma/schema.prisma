@@ -47,6 +47,27 @@ enum VoucherType {
   @@map("voucher_type")
 }
 
+enum SalesCampaignType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  @@map("sales_campaign_type")
+}
+
+/// Only admin-intent states. ACTIVE/ENDED are derived at query time from startsAt/endsAt.
+enum SalesCampaignStatus {
+  DRAFT
+  SCHEDULED
+  PAUSED
+  @@map("sales_campaign_status")
+}
+
+enum SalesCampaignScope {
+  ALL_PRODUCTS
+  SPECIFIC_PRODUCTS
+  SPECIFIC_CATEGORIES
+  @@map("sales_campaign_scope")
+}
+
 // -----------------------------------------------------------------------------
 // RBAC: User ↔ Role (M:N), User ↔ Permission (M:N overrides), Role ↔ Permission (M:N)
 // -----------------------------------------------------------------------------
@@ -78,6 +99,7 @@ model User {
   favorites         UserFavorite[]     @relation("UserFavorites")
   savedShipping     UserSavedShipping? @relation("UserSavedShipping")
   inventoryMovementsPerformed InventoryMovement[] @relation("InventoryMovementPerformedBy")
+  createdSalesCampaigns SalesCampaign[] @relation("SalesCampaignCreatedBy")
 
   @@map("users")
 }
@@ -242,6 +264,7 @@ model Category {
   parent           Category?         @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children         Category[]       @relation("CategoryHierarchy")
   productCategories ProductCategory[]
+  salesCampaignCategories SalesCampaignCategory[]
 
   @@map("categories")
 }
@@ -269,6 +292,7 @@ model Product {
   orderItems           OrderItem[]
   userFavorites        UserFavorite[] @relation("ProductFavorites")
   inventoryMovements   InventoryMovement[]
+  salesCampaignProducts SalesCampaignProduct[]
 
   @@map("products")
 }
@@ -493,6 +517,10 @@ model OrderItem {
   size      String?  @map("size")
   quantity  Int      @map("quantity")
   unitCents Int      @map("unit_cents")
+  /** Campaign that was active when this item was ordered (attribution). */
+  campaignId      String?  @map("campaign_id") @db.Uuid
+  /** Original unit price before campaign discount (null = no campaign). */
+  originalUnitCents Int?   @map("original_unit_cents")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -566,6 +594,72 @@ model OrderStatusHistory {
 
   @@index([orderId])
   @@map("order_status_history")
+}
+
+// -----------------------------------------------------------------------------
+// Sales Campaigns: time-bound product price reductions (MedusaJS Price List pattern)
+// Status is query-time derived from startsAt/endsAt. Only admin-intent states stored.
+// -----------------------------------------------------------------------------
+
+model SalesCampaign {
+  id              String               @id @default(uuid()) @db.Uuid
+  name            String               @map("name")
+  slug            String               @unique @map("slug")
+  description     String?              @map("description")
+  type            SalesCampaignType    @map("type")
+  /// For PERCENTAGE: 1–100. For FIXED_AMOUNT: discount in cents.
+  value           Int                  @map("value")
+
+  startsAt        DateTime             @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime             @map("ends_at") @db.Timestamptz(6)
+  /// Only admin-controlled states: DRAFT, SCHEDULED, PAUSED. ACTIVE/ENDED derived at query time.
+  status          SalesCampaignStatus  @default(DRAFT) @map("status")
+
+  applyTo         SalesCampaignScope   @default(SPECIFIC_PRODUCTS) @map("apply_to")
+  badgeText       String?              @map("badge_text")
+  /// Higher priority wins when product is in multiple active campaigns.
+  priority        Int                  @default(0) @map("priority")
+
+  createdById     String?              @map("created_by_id") @db.Uuid
+  createdBy       User?                @relation("SalesCampaignCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?            @map("deleted_at") @db.Timestamptz(6)
+
+  products        SalesCampaignProduct[]
+  categories      SalesCampaignCategory[]
+
+  @@index([status, startsAt, endsAt])
+  @@index([deletedAt])
+  @@map("sales_campaigns")
+}
+
+model SalesCampaignProduct {
+  id              String         @id @default(uuid()) @db.Uuid
+  campaignId      String         @map("campaign_id") @db.Uuid
+  productId       String         @map("product_id") @db.Uuid
+  /// Optional per-product override value (e.g. 40% instead of campaign-default 30%).
+  overrideValue   Int?           @map("override_value")
+
+  campaign        SalesCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, productId])
+  @@index([productId])
+  @@map("sales_campaign_products")
+}
+
+model SalesCampaignCategory {
+  id              String         @id @default(uuid()) @db.Uuid
+  campaignId      String         @map("campaign_id") @db.Uuid
+  categoryId      String         @map("category_id") @db.Uuid
+
+  campaign        SalesCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  category        Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, categoryId])
+  @@index([categoryId])
+  @@map("sales_campaign_categories")
 }
 
 // -----------------------------------------------------------------------------

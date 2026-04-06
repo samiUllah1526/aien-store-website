@@ -185,6 +185,48 @@ export const api = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Sales Campaigns
+// ---------------------------------------------------------------------------
+
+import type { SalesCampaign, SalesCampaignFormData } from './types';
+
+export async function getSalesCampaigns(params?: Record<string, string | number | undefined>) {
+  return api.getList<SalesCampaign>('/sales-campaigns', params);
+}
+
+export async function getSalesCampaign(id: string) {
+  return api.get<SalesCampaign>(`/sales-campaigns/${id}`);
+}
+
+export async function createSalesCampaign(data: SalesCampaignFormData) {
+  return api.post<SalesCampaign>('/sales-campaigns', data);
+}
+
+export async function updateSalesCampaign(id: string, data: Partial<SalesCampaignFormData>) {
+  return api.patch<SalesCampaign>(`/sales-campaigns/${id}`, data);
+}
+
+export async function publishSalesCampaign(id: string) {
+  return api.post<SalesCampaign>(`/sales-campaigns/${id}/publish`, {});
+}
+
+export async function pauseSalesCampaign(id: string) {
+  return api.post<SalesCampaign>(`/sales-campaigns/${id}/pause`, {});
+}
+
+export async function resumeSalesCampaign(id: string) {
+  return api.post<SalesCampaign>(`/sales-campaigns/${id}/resume`, {});
+}
+
+export async function duplicateSalesCampaign(id: string) {
+  return api.post<SalesCampaign>(`/sales-campaigns/${id}/duplicate`, {});
+}
+
+export async function deleteSalesCampaign(id: string) {
+  return api.delete(`/sales-campaigns/${id}`);
+}
+
 /** Queue a GitHub Actions rebuild of the main (storefront) website. Requires deploy:website. */
 export async function deployMainWebsite(reason?: string): Promise<{ actionsUrl: string }> {
   const json = await api.post<{ actionsUrl: string }>('/deploy/main-website', {

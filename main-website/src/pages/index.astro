@@ -16,19 +16,24 @@ function mapProduct(p: Record<string, unknown>): Product {
   const variantImage = variants.find((v) => typeof v?.image === 'string' && v.image.length > 0)?.image ?? '';
   const img = (p.image || variantImage) as string;
   const price = Number(p.price);
-  const compareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
+  const salePrice = p.salePrice != null ? Number(p.salePrice) : null;
+  const originalPrice = p.originalPrice != null ? Number(p.originalPrice) : null;
+  const legacyCompareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
+  const compareAt = originalPrice ?? (legacyCompareAt != null && !Number.isNaN(legacyCompareAt) ? legacyCompareAt : null);
+  const effectivePrice = salePrice ?? price;
   return {
     id: String(p.id),
     slug: String(p.slug),
     name: String(p.name),
-    price,
+    price: effectivePrice,
     currency: String(p.currency ?? 'PKR'),
     image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
     urduVerse: (p.urduVerse as string | null) ?? null,
     urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
     description: (p.description as string | null) ?? null,
     sizes: (p.sizes as string[] | undefined) ?? undefined,
-    compareAtPrice: compareAt != null && !Number.isNaN(compareAt) ? compareAt : null,
+    compareAtPrice: compareAt,
+    saleBadgeText: (p.saleBadgeText as string | null) ?? null,
   };
 }
 

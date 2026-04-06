@@ -22,6 +22,11 @@ import {
   variantCompositeKey,
   type NormalizedVariantInput,
 } from './product-variant-replace.util';
+import { SalesCampaignsService } from '../sales-campaigns/sales-campaigns.service';
+import {
+  type SalePriceInfo,
+  computeSalePrice,
+} from '../sales-campaigns/sale-price.util';
 
 /** Interactive transaction client (subset of PrismaClient). */
 type TransactionClient = Parameters<
@@ -33,7 +38,10 @@ const UUID_REGEX =
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly salesCampaigns: SalesCampaignsService,
+  ) {}
 
   /** Resolve category slug to id. */
   private async resolveCategoryId(
@@ -319,12 +327,12 @@ export class ProductsService {
         await this.attachVariantMedia(variantId, variant.mediaIds);
       }
     }
-    return this.toResponseDto(
-      await this.prisma.product.findUniqueOrThrow({
-        where: { id: product.id },
-        include: this.productInclude(),
-      }),
-    );
+    const created = await this.prisma.product.findUniqueOrThrow({
+      where: { id: product.id },
+      include: this.productInclude(),
+    });
+    const sale = await this.salesCampaigns.getActiveSalePrice(created.id);
+    return this.toResponseDto(created, sale);
   }
 
   async findAll(
@@ -357,7 +365,12 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    const data = items.map((p) => this.toListResponseDto(p));
+    const salePrices = await this.salesCampaigns.getActiveSalePrices(
+      items.map((p) => p.id),
+    );
+    const data = items.map((p) =>
+      this.toListResponseDto(p, salePrices.get(p.id) ?? null),
+    );
     return { data, total };
   }
 
@@ -369,7 +382,8 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Product with id "${id}" not found`);
     }
-    return this.toResponseDto(product);
+    const sale = await this.salesCampaigns.getActiveSalePrice(product.id);
+    return this.toResponseDto(product, sale);
   }
 
   async findBySlug(slug: string): Promise<ProductResponseDto> {
@@ -380,7 +394,8 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Product with slug "${slug}" not found`);
     }
-    return this.toResponseDto(product);
+    const sale = await this.salesCampaigns.getActiveSalePrice(product.id);
+    return this.toResponseDto(product, sale);
   }
 
   /** Find products by IDs; returns in the same order as the input array (missing IDs skipped). */
@@ -391,7 +406,13 @@ export class ProductsService {
       where: { id: { in: uniqueIds } },
       include: this.productInclude(),
     });
-    const map = new Map(products.map((p) => [p.id, this.toResponseDto(p)]));
+    const salePrices = await this.salesCampaigns.getActiveSalePrices(uniqueIds);
+    const map = new Map(
+      products.map((p) => [
+        p.id,
+        this.toResponseDto(p, salePrices.get(p.id) ?? null),
+      ]),
+    );
     return ids.filter((id) => map.has(id)).map((id) => map.get(id)!);
   }
 
@@ -529,12 +550,12 @@ export class ProductsService {
         await this.attachMedia(id, dto.mediaIds);
       }
     }
-    return this.toResponseDto(
-      await this.prisma.product.findUniqueOrThrow({
-        where: { id },
-        include: this.productInclude(),
-      }),
-    );
+    const refreshed = await this.prisma.product.findUniqueOrThrow({
+      where: { id },
+      include: this.productInclude(),
+    });
+    const sale = await this.salesCampaigns.getActiveSalePrice(refreshed.id);
+    return this.toResponseDto(refreshed, sale);
   }
 
   async remove(id: string): Promise<void> {
@@ -671,37 +692,73 @@ export class ProductsService {
     return `/media/file/${media.path}`;
   }
 
-  private toResponseDto(p: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    priceCents: number;
-    currency: string;
-    featured: boolean;
-    urduVerse: string | null;
-    urduVerseTransliteration: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    productCategories: Array<{
-      category: { id: string; name: string; slug: string };
-    }>;
-    productMedia: Array<{
-      media: { id: string; path: string; deliveryUrl: string | null };
-    }>;
-    variants: Array<{
+  private saleFields(
+    priceCents: number,
+    sale: SalePriceInfo | null,
+  ): {
+    salePrice: number | null;
+    originalPrice: number | null;
+    onSale: boolean;
+    saleBadgeText: string | null;
+    saleEndsAt: string | null;
+    saleCampaignId: string | null;
+  } {
+    if (!sale) {
+      return {
+        salePrice: null,
+        originalPrice: null,
+        onSale: false,
+        saleBadgeText: null,
+        saleEndsAt: null,
+        saleCampaignId: null,
+      };
+    }
+    const salePriceCents = computeSalePrice(priceCents, sale);
+    return {
+      salePrice: salePriceCents,
+      originalPrice: priceCents,
+      onSale: true,
+      saleBadgeText:
+        sale.badgeText ?? `${sale.discountValue}% OFF`,
+      saleEndsAt: sale.endsAt.toISOString(),
+      saleCampaignId: sale.campaignId,
+    };
+  }
+
+  private toResponseDto(
+    p: {
       id: string;
-      color: string;
-      size: string;
-      sku: string | null;
-      stockQuantity: number;
-      priceOverrideCents: number | null;
-      isActive: boolean;
-      variantMedia: Array<{
+      name: string;
+      slug: string;
+      description: string | null;
+      priceCents: number;
+      currency: string;
+      featured: boolean;
+      urduVerse: string | null;
+      urduVerseTransliteration: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      productCategories: Array<{
+        category: { id: string; name: string; slug: string };
+      }>;
+      productMedia: Array<{
         media: { id: string; path: string; deliveryUrl: string | null };
       }>;
-    }>;
-  }): ProductResponseDto {
+      variants: Array<{
+        id: string;
+        color: string;
+        size: string;
+        sku: string | null;
+        stockQuantity: number;
+        priceOverrideCents: number | null;
+        isActive: boolean;
+        variantMedia: Array<{
+          media: { id: string; path: string; deliveryUrl: string | null };
+        }>;
+      }>;
+    },
+    sale: SalePriceInfo | null = null,
+  ): ProductResponseDto {
     const variants: ProductVariantResponseDto[] = p.variants.map((variant) => {
       const images = variant.variantMedia.map((vm) => this.imageUrl(vm.media));
       return {
@@ -747,33 +804,37 @@ export class ProductsService {
       inStock,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
+      ...this.saleFields(p.priceCents, sale),
     };
   }
 
-  private toListResponseDto(p: {
-    id: string;
-    name: string;
-    slug: string;
-    priceCents: number;
-    currency: string;
-    featured: boolean;
-    productCategories: Array<{ category: { name: string } }>;
-    productMedia: Array<{
-      media: { id: string; path: string; deliveryUrl: string | null };
-    }>;
-    variants: Array<{
+  private toListResponseDto(
+    p: {
       id: string;
-      color: string;
-      size: string;
-      sku: string | null;
-      stockQuantity: number;
-      priceOverrideCents: number | null;
-      isActive: boolean;
-      variantMedia: Array<{
+      name: string;
+      slug: string;
+      priceCents: number;
+      currency: string;
+      featured: boolean;
+      productCategories: Array<{ category: { name: string } }>;
+      productMedia: Array<{
         media: { id: string; path: string; deliveryUrl: string | null };
       }>;
-    }>;
-  }): ProductListResponseDto {
+      variants: Array<{
+        id: string;
+        color: string;
+        size: string;
+        sku: string | null;
+        stockQuantity: number;
+        priceOverrideCents: number | null;
+        isActive: boolean;
+        variantMedia: Array<{
+          media: { id: string; path: string; deliveryUrl: string | null };
+        }>;
+      }>;
+    },
+    sale: SalePriceInfo | null = null,
+  ): ProductListResponseDto {
     const variants: ProductVariantResponseDto[] = p.variants.map((variant) => {
       const images = variant.variantMedia.map((vm) => this.imageUrl(vm.media));
       return {
@@ -809,6 +870,7 @@ export class ProductsService {
       stockQuantity,
       inStock,
       categories,
+      ...this.saleFields(p.priceCents, sale),
     };
   }
 }
