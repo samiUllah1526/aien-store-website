@@ -263,6 +263,65 @@ export interface VoucherFormData {
   isActive?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Sales Campaigns (GET /sales-campaigns, POST /sales-campaigns, etc.)
+// ---------------------------------------------------------------------------
+
+export type SalesCampaignType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+export type SalesCampaignStatus = 'DRAFT' | 'SCHEDULED' | 'PAUSED';
+export type SalesCampaignScope = 'ALL_PRODUCTS' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_CATEGORIES';
+export type SalesCampaignDisplayStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'PAUSED' | 'ENDED';
+
+export interface SalesCampaignProduct {
+  productId: string;
+  overrideValue: number | null;
+  product: { id: string; name: string; slug: string; priceCents: number };
+}
+
+export interface SalesCampaignCategory {
+  categoryId: string;
+  category: { id: string; name: string; slug: string };
+}
+
+export interface SalesCampaign {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  type: SalesCampaignType;
+  value: number;
+  startsAt: string;
+  endsAt: string;
+  status: SalesCampaignStatus;
+  displayStatus: SalesCampaignDisplayStatus;
+  applyTo: SalesCampaignScope;
+  badgeText: string | null;
+  priority: number;
+  productCount: number;
+  categoryCount: number;
+  products: SalesCampaignProduct[];
+  categories: SalesCampaignCategory[];
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalesCampaignFormData {
+  name: string;
+  slug?: string;
+  description?: string;
+  type: SalesCampaignType;
+  value: number;
+  startsAt: string;
+  endsAt: string;
+  applyTo: SalesCampaignScope;
+  badgeText?: string;
+  priority?: number;
+  productIds?: string[];
+  productOverrides?: Array<{ productId: string; overrideValue: number }>;
+  categoryIds?: string[];
+}
+
 export interface VoucherStats {
   totalRedemptions: number;
   revenueImpactCents: number;

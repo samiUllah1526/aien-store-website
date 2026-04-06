@@ -19,8 +19,10 @@ export interface CarouselProduct {
   variantImage?: string;
   urduVerse?: string | null;
   description?: string | null;
-  /** When set, show sale badge (e.g. "30% Save") and strikethrough original price. */
+  /** When set, show sale badge and strikethrough original price. */
   compareAtPrice?: number | null;
+  /** Custom badge text from sales campaign (e.g. "EID SALE", "30% OFF"). */
+  saleBadgeText?: string | null;
 }
 
 export default function ProductCarousel({
@@ -157,16 +159,9 @@ export default function ProductCarousel({
               onMouseLeave={() => setHoveredId(null)}
             >
             <div className="aspect-[4/5] overflow-hidden rounded-xl bg-ash/10 relative">
-              {showSaleBadge && (product.compareAtPrice != null && product.compareAtPrice > product.price) && (
+              {showSaleBadge && product.compareAtPrice != null && product.compareAtPrice > product.price && (
                 <span className="absolute left-3 top-3 z-10 rounded bg-red-600 text-white text-xs font-semibold px-2 py-1">
-                  {product.compareAtPrice > 0
-                    ? `${Math.round((1 - product.price / product.compareAtPrice) * 100)}% Save`
-                    : 'SALE'}
-                </span>
-              )}
-              {showSaleBadge && (product.compareAtPrice == null || product.compareAtPrice <= product.price) && i < 3 && (
-                <span className="absolute left-3 top-3 z-10 rounded bg-red-600 text-white text-xs font-semibold px-2 py-1">
-                  SALE 30% OFF
+                  {product.saleBadgeText ?? `${Math.round((1 - product.price / product.compareAtPrice) * 100)}% Save`}
                 </span>
               )}
               <motion.img

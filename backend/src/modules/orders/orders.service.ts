@@ -25,6 +25,8 @@ import { CURRENCIES } from '../../common/constants/currency';
 import { SettingsService } from '../settings/settings.service';
 import { VouchersService } from '../vouchers/vouchers.service';
 import { VoucherAuditService } from '../vouchers/voucher-audit.service';
+import { SalesCampaignsService } from '../sales-campaigns/sales-campaigns.service';
+import { computeSalePrice } from '../sales-campaigns/sale-price.util';
 import { MAX_ORDER_ITEM_QUANTITY } from './dto/create-order-item.dto';
 
 @Injectable()
@@ -36,6 +38,7 @@ export class OrdersService {
     private readonly inventory: InventoryService,
     private readonly vouchersService: VouchersService,
     private readonly voucherAudit: VoucherAuditService,
+    private readonly salesCampaigns: SalesCampaignsService,
   ) {}
 
   /** Resolve delivery charges from settings (0 = free delivery). Default free delivery when unset. */
@@ -65,6 +68,8 @@ export class OrdersService {
       variantId: string;
       quantity: number;
       unitCents: number;
+      campaignId?: string | null;
+      originalUnitCents?: number | null;
       color?: string | null;
       size?: string | null;
     }>;
@@ -120,12 +125,19 @@ export class OrdersService {
     }
     const currency = 'PKR';
 
+    const productIds = [
+      ...new Set(items.map((i) => i.productId)),
+    ];
+    const salePriceMap = await this.salesCampaigns.getActiveSalePrices(productIds);
+
     let subtotalCents = 0;
     const orderItemsData: Array<{
       productId: string;
       variantId: string;
       quantity: number;
       unitCents: number;
+      campaignId?: string | null;
+      originalUnitCents?: number | null;
       color?: string | null;
       size?: string | null;
     }> = [];
@@ -164,8 +176,14 @@ export class OrdersService {
           `Insufficient stock for "${variant.product.name}" (${variant.color}/${variant.size}). Available: ${variant.stockQuantity}, requested: ${requiredQty}.`,
         );
       }
-      const unitCents =
+      const baseCents =
         variant.priceOverrideCents ?? variant.product.priceCents;
+      const saleInfo = salePriceMap.get(variant.productId);
+      const unitCents = saleInfo
+        ? computeSalePrice(baseCents, saleInfo)
+        : baseCents;
+      const originalUnitCents = saleInfo ? baseCents : null;
+      const campaignId = saleInfo?.campaignId ?? null;
       const lineTotalCents = unitCents * quantity;
       subtotalCents += lineTotalCents;
       const rawColor =
@@ -179,6 +197,8 @@ export class OrdersService {
         variantId: item.variantId,
         quantity,
         unitCents,
+        campaignId,
+        originalUnitCents,
         color,
         size,
       });

@@ -1,0 +1,11 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { SalesCampaignDetail } from '../../../components/SalesCampaignDetail';
+import { appName } from '../../../lib/config';
+
+const campaignId = Astro.url.searchParams.get('id') ?? '';
+---
+
+<AdminLayout title={campaignId ? `Campaign ${campaignId.slice(0, 8)}… — ${appName}` : 'Sales Campaign'}>
+  <SalesCampaignDetail campaignId={campaignId} client:load />
+</AdminLayout>

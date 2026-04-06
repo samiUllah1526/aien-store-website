@@ -1,0 +1,49 @@
+---
+description: Prisma migration and permissions conventions for this project
+globs: backend/prisma/**
+alwaysApply: false
+---
+
+# Prisma Migrations & Permissions
+
+## New permissions MUST go in migrations, not seed.ts
+
+When a feature requires new RBAC permissions, add them as SQL `INSERT` statements
+inside the migration file — NOT in `seed.ts`.
+
+The seeder is only for first-time environment bootstrapping. Production deployments
+run `prisma migrate deploy` and never re-run the seeder.
+
+```sql
+-- ✅ GOOD: in migration.sql — applied automatically on every environment
+INSERT INTO "permissions" ("id", "name", "category", "created_at", "updated_at")
+VALUES (gen_random_uuid(), 'feature:read', 'Category', NOW(), NOW())
+ON CONFLICT ("name") DO NOTHING;
+
+-- Grant to Admin and Super Admin roles
+INSERT INTO "role_permissions" ("role_id", "permission_id", "created_at", "updated_at")
+SELECT r.id, p.id, NOW(), NOW()
+FROM "roles" r, "permissions" p
+WHERE r.name IN ('Admin', 'Super Admin')
+  AND p.name = 'feature:read'
+ON CONFLICT ("role_id", "permission_id") DO NOTHING;
+```
+
+```typescript
+// ❌ BAD: adding permissions only in seed.ts
+// Production won't pick these up without manually re-running the seeder
+{ name: 'feature:read', category: 'Category' },
+```
+
+## Migration commands
+
+- **Development:** `npx prisma migrate dev` (creates + applies migrations, generates client)
+- **Production / CI:** `npx prisma migrate deploy` (applies pending migrations only, no prompts, no resets, no seed)
+
+NEVER run `prisma migrate dev` in production.
+
+## Migration file conventions
+
+- Prisma auto-generates the schema DDL. Append data-seeding SQL (permissions, reference data) at the end of the generated file.
+- Always use `ON CONFLICT ... DO NOTHING` for idempotency.
+- Use `gen_random_uuid()` for new UUIDs (PostgreSQL built-in).
