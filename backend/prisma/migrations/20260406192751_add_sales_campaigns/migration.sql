@@ -94,3 +94,26 @@ ALTER TABLE "sales_campaign_categories" ADD CONSTRAINT "sales_campaign_categorie
 
 -- AddForeignKey
 ALTER TABLE "sales_campaign_categories" ADD CONSTRAINT "sales_campaign_categories_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Seed permissions for sales campaigns (idempotent: skip if already exists)
+INSERT INTO "permissions" ("id", "name", "category", "created_at", "updated_at")
+VALUES
+  (gen_random_uuid(), 'sales-campaigns:read',  'Promotions', NOW(), NOW()),
+  (gen_random_uuid(), 'sales-campaigns:write', 'Promotions', NOW(), NOW())
+ON CONFLICT ("name") DO NOTHING;
+
+-- Grant to Admin role (all permissions except superadmin:manage and deploy:website)
+INSERT INTO "role_permissions" ("role_id", "permission_id", "created_at", "updated_at")
+SELECT r.id, p.id, NOW(), NOW()
+FROM "roles" r, "permissions" p
+WHERE r.name = 'Admin'
+  AND p.name IN ('sales-campaigns:read', 'sales-campaigns:write')
+ON CONFLICT ("role_id", "permission_id") DO NOTHING;
+
+-- Grant to Super Admin role
+INSERT INTO "role_permissions" ("role_id", "permission_id", "created_at", "updated_at")
+SELECT r.id, p.id, NOW(), NOW()
+FROM "roles" r, "permissions" p
+WHERE r.name = 'Super Admin'
+  AND p.name IN ('sales-campaigns:read', 'sales-campaigns:write')
+ON CONFLICT ("role_id", "permission_id") DO NOTHING;
