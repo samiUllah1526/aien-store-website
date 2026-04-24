@@ -82,6 +82,16 @@ export const seoSettingsSchema = z.object({
   googleSiteVerification: z.string().optional().or(z.literal('')),
 });
 
+/** Homepage schema.org JSON-LD (store, address, phone). */
+export const businessSettingsSchema = z.object({
+  schemaOrgType: z.string().trim().max(80).optional().or(z.literal('')),
+  telephone: z.string().trim().max(80).optional().or(z.literal('')),
+  contactType: z.string().trim().max(80).optional().or(z.literal('')),
+  addressCountry: z.string().trim().max(10).optional().or(z.literal('')),
+  addressLocality: z.string().trim().max(120).optional().or(z.literal('')),
+  addressRegion: z.string().trim().max(120).optional().or(z.literal('')),
+});
+
 export const marketingSettingsSchema = z.object({
   metaPixelId: z.string().optional().or(z.literal('')),
   googleAnalyticsId: z.string().optional().or(z.literal('')),

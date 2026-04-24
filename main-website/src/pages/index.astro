@@ -4,8 +4,74 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HomePage, { type LandingCategory, type Product } from '../components/home/HomePage';
-import { brandName, defaultMetaDescription, heroVideoUrl, heroVideoPoster, heroSlides, storeApiBaseUrl } from '../config';
-import { getPublicSettings } from '../lib/settings';
+import {
+  apiBaseUrl,
+  brandName,
+  defaultMetaDescription,
+  heroVideoUrl,
+  heroVideoPoster,
+  heroSlides,
+  storeApiBaseUrl,
+} from '../config';
+import { getPublicSettings, type PublicSettings } from '../lib/settings';
+
+function absoluteMediaUrl(apiRoot: string, pathOrUrl: string | null | undefined): string | undefined {
+  if (!pathOrUrl?.trim()) return undefined;
+  const p = pathOrUrl.trim();
+  if (p.startsWith('http')) return p;
+  return `${apiRoot}/media/file/${p.replace(/^\//, '')}`;
+}
+
+/** Homepage `ClothingStore`-style JSON-LD from public settings (Admin SEO + Store structured data). */
+function buildHomepageStoreJsonLd(settings: PublicSettings, apiRoot: string): Record<string, unknown> | null {
+  const seo = settings.seo;
+  const bus = settings.business;
+  const site = (seo.siteUrl || '').replace(/\/+$/, '');
+  if (!site) return null;
+
+  const name = seo.siteTitle?.trim() || brandName;
+  const description = seo.defaultDescription?.trim() || defaultMetaDescription;
+  const type = (bus.schemaOrgType?.trim() || 'ClothingStore').slice(0, 80);
+
+  const out: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': type,
+    name,
+    url: site,
+    description,
+  };
+
+  const logo = absoluteMediaUrl(apiRoot, settings.logoPath);
+  if (logo) out.logo = logo;
+
+  const og = seo.ogImageDefault?.trim();
+  if (og) {
+    out.image = og.startsWith('http') ? og : `${site}${og.startsWith('/') ? '' : '/'}${og}`;
+  }
+
+  const c = bus.addressCountry?.trim();
+  const loc = bus.addressLocality?.trim();
+  const reg = bus.addressRegion?.trim();
+  if (c || loc || reg) {
+    out.address = {
+      '@type': 'PostalAddress',
+      ...(c ? { addressCountry: c } : {}),
+      ...(loc ? { addressLocality: loc } : {}),
+      ...(reg ? { addressRegion: reg } : {}),
+    };
+  }
+
+  const tel = bus.telephone?.trim();
+  if (tel) {
+    out.contactPoint = {
+      '@type': 'ContactPoint',
+      telephone: tel,
+      contactType: (bus.contactType?.trim() || 'customer service').slice(0, 80),
+    };
+  }
+
+  return out;
+}
 
 const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
 function mapProduct(p: Record<string, unknown>): Product {
@@ -82,9 +148,12 @@ const settings = await getPublicSettings();
 const heroSlidesFromApi = settings.hero?.slides?.length ? settings.hero.slides : [];
 const heroSlidesToUse = heroSlidesFromApi.length > 0 ? heroSlidesFromApi : heroSlides;
 const { shopAll, landingCategories, productsBySlug } = await loadHomeCatalog();
+
+const apiRoot = apiBaseUrl.replace(/\/$/, '');
+const clothingStoreJsonLd = buildHomepageStoreJsonLd(settings, apiRoot);
 ---
 
-<BaseLayout title={brandName} description={defaultMetaDescription}>
+<BaseLayout title={brandName} description={defaultMetaDescription} jsonLd={clothingStoreJsonLd ?? undefined}>
   <HomePage
     client:load
     videoSrc={heroVideoUrl}

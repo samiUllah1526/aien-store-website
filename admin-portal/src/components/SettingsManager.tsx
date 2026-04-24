@@ -17,6 +17,7 @@ import {
   heroSettingsSchema,
   marketingSettingsSchema,
   seoSettingsSchema,
+  businessSettingsSchema,
   socialSettingsSchema,
 } from '../lib/validation/settings';
 
@@ -67,6 +68,15 @@ interface SeoValue {
   ogImageDefault?: string;
   twitterHandle?: string;
   googleSiteVerification?: string;
+}
+
+interface BusinessValue {
+  schemaOrgType?: string;
+  telephone?: string;
+  contactType?: string;
+  addressCountry?: string;
+  addressLocality?: string;
+  addressRegion?: string;
 }
 
 interface MarketingValue {
@@ -181,6 +191,17 @@ export function SettingsManager() {
   const deliveryForm = useZodForm({ schema: deliverySettingsSchema, defaultValues: { freeDelivery: true, deliveryChargesPkr: '' } });
   const bankingForm = useZodForm({ schema: bankingSettingsSchema, defaultValues: { bankName: '', accountTitle: '', accountNumber: '', iban: '', instructions: '' } });
   const seoForm = useZodForm({ schema: seoSettingsSchema, defaultValues: { siteTitle: '', defaultDescription: '', siteUrl: '', ogImageDefault: '', twitterHandle: '', googleSiteVerification: '' } });
+  const businessForm = useZodForm({
+    schema: businessSettingsSchema,
+    defaultValues: {
+      schemaOrgType: 'ClothingStore',
+      telephone: '',
+      contactType: 'customer service',
+      addressCountry: '',
+      addressLocality: '',
+      addressRegion: '',
+    },
+  });
   const marketingForm = useZodForm({ schema: marketingSettingsSchema, defaultValues: { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', enabled: true } });
   const announcementForm = useZodForm({ schema: announcementSettingsSchema, defaultValues: { items: [] } });
   const heroForm = useZodForm({ schema: heroSettingsSchema, defaultValues: { slides: [] } });
@@ -210,6 +231,15 @@ export function SettingsManager() {
       deliveryForm.reset({ freeDelivery: cents === 0, deliveryChargesPkr: cents === 0 ? '' : (cents / 100).toString() });
       bankingForm.reset((data['banking'] as BankingValue) ?? {});
       seoForm.reset((data['seo'] as SeoValue) ?? {});
+      const biz = (data['business'] as BusinessValue) ?? {};
+      businessForm.reset({
+        schemaOrgType: biz.schemaOrgType ?? 'ClothingStore',
+        telephone: biz.telephone ?? '',
+        contactType: biz.contactType ?? 'customer service',
+        addressCountry: biz.addressCountry ?? '',
+        addressLocality: biz.addressLocality ?? '',
+        addressRegion: biz.addressRegion ?? '',
+      });
       marketingForm.reset((data['marketing'] as MarketingValue) ?? { enabled: true });
       announcementForm.reset((data['announcement'] as AnnouncementValue) ?? { items: [] });
       heroForm.reset((data['hero'] as HeroValue) ?? { slides: [] });
@@ -572,6 +602,18 @@ export function SettingsManager() {
       ogImageDefault: values.ogImageDefault?.trim() ?? '',
       twitterHandle: (values.twitterHandle?.trim() ?? '').replace(/^@/, ''),
       googleSiteVerification: values.googleSiteVerification?.trim() ?? '',
+    });
+    fetchSettings();
+  });
+
+  const handleSaveBusiness = businessForm.handleSubmit(async (values) => {
+    await saveKey('business', {
+      schemaOrgType: values.schemaOrgType?.trim() ?? '',
+      telephone: values.telephone?.trim() ?? '',
+      contactType: values.contactType?.trim() ?? '',
+      addressCountry: values.addressCountry?.trim() ?? '',
+      addressLocality: values.addressLocality?.trim() ?? '',
+      addressRegion: values.addressRegion?.trim() ?? '',
     });
     fetchSettings();
   });
@@ -1469,6 +1511,107 @@ export function SettingsManager() {
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {saving === 'seo' ? 'Saving…' : 'Save SEO'}
+          </button>
+        </form>
+      </section>
+
+      {/* Store structured data (homepage JSON-LD) */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Store structured data (Google)</h2>
+        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            <strong>What this does:</strong> These fields feed the homepage <code className="rounded bg-slate-200 px-1 text-xs dark:bg-slate-700">application/ld+json</code> block (Schema.org store, address, and contact). Site title, URL, description, logo, and default share image still come from{' '}
+            <strong>SEO & meta tags</strong> above — edit those there so everything stays in one place.
+          </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <strong>Important:</strong> Rebuild and redeploy the main website after saving so the storefront HTML updates.
+          </p>
+        </div>
+        <form onSubmit={handleSaveBusiness} className="space-y-4">
+          <div>
+            <label htmlFor="biz-schema-type" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Schema.org type
+            </label>
+            <input
+              id="biz-schema-type"
+              type="text"
+              {...businessForm.register('schemaOrgType')}
+              placeholder="ClothingStore"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Usually <code className="rounded bg-slate-100 px-1 dark:bg-slate-700">ClothingStore</code> or <code className="rounded bg-slate-100 px-1 dark:bg-slate-700">Store</code>. Left blank defaults to ClothingStore.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="biz-telephone" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Customer phone
+            </label>
+            <input
+              id="biz-telephone"
+              type="text"
+              {...businessForm.register('telephone')}
+              placeholder="+92-332-7063584"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="biz-contact-type" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Contact type label
+            </label>
+            <input
+              id="biz-contact-type"
+              type="text"
+              {...businessForm.register('contactType')}
+              placeholder="customer service"
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Shown in structured data only; leave blank defaults to customer service.</p>
+          </div>
+          <div className="grid max-w-2xl gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor="biz-country" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Country code
+              </label>
+              <input
+                id="biz-country"
+                type="text"
+                {...businessForm.register('addressCountry')}
+                placeholder="PK"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label htmlFor="biz-locality" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                City / locality
+              </label>
+              <input
+                id="biz-locality"
+                type="text"
+                {...businessForm.register('addressLocality')}
+                placeholder="Kasur"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label htmlFor="biz-region" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Region / state
+              </label>
+              <input
+                id="biz-region"
+                type="text"
+                {...businessForm.register('addressRegion')}
+                placeholder="Punjab"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={saving === 'business'}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving === 'business' ? 'Saving…' : 'Save store structured data'}
           </button>
         </form>
       </section>
