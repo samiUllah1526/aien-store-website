@@ -5,7 +5,7 @@ import { uploadMedia } from '../lib/media-upload';
 import { toastSuccess, toastError } from '../lib/toast';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
-import { ImageCropModal, ASPECT_BANNER, ASPECT_LOGO, ASPECT_PRODUCT } from './ImageCropModal';
+import { ImageCropModal, ASPECT_BANNER, ASPECT_FAVICON, ASPECT_LOGO, ASPECT_PRODUCT } from './ImageCropModal';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -1728,7 +1728,8 @@ export function SettingsManager() {
         open={faviconCropOpen}
         imageSrc={faviconCropSrc}
         sourceFile={faviconCropSourceFile}
-        aspect={ASPECT_PRODUCT}
+        aspect={ASPECT_FAVICON}
+        squareViewport
         title="Crop favicon"
         onCancel={closeFaviconCrop}
         onApply={handleFaviconCropApply}

@@ -6,7 +6,9 @@ export const ASPECT_PRODUCT = 1;
 /** Matches storefront category/about full-bleed banners (Tailwind aspect-video ≈ 16:9). */
 export const ASPECT_BANNER = 16 / 9;
 /** Wide header / navbar logo (horizontal wordmark). */
-export const ASPECT_LOGO = 3;
+export const ASPECT_LOGO = 1;
+/** Browser favicon / tab icon (raster); matches storefront `rel="icon"` — always square. */
+export const ASPECT_FAVICON = 1;
 
 interface ImageCropModalProps {
   open: boolean;
@@ -15,6 +17,8 @@ interface ImageCropModalProps {
   sourceFile: File | null;
   aspect: number;
   title?: string;
+  /** When true, crop stage is a square (same shape as favicon in settings / browser tab), not a wide strip. */
+  squareViewport?: boolean;
   onCancel: () => void;
   onApply: (croppedFile: File) => void | Promise<void>;
   applying?: boolean;
@@ -29,6 +33,7 @@ export function ImageCropModal({
   sourceFile,
   aspect,
   title = 'Crop image',
+  squareViewport = false,
   onCancel,
   onApply,
   applying = false,
@@ -79,7 +84,13 @@ export function ImageCropModal({
             Drag to reposition, use the slider to zoom. The frame matches how images appear on the site.
           </p>
         </div>
-        <div className="relative h-72 w-full bg-slate-900 sm:h-80">
+        <div
+          className={
+            squareViewport
+              ? 'relative mx-auto aspect-square w-full max-w-sm bg-slate-900 sm:max-w-md'
+              : 'relative h-72 w-full bg-slate-900 sm:h-80'
+          }
+        >
           <Cropper
             image={imageSrc}
             crop={crop}
