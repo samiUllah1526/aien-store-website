@@ -40,8 +40,11 @@ export default function ProductCarousel({
   const [isDragging, setIsDragging] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
-  const dragStart = useRef(0);
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
   const scrollStart = useRef(0);
+  /** Touch only: once movement exceeds threshold, lock to horizontal carousel drag or vertical page scroll. */
+  const touchAxis = useRef<'none' | 'horizontal' | 'vertical'>('none');
 
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
@@ -64,21 +67,48 @@ export default function ProductCarousel({
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
+    touchAxis.current = 'none';
     const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    dragStart.current = x;
+    const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    dragStartX.current = x;
+    dragStartY.current = y;
     scrollStart.current = scrollRef.current?.scrollLeft ?? 0;
   };
 
   const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging || !scrollRef.current) return;
+
+    if ('touches' in e) {
+      const touch = e.touches[0];
+      const x = touch.clientX;
+      const y = touch.clientY;
+      const adx = Math.abs(x - dragStartX.current);
+      const ady = Math.abs(y - dragStartY.current);
+
+      if (touchAxis.current === 'none' && (adx > 10 || ady > 10)) {
+        touchAxis.current = adx > ady ? 'horizontal' : 'vertical';
+        if (touchAxis.current === 'horizontal') {
+          scrollStart.current = scrollRef.current.scrollLeft;
+          dragStartX.current = x;
+        }
+      }
+      if (touchAxis.current === 'vertical') {
+        return;
+      }
+      if (touchAxis.current === 'horizontal') {
+        e.preventDefault();
+        scrollRef.current.scrollLeft = scrollStart.current + (dragStartX.current - x);
+      }
+      return;
+    }
+
     e.preventDefault();
-    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const delta = dragStart.current - x;
-    scrollRef.current.scrollLeft = scrollStart.current + delta;
+    scrollRef.current.scrollLeft = scrollStart.current + (dragStartX.current - e.clientX);
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
+    touchAxis.current = 'none';
   };
 
   const scrollByDirection = useCallback((direction: -1 | 1) => {
@@ -127,11 +157,12 @@ export default function ProductCarousel({
       <div className="relative group/carousel">
         <div
           ref={scrollRef}
-          className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 cursor-grab active:cursor-grabbing select-none touch-pan-x"
+          className="overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory flex gap-4 sm:gap-6 md:gap-10 cursor-grab active:cursor-grabbing select-none"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x pan-y',
           }}
           onMouseDown={handleDragStart}
           onMouseMove={handleDragMove}
