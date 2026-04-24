@@ -5,7 +5,7 @@ import { uploadMedia } from '../lib/media-upload';
 import { toastSuccess, toastError } from '../lib/toast';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
-import { ImageCropModal, ASPECT_BANNER, ASPECT_FAVICON, ASPECT_LOGO, ASPECT_PRODUCT } from './ImageCropModal';
+import { ImageCropModal, ASPECT_BANNER, ASPECT_FAVICON, ASPECT_LOGO, ASPECT_OG_IMAGE, ASPECT_PRODUCT } from './ImageCropModal';
 import { RichTextEditor } from './RichTextEditor';
 import { useZodForm } from '../lib/forms/useZodForm';
 import {
@@ -168,6 +168,16 @@ export function SettingsManager() {
   const [faviconCropApplying, setFaviconCropApplying] = useState(false);
   const [faviconPreviewOpen, setFaviconPreviewOpen] = useState(false);
   const faviconFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [uploadingOgImage, setUploadingOgImage] = useState(false);
+  const [ogImageDragOver, setOgImageDragOver] = useState(false);
+  const [ogImagePreviewOpen, setOgImagePreviewOpen] = useState(false);
+  const ogImageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const ogImageCropUrlRef = useRef<string | null>(null);
+  const [ogImageCropOpen, setOgImageCropOpen] = useState(false);
+  const [ogImageCropSrc, setOgImageCropSrc] = useState<string | null>(null);
+  const [ogImageCropSourceFile, setOgImageCropSourceFile] = useState<File | null>(null);
+  const [ogImageCropApplying, setOgImageCropApplying] = useState(false);
 
   const [general, setGeneral] = useState<GeneralValue>({});
   const aboutForm = useZodForm({
@@ -593,6 +603,80 @@ export function SettingsManager() {
     });
     fetchSettings();
   });
+
+  const closeOgImageCrop = useCallback(() => {
+    if (ogImageCropUrlRef.current) {
+      URL.revokeObjectURL(ogImageCropUrlRef.current);
+      ogImageCropUrlRef.current = null;
+    }
+    setOgImageCropOpen(false);
+    setOgImageCropSrc(null);
+    setOgImageCropSourceFile(null);
+  }, []);
+
+  const performOgImageUpload = async (file: File) => {
+    setUploadingOgImage(true);
+    setError(null);
+    try {
+      let src: string;
+      try {
+        const result = await uploadMedia(file, 'products');
+        src = result.deliveryUrl;
+      } catch {
+        const base = getApiBaseUrl().replace(/\/$/, '');
+        const res = await uploadFile(file);
+        src = `${base}/media/file/${res.id}`;
+      }
+      if (src) {
+        seoForm.setValue('ogImageDefault', src, { shouldDirty: true, shouldValidate: true });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingOgImage(false);
+    }
+  };
+
+  const openOgImageCrop = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
+      return;
+    }
+    setError(null);
+    if (!canCropWithCanvas(file)) {
+      void performOgImageUpload(file);
+      return;
+    }
+    if (ogImageCropUrlRef.current) URL.revokeObjectURL(ogImageCropUrlRef.current);
+    const url = URL.createObjectURL(file);
+    ogImageCropUrlRef.current = url;
+    setOgImageCropSrc(url);
+    setOgImageCropSourceFile(file);
+    setOgImageCropOpen(true);
+  }, []);
+
+  const handleOgImageCropApply = async (croppedFile: File) => {
+    setOgImageCropApplying(true);
+    try {
+      closeOgImageCrop();
+      await performOgImageUpload(croppedFile);
+    } finally {
+      setOgImageCropApplying(false);
+    }
+  };
+
+  const handleOgImageFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) openOgImageCrop(file);
+  };
+
+  const handleOgImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setOgImageDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) openOgImageCrop(file);
+  };
 
   const handleSaveSeo = seoForm.handleSubmit(async (values) => {
     await saveKey('seo', {
@@ -1467,6 +1551,90 @@ export function SettingsManager() {
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your live website address, e.g. https://yoursite.com — no slash at the end. Used for proper links in search and social.</p>
           </div>
           <div>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Default share image
+            </span>
+            <input
+              ref={ogImageFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              disabled={uploadingOgImage || ogImageCropOpen}
+              onChange={handleOgImageFileInputChange}
+            />
+            {(seoForm.watch('ogImageDefault') ?? '').trim() ? (
+              <button
+                type="button"
+                className="mb-3 block w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-0 text-left dark:border-slate-600 dark:bg-slate-900/40 cursor-zoom-in"
+                onClick={() => setOgImagePreviewOpen(true)}
+                aria-label="View share image full size"
+              >
+                <img
+                  src={resolveAdminImageUrl(seoForm.watch('ogImageDefault'))}
+                  alt=""
+                  className="max-h-48 w-full object-contain"
+                />
+              </button>
+            ) : (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (!uploadingOgImage && !ogImageCropOpen) ogImageFileInputRef.current?.click();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (!uploadingOgImage && !ogImageCropOpen) ogImageFileInputRef.current?.click();
+                  }
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOgImageDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setOgImageDragOver(false);
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={handleOgImageDrop}
+                className={`mb-3 flex min-h-40 max-w-md cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors ${
+                  ogImageDragOver
+                    ? 'border-slate-500 bg-slate-100 dark:border-slate-400 dark:bg-slate-700/50'
+                    : 'border-slate-300 bg-slate-50/80 hover:border-slate-400 hover:bg-slate-100/80 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-slate-500 dark:hover:bg-slate-800/70'
+                } ${uploadingOgImage || ogImageCropOpen ? 'pointer-events-none opacity-60' : ''}`}
+              >
+                {uploadingOgImage ? (
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Uploading…</span>
+                ) : (
+                  <>
+                    <svg
+                      className="h-10 w-10 text-slate-400 dark:text-slate-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Drag and drop an image here</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">or click to browse — JPEG, PNG, WebP, GIF · 1200×630 recommended</p>
+                  </>
+                )}
+              </div>
+            )}
             <label htmlFor="seo-og-image" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Default share image URL
             </label>
@@ -1477,7 +1645,36 @@ export function SettingsManager() {
               placeholder="https://aien.com/og-image.jpg"
               className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Image shown when someone shares your site on Facebook, WhatsApp, Twitter, etc. Use a full URL (e.g. https://yoursite.com/images/og.jpg). Recommended size: 1200×630 px.</p>
+            {(seoForm.watch('ogImageDefault') ?? '').trim() ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={uploadingOgImage || ogImageCropOpen}
+                  onClick={() => ogImageFileInputRef.current?.click()}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  {uploadingOgImage ? 'Uploading…' : ogImageCropOpen ? 'Cropping…' : 'Replace image'}
+                </button>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400"
+                  onClick={() => seoForm.setValue('ogImageDefault', '', { shouldDirty: true })}
+                >
+                  Remove image
+                </button>
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Image shown when someone shares your site on Facebook, WhatsApp, Twitter, etc. Drop or upload an image, or paste a full URL (e.g. https://yoursite.com/images/og.jpg). Recommended size: 1200×630 px.</p>
+            <AdminImagePreviewModal
+              open={ogImagePreviewOpen}
+              onClose={() => setOgImagePreviewOpen(false)}
+              images={
+                (seoForm.watch('ogImageDefault') ?? '').trim()
+                  ? [resolveAdminImageUrl(seoForm.watch('ogImageDefault') ?? '')]
+                  : []
+              }
+              initialIndex={0}
+            />
           </div>
           <div>
             <label htmlFor="seo-twitter" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1734,6 +1931,16 @@ export function SettingsManager() {
         onCancel={closeFaviconCrop}
         onApply={handleFaviconCropApply}
         applying={faviconCropApplying}
+      />
+      <ImageCropModal
+        open={ogImageCropOpen}
+        imageSrc={ogImageCropSrc}
+        sourceFile={ogImageCropSourceFile}
+        aspect={ASPECT_OG_IMAGE}
+        title="Crop default share image"
+        onCancel={closeOgImageCrop}
+        onApply={handleOgImageCropApply}
+        applying={ogImageCropApplying}
       />
     </div>
   );

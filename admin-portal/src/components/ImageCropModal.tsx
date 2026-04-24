@@ -9,6 +9,8 @@ export const ASPECT_BANNER = 16 / 9;
 export const ASPECT_LOGO = 1;
 /** Browser favicon / tab icon (raster); matches storefront `rel="icon"` — always square. */
 export const ASPECT_FAVICON = 1;
+/** Open Graph / social share image (Facebook, WhatsApp, Twitter); 1200×630 ≈ 1.91:1. */
+export const ASPECT_OG_IMAGE = 1200 / 630;
 
 interface ImageCropModalProps {
   open: boolean;
