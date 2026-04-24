@@ -63,6 +63,17 @@ const defaultSettings = [
     },
   },
   {
+    key: 'business',
+    value: {
+      schemaOrgType: 'ClothingStore',
+      telephone: '+92-332-7063584',
+      contactType: 'customer service',
+      addressCountry: 'PK',
+      addressLocality: 'Kasur',
+      addressRegion: 'Punjab',
+    },
+  },
+  {
     key: 'marketing',
     value: {
       metaPixelId: '',
@@ -100,7 +111,7 @@ async function main() {
       update: { value: value as object },
     });
   }
-  console.log('Restored default site settings (general, about, footer, social, delivery, banking, seo, marketing, announcement, hero).');
+  console.log('Restored default site settings (general, about, footer, social, delivery, banking, seo, business, marketing, announcement, hero).');
 }
 
 main()

@@ -15,10 +15,11 @@ A step-by-step guide for non-technical admins. These settings control how your s
 
 ## Where to find it
 
-Go to **Settings** in the sidebar. Scroll down to:
+Go to **Settings** in the sidebar. Open **SEO & Marketing**, then:
 
 1. **SEO & meta tags** — How your site looks in search and when shared
-2. **Marketing & tracking pixels** — Facebook ads, Google Analytics, and Tag Manager
+2. **Store structured data (Google)** — Address and phone for the homepage JSON-LD block (Schema.org)
+3. **Marketing & tracking pixels** — Facebook ads, Google Analytics, and Tag Manager
 
 ---
 
@@ -65,6 +66,18 @@ These settings control what people see when your store appears in Google or when
 - **When to use:** If you use [Google Search Console](https://search.google.com/search-console) to see how your site performs in search.
 - **How to get it:** In Search Console, add your property → choose “HTML tag” verification → copy only the long code from `content="..."`
 - **Where to paste:** Paste only that code (the part inside the quotes). Leave blank if you don’t use Search Console.
+
+---
+
+## Store structured data (Google)
+
+This section is **below** “SEO & meta tags” on the same **SEO & Marketing** tab. It controls the homepage **JSON-LD** script (machine-readable store info for Google). It does **not** replace SEO fields above: **site title**, **site URL**, **default description**, **default share image**, and **logo** (General tab) still come from those places.
+
+- **Schema.org type:** Usually `ClothingStore` or `Store`. If you leave it blank, the site uses `ClothingStore`.
+- **Customer phone** and **contact type:** Shown as structured contact info when filled in.
+- **Country / city / region:** Used for the postal address in structured data. Leave any field blank if you prefer not to publish it.
+
+After saving, your team should **rebuild and redeploy the main website** so the storefront HTML includes the updated script.
 
 ---
 

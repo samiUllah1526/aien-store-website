@@ -56,6 +56,17 @@ export interface SeoValue {
   googleSiteVerification?: string;
 }
 
+/** Homepage JSON-LD (schema.org LocalBusiness-style). Edited in Admin → SEO tab. */
+export interface BusinessValue {
+  /** schema.org @type, e.g. ClothingStore, Store */
+  schemaOrgType?: string;
+  telephone?: string;
+  contactType?: string;
+  addressCountry?: string;
+  addressLocality?: string;
+  addressRegion?: string;
+}
+
 export interface MarketingValue {
   metaPixelId?: string;
   googleAnalyticsId?: string;
@@ -99,6 +110,15 @@ export interface PublicSettingsDto {
   banking: BankingValue;
   /** SEO meta defaults (site title, description, canonical base, etc.) */
   seo: SeoValue;
+  /** Store / structured data for homepage JSON-LD */
+  business: {
+    schemaOrgType: string;
+    telephone: string;
+    contactType: string;
+    addressCountry: string;
+    addressLocality: string;
+    addressRegion: string;
+  };
   /** Marketing pixels and tracking (Meta Pixel, GA, GTM) */
   marketing: MarketingValue;
 }
@@ -153,6 +173,7 @@ export class SettingsService {
       delivery,
       banking,
       seo,
+      business,
       marketing,
       announcement,
       hero,
@@ -164,6 +185,7 @@ export class SettingsService {
       this.getByKey('delivery'),
       this.getByKey('banking'),
       this.getByKey('seo'),
+      this.getByKey('business'),
       this.getByKey('marketing'),
       this.getByKey('announcement'),
       this.getByKey('hero'),
@@ -184,6 +206,7 @@ export class SettingsService {
         : 0;
     const bankingVal = banking as BankingValue | null;
     const seoVal = seo as SeoValue | null;
+    const businessVal = business as BusinessValue | null;
     const marketingVal = marketing as MarketingValue | null;
 
     return {
@@ -239,6 +262,20 @@ export class SettingsService {
             googleSiteVerification: seoVal.googleSiteVerification?.trim() ?? '',
           }
         : {},
+      business: {
+        schemaOrgType: (() => {
+          const raw = (businessVal?.schemaOrgType ?? '').trim().slice(0, 80);
+          return raw || 'ClothingStore';
+        })(),
+        telephone: (businessVal?.telephone ?? '').trim().slice(0, 80),
+        contactType: (() => {
+          const raw = (businessVal?.contactType ?? '').trim().slice(0, 80);
+          return raw || 'customer service';
+        })(),
+        addressCountry: (businessVal?.addressCountry ?? '').trim().slice(0, 10),
+        addressLocality: (businessVal?.addressLocality ?? '').trim().slice(0, 120),
+        addressRegion: (businessVal?.addressRegion ?? '').trim().slice(0, 120),
+      },
       marketing: marketingVal
         ? {
             metaPixelId:

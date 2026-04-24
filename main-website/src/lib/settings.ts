@@ -45,6 +45,16 @@ export interface PublicMarketing {
   enabled: boolean;
 }
 
+/** Homepage JSON-LD (schema.org store); from Admin → business settings. */
+export interface PublicBusiness {
+  schemaOrgType: string;
+  telephone: string;
+  contactType: string;
+  addressCountry: string;
+  addressLocality: string;
+  addressRegion: string;
+}
+
 export interface PublicAnnouncementItem {
   text: string;
 }
@@ -80,6 +90,7 @@ export interface PublicSettings {
   announcement: PublicAnnouncement;
   hero: PublicHero;
   seo: PublicSeo;
+  business: PublicBusiness;
   marketing: PublicMarketing;
 }
 
@@ -108,6 +119,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       const data = json.data as Record<string, unknown>;
       const seo = (data.seo as Record<string, unknown>) ?? {};
       const marketing = (data.marketing as Record<string, unknown>) ?? {};
+      const business = (data.business as Record<string, unknown>) ?? {};
       const footer = (data.footer as Record<string, unknown>) ?? {};
       const social = (data.social as Record<string, unknown>) ?? {};
       const logoPath = (data.logoPath as string)?.trim() || null;
@@ -168,6 +180,14 @@ export async function getPublicSettings(): Promise<PublicSettings> {
           twitterHandle: ((seo.twitterHandle as string)?.trim() || '').replace(/^@/, ''),
           googleSiteVerification: (seo.googleSiteVerification as string)?.trim() || '',
         },
+        business: {
+          schemaOrgType: (business.schemaOrgType as string)?.trim() || 'ClothingStore',
+          telephone: (business.telephone as string)?.trim() || '',
+          contactType: (business.contactType as string)?.trim() || 'customer service',
+          addressCountry: (business.addressCountry as string)?.trim() || '',
+          addressLocality: (business.addressLocality as string)?.trim() || '',
+          addressRegion: (business.addressRegion as string)?.trim() || '',
+        },
         marketing: {
           metaPixelId: (marketing.metaPixelId as string)?.trim() || undefined,
           googleAnalyticsId: (marketing.googleAnalyticsId as string)?.trim() || undefined,
@@ -202,6 +222,14 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       ogImageDefault: '',
       twitterHandle: '',
       googleSiteVerification: '',
+    },
+    business: {
+      schemaOrgType: 'ClothingStore',
+      telephone: '',
+      contactType: 'customer service',
+      addressCountry: '',
+      addressLocality: '',
+      addressRegion: '',
     },
     marketing: {
       enabled: true,

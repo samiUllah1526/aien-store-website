@@ -110,6 +110,14 @@ describe('SettingsService', () => {
       expect(result.social).toEqual({});
       expect(result.banking).toEqual({});
       expect(result.seo).toEqual({});
+      expect(result.business).toEqual({
+        schemaOrgType: 'ClothingStore',
+        telephone: '',
+        contactType: 'customer service',
+        addressCountry: '',
+        addressLocality: '',
+        addressRegion: '',
+      });
       expect(result.marketing).toEqual({ enabled: true });
     });
 
