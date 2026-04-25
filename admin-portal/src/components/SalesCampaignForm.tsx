@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { SearchableMultiSelect } from './SearchableMultiSelect';
+import { minorUnitsToMajorString, parseMajorStringToMinorUnits } from '../lib/money';
 import type { SalesCampaign, SalesCampaignFormData, SalesCampaignType, SalesCampaignScope } from '../lib/types';
 
 function toDatetimeLocal(iso?: string): string {
@@ -19,6 +20,20 @@ function generateSlug(name: string): string {
     .slice(0, 120);
 }
 
+function discountStateFromInitial(initial: SalesCampaign | undefined): {
+  type: SalesCampaignType;
+  percentValue: number;
+  valuePkr: string;
+} {
+  if (!initial) {
+    return { type: 'PERCENTAGE', percentValue: 10, valuePkr: '' };
+  }
+  if (initial.type === 'PERCENTAGE') {
+    return { type: 'PERCENTAGE', percentValue: initial.value, valuePkr: '' };
+  }
+  return { type: 'FIXED_AMOUNT', percentValue: 10, valuePkr: minorUnitsToMajorString(initial.value) };
+}
+
 interface Props {
   initial?: SalesCampaign;
   onSubmit: (data: SalesCampaignFormData) => Promise<void>;
@@ -26,12 +41,14 @@ interface Props {
 }
 
 export function SalesCampaignForm({ initial, onSubmit, onCancel }: Props) {
+  const d0 = discountStateFromInitial(initial);
   const [name, setName] = useState(initial?.name ?? '');
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [type, setType] = useState<SalesCampaignType>(initial?.type ?? 'PERCENTAGE');
-  const [value, setValue] = useState(initial?.value ?? 10);
+  const [type, setType] = useState<SalesCampaignType>(d0.type);
+  const [percentValue, setPercentValue] = useState(d0.percentValue);
+  const [valuePkr, setValuePkr] = useState(d0.valuePkr);
   const [startsAt, setStartsAt] = useState(toDatetimeLocal(initial?.startsAt));
   const [endsAt, setEndsAt] = useState(toDatetimeLocal(initial?.endsAt));
   const [applyTo, setApplyTo] = useState<SalesCampaignScope>(initial?.applyTo ?? 'ALL_PRODUCTS');
@@ -51,6 +68,15 @@ export function SalesCampaignForm({ initial, onSubmit, onCancel }: Props) {
       setSlug(generateSlug(name));
     }
   }, [name, slugTouched, initial]);
+
+  const handleDiscountTypeChange = (next: SalesCampaignType) => {
+    setType(next);
+    if (next === 'PERCENTAGE') {
+      setPercentValue(10);
+    } else {
+      setValuePkr('');
+    }
+  };
 
   const fetchProducts = async ({ search, page }: { search: string; page: number }) => {
     const limit = 20;
@@ -78,8 +104,18 @@ export function SalesCampaignForm({ initial, onSubmit, onCancel }: Props) {
     if (!startsAt) { setError('Start date is required'); return; }
     if (!endsAt) { setError('End date is required'); return; }
     if (new Date(endsAt) <= new Date(startsAt)) { setError('End date must be after start date'); return; }
-    if (type === 'PERCENTAGE' && (value < 1 || value > 100)) { setError('Percentage must be 1–100'); return; }
-    if (value < 1) { setError('Value must be at least 1'); return; }
+
+    let valueUnits: number;
+    if (type === 'PERCENTAGE') {
+      if (percentValue < 1 || percentValue > 100) { setError('Percentage must be 1–100'); return; }
+      valueUnits = Math.round(percentValue);
+    } else {
+      const minor = parseMajorStringToMinorUnits(valuePkr);
+      if (Number.isNaN(minor)) { setError('Enter a valid amount in PKR'); return; }
+      if (minor < 1) { setError('Amount off must be at least 0.01 PKR'); return; }
+      valueUnits = minor;
+    }
+
     if (applyTo === 'SPECIFIC_PRODUCTS' && selectedProductIds.length === 0) { setError('Select at least one product'); return; }
     if (applyTo === 'SPECIFIC_CATEGORIES' && selectedCategoryIds.length === 0) { setError('Select at least one category'); return; }
 
@@ -90,7 +126,7 @@ export function SalesCampaignForm({ initial, onSubmit, onCancel }: Props) {
         slug: slug.trim() || undefined,
         description: description.trim() || undefined,
         type,
-        value,
+        value: valueUnits,
         startsAt: new Date(startsAt).toISOString(),
         endsAt: new Date(endsAt).toISOString(),
         applyTo,
@@ -151,21 +187,53 @@ export function SalesCampaignForm({ initial, onSubmit, onCancel }: Props) {
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Discount Type <span className="text-red-500">*</span>
           </label>
-          <select value={type} onChange={(e) => setType(e.target.value as SalesCampaignType)} className={inputClass}>
+          <select
+            value={type}
+            onChange={(e) => handleDiscountTypeChange(e.target.value as SalesCampaignType)}
+            className={inputClass}
+          >
             <option value="PERCENTAGE">Percentage off</option>
             <option value="FIXED_AMOUNT">Fixed amount off</option>
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Value <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center gap-2">
-            <input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} min={1} max={type === 'PERCENTAGE' ? 100 : undefined} className={inputClass} required />
-            <span className="text-sm text-slate-600 dark:text-slate-400">
-              {type === 'PERCENTAGE' ? '%' : 'cents'}
-            </span>
-          </div>
+          {type === 'PERCENTAGE' ? (
+            <>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Value <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={percentValue}
+                  onChange={(e) => setPercentValue(Number(e.target.value))}
+                  min={1}
+                  max={100}
+                  className={inputClass}
+                  required
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-400">%</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Amount off (PKR) <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={valuePkr}
+                  onChange={(e) => setValuePkr(e.target.value)}
+                  placeholder="e.g. 500"
+                  className={inputClass}
+                  required
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-400">PKR</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

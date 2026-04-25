@@ -241,6 +241,7 @@ export function SalesCampaignsManager() {
             </div>
             <div className="p-6">
               <SalesCampaignForm
+                key={formOpen === 'add' ? 'create' : (editingCampaign?.id ?? 'edit')}
                 initial={editingCampaign ?? undefined}
                 onSubmit={formOpen === 'add' ? handleCreate : handleUpdate}
                 onCancel={() => { setFormOpen(null); setEditingCampaign(null); }}

@@ -6,6 +6,7 @@ import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { useZodForm } from '../lib/forms/useZodForm';
 import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
 import { voucherFormSchema } from '../lib/validation/voucher';
+import { minorUnitsToMajorString, parseMajorStringToMinorUnits } from '../lib/money';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -34,9 +35,11 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
     defaultValues: {
       code: voucher?.code ?? '',
       type: voucher?.type ?? 'PERCENTAGE',
-      value: voucher ? (voucher.type === 'FIXED_AMOUNT' ? String(Math.floor(voucher.value / 100)) : String(voucher.value)) : '',
-      minOrderValuePkr: voucher ? String(Math.floor(voucher.minOrderValueCents / 100)) : '',
-      maxDiscountPkr: voucher?.maxDiscountCents != null ? String(Math.floor(voucher.maxDiscountCents / 100)) : '',
+      value: voucher
+        ? (voucher.type === 'FIXED_AMOUNT' ? minorUnitsToMajorString(voucher.value) : String(voucher.value))
+        : '',
+      minOrderValuePkr: voucher ? minorUnitsToMajorString(voucher.minOrderValueCents) : '',
+      maxDiscountPkr: voucher?.maxDiscountCents != null ? minorUnitsToMajorString(voucher.maxDiscountCents) : '',
       startDate: voucher?.startDate ? voucher.startDate.slice(0, 16) : '',
       expiryDate: voucher?.expiryDate ? voucher.expiryDate.slice(0, 16) : '',
       usageLimitGlobal: voucher?.usageLimitGlobal != null ? String(voucher.usageLimitGlobal) : '',
@@ -79,12 +82,28 @@ export function VoucherForm({ voucher, onSubmit, onCancel }: VoucherFormProps) {
       const val = Number.parseInt(values.value || '0', 10);
       const start = values.startDate ? new Date(values.startDate) : new Date();
       const expiry = values.expiryDate ? new Date(values.expiryDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const fixedValueMinor =
+        values.type === 'FIXED_AMOUNT' ? parseMajorStringToMinorUnits(values.value) : 0;
+      if (values.type === 'FIXED_AMOUNT' && Number.isNaN(fixedValueMinor)) {
+        form.setError('value', { message: 'Enter a valid amount in PKR' });
+        return;
+      }
       await onSubmit({
         code: values.code.trim().toUpperCase(),
         type: values.type,
-        value: values.type === 'PERCENTAGE' ? val : values.type === 'FIXED_AMOUNT' ? val * 100 : 0,
-        minOrderValueCents: values.minOrderValuePkr ? Number.parseInt(values.minOrderValuePkr, 10) * 100 : 0,
-        maxDiscountCents: values.maxDiscountPkr ? Number.parseInt(values.maxDiscountPkr, 10) * 100 : undefined,
+        value: values.type === 'PERCENTAGE' ? val : values.type === 'FIXED_AMOUNT' ? fixedValueMinor : 0,
+        minOrderValueCents: values.minOrderValuePkr?.trim()
+          ? (() => {
+              const m = parseMajorStringToMinorUnits(values.minOrderValuePkr);
+              return Number.isNaN(m) ? 0 : m;
+            })()
+          : 0,
+        maxDiscountCents: values.maxDiscountPkr?.trim()
+          ? (() => {
+              const m = parseMajorStringToMinorUnits(values.maxDiscountPkr);
+              return Number.isNaN(m) ? undefined : m;
+            })()
+          : undefined,
         startDate: start.toISOString(),
         expiryDate: expiry.toISOString(),
         usageLimitGlobal: values.usageLimitGlobal ? Number.parseInt(values.usageLimitGlobal, 10) : undefined,

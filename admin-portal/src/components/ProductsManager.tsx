@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, getApiBaseUrl } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
+import { majorToMinorUnits } from '../lib/money';
 import { useDebounce } from '../hooks/useDebounce';
 import type { ProductListItem, Product, ProductFormData, Category } from '../lib/types';
 import { ProductForm } from './ProductForm';
@@ -68,9 +69,9 @@ export function ProductsManager() {
       if (debouncedSearch) params.search = debouncedSearch;
       if (categoryFilter) params.categoryId = categoryFilter;
       const min = parseInt(appliedMinPrice, 10);
-      if (!Number.isNaN(min) && min >= 0) params.minPriceCents = min * 100;
+      if (!Number.isNaN(min) && min >= 0) params.minPriceCents = majorToMinorUnits(min);
       const max = parseInt(appliedMaxPrice, 10);
-      if (!Number.isNaN(max) && max >= 0) params.maxPriceCents = max * 100;
+      if (!Number.isNaN(max) && max >= 0) params.maxPriceCents = majorToMinorUnits(max);
       if (featuredFilter === 'true') params.featured = 'true';
       if (featuredFilter === 'false') params.featured = 'false';
       if (stockFilter) params.stockFilter = stockFilter;

@@ -435,11 +435,11 @@ model Voucher {
   id                    String      @id @default(uuid()) @db.Uuid
   code                  String      @unique @map("code")
   type                  VoucherType @map("type")
-  /** For PERCENTAGE: 1-100. For FIXED_AMOUNT: cents. For FREE_SHIPPING: ignored. */
+  /** For PERCENTAGE: 1-100. For FIXED_AMOUNT: minor units (e.g. paisa for PKR). For FREE_SHIPPING: ignored. */
   value                 Int         @map("value")
-  /** Minimum order subtotal (cents) to apply. */
+  /** Minimum order subtotal in minor units (e.g. paisa) to apply. */
   minOrderValueCents    Int         @default(0) @map("min_order_value_cents")
-  /** Max discount (cents). Only for PERCENTAGE; caps the discount. */
+  /** Max discount in minor units. Only for PERCENTAGE; caps the discount. */
   maxDiscountCents      Int?        @map("max_discount_cents")
   startDate             DateTime    @map("start_date") @db.Timestamptz(6)
   expiryDate            DateTime    @map("expiry_date") @db.Timestamptz(6)
@@ -610,7 +610,7 @@ model SalesCampaign {
   slug            String               @unique @map("slug")
   description     String?              @map("description")
   type            SalesCampaignType    @map("type")
-  /// For PERCENTAGE: 1–100. For FIXED_AMOUNT: discount in cents.
+  /// For PERCENTAGE: 1–100. For FIXED_AMOUNT: discount in minor units (e.g. paisa for PKR).
   value           Int                  @map("value")
 
   startsAt        DateTime             @map("starts_at") @db.Timestamptz(6)
@@ -641,7 +641,7 @@ model SalesCampaignProduct {
   id              String         @id @default(uuid()) @db.Uuid
   campaignId      String         @map("campaign_id") @db.Uuid
   productId       String         @map("product_id") @db.Uuid
-  /// Optional per-product override value (e.g. 40% instead of campaign-default 30%).
+  /// Optional per-product override: same unit as campaign value (percent 1–100 or minor units for fixed).
   overrideValue   Int?           @map("override_value")
 
   campaign        SalesCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)

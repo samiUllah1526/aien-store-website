@@ -35,6 +35,7 @@ export class UpdateSalesCampaignDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  /** PERCENTAGE: 1–100. FIXED_AMOUNT: minor units (e.g. paisa for PKR). */
   value?: number;
 
   @IsOptional()
