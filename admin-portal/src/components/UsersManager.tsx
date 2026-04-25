@@ -8,6 +8,7 @@ import type { User, Role } from '../lib/types';
 import { userFormSchema } from '../lib/validation/user';
 import { useZodForm } from '../lib/forms/useZodForm';
 import { mapApiErrorToForm } from '../lib/forms/mapApiErrorToForm';
+import { PasswordInput } from './PasswordInput';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['ACTIVE', 'DISABLED'] as const;
@@ -553,13 +554,11 @@ function UserFormModal({ user, roles, onClose, onSuccess }: UserFormModalProps) 
             <label htmlFor="user-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Password {user && '(leave blank to keep current)'}
             </label>
-            <input
+            <PasswordInput
               id="user-password"
-              type="password"
-                {...form.register('password')}
+              {...form.register('password')}
               required={!user}
               minLength={8}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
             />
           </div>
           <div>

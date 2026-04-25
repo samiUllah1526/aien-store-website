@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import type { User } from '../lib/types';
+import { PasswordInput } from './PasswordInput';
 
 export function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -171,14 +172,12 @@ export function ProfilePage() {
           <label htmlFor="profile-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             New password
           </label>
-          <input
+          <PasswordInput
             id="profile-password"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Leave blank to keep current"
             minLength={8}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           />
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">At least 8 characters. Leave empty to keep your current password.</p>
         </div>
@@ -187,13 +186,11 @@ export function ProfilePage() {
           <label htmlFor="profile-confirm-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Confirm password
           </label>
-          <input
+          <PasswordInput
             id="profile-confirm-password"
-            type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Re-enter new password"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
           />
           {password && confirmPassword && password !== confirmPassword && (
             <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match.</p>

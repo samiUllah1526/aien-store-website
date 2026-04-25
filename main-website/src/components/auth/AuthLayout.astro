@@ -1,0 +1,69 @@
+---
+/**
+ * AuthLayout — single-column, centered editorial shell for sign-in / sign-up
+ * / password flows. Logo (circular, no wordmark) sits above the title, then
+ * the form takes the column. No right-hand verse panel; the focus is the form.
+ */
+import { getPublicSettings } from '../../lib/settings';
+import { storeApiBaseUrl } from '../../config';
+
+interface Props {
+  title: string;
+  eyebrow?: string;
+  /** Subtitle paragraph below the title. */
+  lede?: string;
+}
+
+const { title, eyebrow, lede } = Astro.props as Props;
+
+const settings = await getPublicSettings();
+const logoPath = settings.logoPath ?? null;
+const apiBase = storeApiBaseUrl.replace(/\/$/, '');
+const logoSrc = logoPath
+  ? logoPath.startsWith('http')
+    ? logoPath
+    : `${apiBase}/media/file/${logoPath}`
+  : '';
+---
+
+<section class="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 sm:px-6 py-16 md:py-24">
+  <div class="w-full max-w-md">
+    <header class="mb-10 md:mb-12 text-center">
+      {logoSrc && (
+        <a
+          href="/"
+          aria-label="Home"
+          class="inline-flex items-center justify-center mb-8 h-16 w-16 rounded-full border border-outline-variant bg-surface-container-lowest overflow-hidden focus-ring"
+        >
+          <img
+            src={logoSrc}
+            alt=""
+            class="h-full w-full object-cover object-center"
+            loading="eager"
+            decoding="async"
+          />
+        </a>
+      )}
+
+      {eyebrow && (
+        <div class="flex items-center justify-center gap-3 mb-5">
+          <span aria-hidden="true" class="block h-px w-6 bg-on-surface-variant/60"></span>
+          <span class="font-sans text-label-caps text-on-surface-variant">{eyebrow}</span>
+          <span aria-hidden="true" class="block h-px w-6 bg-on-surface-variant/60"></span>
+        </div>
+      )}
+
+      <h1 class="font-serif text-h2-editorial-sm md:text-h2-editorial text-on-background tracking-tight">
+        {title}
+      </h1>
+
+      {lede && (
+        <p class="mt-4 font-sans text-body-md text-on-surface-variant max-w-prose mx-auto">
+          {lede}
+        </p>
+      )}
+    </header>
+
+    <slot />
+  </div>
+</section>

@@ -3,10 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '../../lib/api';
 import { resetPasswordSchema, type ResetPasswordFormData } from './authSchema';
-
-const inputClass =
-  'w-full rounded border border-sand dark:border-charcoal-light bg-cream dark:bg-ink px-3 py-2 text-charcoal dark:text-cream focus:outline-none focus:ring-2 focus:ring-emerald/50';
-const inputErrorClass = 'border-red-500 dark:border-red-400';
+import { PasswordField } from './PasswordField';
 
 export default function ResetPasswordForm() {
   const [token, setToken] = useState<string | null>(null);
@@ -40,30 +37,28 @@ export default function ResetPasswordForm() {
       setSuccess(true);
     } catch (err) {
       setError('root', {
-        message: err instanceof Error ? err.message : 'Reset failed. The link may have expired. Request a new one.',
+        message: err instanceof Error
+          ? err.message
+          : 'Reset failed. The link may have expired. Request a new one.',
       });
     }
   };
 
   if (token === null) {
     return (
-      <div className="mx-auto max-w-sm space-y-4 text-center text-charcoal dark:text-cream">
-        <p>Loading…</p>
-      </div>
+      <p className="font-sans text-body-md text-on-surface-variant">Loading…</p>
     );
   }
 
   if (!token) {
     return (
-      <div className="mx-auto max-w-sm space-y-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 p-6 text-center">
-        <p className="text-charcoal dark:text-cream">
-          No reset token found. Please use the link from your password reset email, or{' '}
-          <a href="/forgot-password" className="text-emerald hover:text-emerald-light font-medium">
-            request a new link
-          </a>
-          .
+      <div className="space-y-6 border-l-2 border-on-surface-variant pl-6 py-2">
+        <p className="font-serif text-h3-section text-on-background">Reset link not found</p>
+        <p className="font-sans text-body-md text-on-surface-variant max-w-prose">
+          Please use the link from your password reset email, or{' '}
+          <a href="/forgot-password" className="link-underline">request a new link</a>.
         </p>
-        <a href="/login" className="text-emerald hover:text-emerald-light font-medium text-sm">
+        <a href="/login" className="link-underline">
           Back to sign in
         </a>
       </div>
@@ -72,9 +67,12 @@ export default function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="mx-auto max-w-sm space-y-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-6 text-center">
-        <p className="text-charcoal dark:text-cream">Your password has been reset. You can now sign in.</p>
-        <a href="/login" className="inline-block rounded-lg bg-ink dark:bg-cream px-4 py-2 text-cream dark:text-ink font-medium hover:opacity-90">
+      <div className="space-y-6 border-l-2 border-primary pl-6 py-2">
+        <p className="font-serif text-h3-section text-on-background">Password updated</p>
+        <p className="font-sans text-body-md text-on-surface-variant max-w-prose">
+          Your password has been reset. You can now sign in with your new credentials.
+        </p>
+        <a href="/login" className="btn-primary inline-flex">
           Sign in
         </a>
       </div>
@@ -82,51 +80,43 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mx-auto max-w-sm space-y-4">
+    <form
+      method="post"
+      action="/reset-password"
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-7"
+    >
       {errors.root && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-300">
+        <div role="alert" className="border-l-2 border-red-500 bg-red-50 px-4 py-3 font-sans text-form-hint text-red-800">
           {errors.root.message}
         </div>
       )}
-      <div>
-        <label htmlFor="reset-password" className="mb-1 block text-sm font-medium text-charcoal dark:text-cream/90">
-          New password
-        </label>
-        <input
-          id="reset-password"
-          type="password"
-          autoComplete="new-password"
-          {...register('password')}
-          className={`${inputClass} ${errors.password ? inputErrorClass : ''}`}
-        />
-        {errors.password && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.password.message}</p>
-        )}
-      </div>
-      <div>
-        <label htmlFor="reset-confirm" className="mb-1 block text-sm font-medium text-charcoal dark:text-cream/90">
-          Confirm password
-        </label>
-        <input
-          id="reset-confirm"
-          type="password"
-          autoComplete="new-password"
-          {...register('confirmPassword')}
-          className={`${inputClass} ${errors.confirmPassword ? inputErrorClass : ''}`}
-        />
-        {errors.confirmPassword && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.confirmPassword.message}</p>
-        )}
-      </div>
+
+      <PasswordField
+        label="New password"
+        autoComplete="new-password"
+        hint="At least 8 characters, including a letter and a number."
+        {...register('password')}
+        error={errors.password?.message}
+      />
+
+      <PasswordField
+        label="Confirm password"
+        autoComplete="new-password"
+        {...register('confirmPassword')}
+        error={errors.confirmPassword?.message}
+      />
+
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-ink dark:bg-cream py-2.5 text-cream dark:text-ink font-medium hover:opacity-90 disabled:opacity-60"
+        className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Resetting…' : 'Reset password'}
       </button>
-      <p className="text-center text-sm text-charcoal/70 dark:text-cream/70">
-        <a href="/login" className="text-emerald hover:text-emerald-light font-medium">
+
+      <p className="text-center font-sans text-form-hint text-on-surface-variant">
+        <a href="/login" className="link-underline">
           Back to sign in
         </a>
       </p>

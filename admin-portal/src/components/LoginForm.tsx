@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getApiBaseUrl } from '../lib/api';
 import { setStoredToken } from '../lib/auth';
+import { PasswordInput } from './PasswordInput';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -52,7 +53,12 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
+    <form
+      method="post"
+      action="/admin/login"
+      onSubmit={handleSubmit}
+      className="w-full max-w-sm space-y-4"
+    >
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">{error}</div>
       )}
@@ -74,14 +80,12 @@ export function LoginForm() {
         <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           Password
         </label>
-        <input
+        <PasswordInput
           id="login-password"
-          type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
         />
       </div>
       <button
