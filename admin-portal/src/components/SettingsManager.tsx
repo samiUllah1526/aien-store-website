@@ -20,6 +20,7 @@ import {
   businessSettingsSchema,
   socialSettingsSchema,
 } from '../lib/validation/settings';
+import { minorUnitsToMajorString, parseMajorStringToMinorUnits } from '../lib/money';
 
 interface GeneralValue {
   logoMediaId?: string | null;
@@ -238,7 +239,10 @@ export function SettingsManager() {
       socialForm.reset((data['social'] as SocialValue) ?? {});
       const delivery = data['delivery'] as DeliveryValue | undefined;
       const cents = delivery?.deliveryChargesCents ?? 0;
-      deliveryForm.reset({ freeDelivery: cents === 0, deliveryChargesPkr: cents === 0 ? '' : (cents / 100).toString() });
+      deliveryForm.reset({
+        freeDelivery: cents === 0,
+        deliveryChargesPkr: cents === 0 ? '' : minorUnitsToMajorString(cents),
+      });
       bankingForm.reset((data['banking'] as BankingValue) ?? {});
       seoForm.reset((data['seo'] as SeoValue) ?? {});
       const biz = (data['business'] as BusinessValue) ?? {};
@@ -588,7 +592,13 @@ export function SettingsManager() {
   const handleSaveSocial = socialForm.handleSubmit(async (values) => saveKey('social', values));
 
   const handleSaveDelivery = deliveryForm.handleSubmit(async (values) => {
-    const cents = values.freeDelivery ? 0 : Math.round(parseFloat(values.deliveryChargesPkr || '0') * 100);
+    const raw = values.deliveryChargesPkr || '0';
+    const cents = values.freeDelivery
+      ? 0
+      : (() => {
+          const m = parseMajorStringToMinorUnits(raw);
+          return Number.isNaN(m) ? 0 : m;
+        })();
     await saveKey('delivery', { deliveryChargesCents: values.freeDelivery ? 0 : cents });
     fetchSettings();
   });

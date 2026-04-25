@@ -112,6 +112,7 @@ export function SalesCampaignDetail({ campaignId: propId }: { campaignId: string
         </a>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Edit Campaign</h2>
         <SalesCampaignForm
+          key={campaign.id}
           initial={campaign}
           onSubmit={handleUpdate}
           onCancel={() => setEditing(false)}
@@ -207,7 +208,13 @@ export function SalesCampaignDetail({ campaignId: propId }: { campaignId: string
                       <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">{p.product.name}</td>
                       <td className="px-4 py-3 text-sm text-right text-slate-500 line-through">{formatMoney(p.product.priceCents, 'PKR')}</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-emerald-600 dark:text-emerald-400">{formatMoney(salePrice, 'PKR')}</td>
-                      <td className="px-4 py-3 text-sm text-right text-slate-400">{p.overrideValue != null ? `${p.overrideValue}${c.type === 'PERCENTAGE' ? '%' : ' cents'}` : '—'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-slate-400">
+                        {p.overrideValue != null
+                          ? c.type === 'PERCENTAGE'
+                            ? `${p.overrideValue}%`
+                            : formatMoney(p.overrideValue, 'PKR')
+                          : '—'}
+                      </td>
                     </tr>
                   );
                 })}

@@ -43,7 +43,7 @@ When a campaign is active:
 | Type | Value field | Example |
 |------|-------------|---------|
 | **Percentage off** | 1–100 (percent) | `30` = 30% off each product |
-| **Fixed amount off** | Amount in cents | `50000` = PKR 500 off each product |
+| **Fixed amount off** | Enter **PKR** (e.g. rupees) in the “Amount off” field | `500` = PKR 500 off each product. The system stores the amount in paisa internally. |
 
 ### Start & end dates
 
@@ -133,7 +133,7 @@ A campaign goes through these states:
 |-------|-------|
 | Name | Flash Friday |
 | Type | Fixed amount off |
-| Value | 30000 (= PKR 300) |
+| Value | 300 (= PKR 300 off) |
 | Starts At | 2026-04-11 10:00 |
 | Ends At | 2026-04-12 10:00 |
 | Apply to | Specific products |
@@ -179,7 +179,7 @@ If no campaign is active, products display at their normal price with no badge �
 2. **Use Pause for emergencies** — If something is wrong with a live sale, pause it instantly. Fix and resume.
 3. **Set priority for overlapping sales** — If you run a store-wide sale and a category-specific sale simultaneously, the higher priority wins per product.
 4. **Duplicate for recurring sales** — After a sale ends, duplicate it, adjust dates, and publish again.
-5. **Fixed amount in cents** — Remember that 50000 = PKR 500. The backend stores all amounts in minor units.
+5. **Fixed amount in PKR** — Type the discount in rupees the same way as product prices. The API stores the same numbers in paisa (integer minor units).
 6. **Badge text matters** — Keep it short (max 30 chars). It appears directly on the product card.
 
 ---

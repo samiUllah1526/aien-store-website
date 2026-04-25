@@ -16,6 +16,7 @@ import {
 } from './product';
 import { ImageCropModal, ASPECT_PRODUCT } from './ImageCropModal';
 import type { UseFormReturn } from 'react-hook-form';
+import { majorToMinorUnits, minorUnitsToMajorString } from '../lib/money';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -37,7 +38,7 @@ function buildFormDefaultValues(product: Product | null | undefined): Partial<Pr
     name: product?.name ?? '',
     slug: product?.slug ?? '',
     description: product?.description ?? '',
-    pricePkr: product != null ? (product.price / 100).toString() : '',
+    pricePkr: product != null ? minorUnitsToMajorString(product.price) : '',
     categoryIds: product?.categories?.map((c) => c.id) ?? [],
     featured: product?.featured ?? false,
     variants: product?.variants?.length
@@ -48,7 +49,7 @@ function buildFormDefaultValues(product: Product | null | undefined): Partial<Pr
           sku: v.sku ?? '',
           stockQuantity: v.stockQuantity,
           priceOverridePkr:
-            v.priceOverrideCents != null ? (v.priceOverrideCents / 100).toString() : '',
+            v.priceOverrideCents != null ? minorUnitsToMajorString(v.priceOverrideCents) : '',
           isActive: v.isActive,
           mediaIds: v.mediaIds ?? [],
         }))
@@ -58,7 +59,7 @@ function buildFormDefaultValues(product: Product | null | undefined): Partial<Pr
 }
 
 function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): ProductFormData {
-  const priceCents = Math.round(Number.parseFloat(values.pricePkr) * 100);
+  const priceCents = majorToMinorUnits(Number.parseFloat(values.pricePkr));
   return {
     name: values.name,
     slug: values.slug || slugFromName(values.name),
@@ -74,7 +75,7 @@ function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): P
       ...(variant.sku?.trim() ? { sku: variant.sku.trim() } : {}),
       stockQuantity: variant.stockQuantity,
       ...(variant.priceOverridePkr?.trim()
-        ? { priceOverrideCents: Math.max(0, Math.round(Number.parseFloat(variant.priceOverridePkr) * 100)) }
+        ? { priceOverrideCents: Math.max(0, majorToMinorUnits(Number.parseFloat(variant.priceOverridePkr))) }
         : {}),
       isActive: variant.isActive,
       mediaIds: variant.mediaIds ?? [],

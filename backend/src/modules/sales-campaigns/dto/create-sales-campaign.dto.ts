@@ -40,7 +40,7 @@ export class CreateSalesCampaignDto {
   @IsEnum(SalesCampaignTypeDto)
   type: SalesCampaignTypeDto;
 
-  /** PERCENTAGE: 1–100. FIXED_AMOUNT: discount in cents. */
+  /** PERCENTAGE: 1–100. FIXED_AMOUNT: discount in integer minor units (e.g. paisa for PKR). */
   @IsInt()
   @Min(1)
   value: number;

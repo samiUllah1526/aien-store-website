@@ -59,7 +59,7 @@ export interface Product {
   updatedAt: string;
 }
 
-/** Payload for create/update. Backend expects price in cents, mediaIds, categoryIds. */
+/** Payload for create/update. Backend expects price in minor units (e.g. paisa), mediaIds, categoryIds. */
 export interface ProductFormData {
   name: string;
   slug: string;
