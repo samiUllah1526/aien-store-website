@@ -72,7 +72,8 @@ function ShellContent({
         <AppHeader logoSrc={logoSrc} landingCategories={landingCategories} />
       </SiteContainer>
       <main className="flex-1 w-full min-w-0 overflow-x-clip">{children}</main>
-      <AppFooter
+        <AppFooter
+          logoSrc={logoSrc}
           copyrightText={copyrightText}
           tagline={siteSettings?.footer?.tagline}
           email={email}

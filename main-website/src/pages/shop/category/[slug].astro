@@ -9,12 +9,14 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShopGrid from '../../../components/shop/ShopGrid';
 import CategoryIntro from '../../../components/shop/CategoryIntro.astro';
+import CollectionsHero from '../../../components/shop/CollectionsHero.astro';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../../config';
 import { fetchAllProductsAtBuild } from '../../../lib/fetchStoreProductsBuild';
 import { stripHtml } from '../../../lib/stripHtml';
 import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../../lib/buildImageUrl';
 
 const BANNER_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
+const MOBILE_BANNER_SRCSET_WIDTHS = [480, 640, 800] as const;
 
 type StoreCategory = {
   id: string;
@@ -70,8 +72,20 @@ const bannerSrcSet = bannerRaw
       format: 'auto',
     })
   : '';
+const mobileBannerImage = bannerRaw
+  ? buildImageUrl(bannerRaw, IMAGE_PRESETS.heroBannerMobile)
+  : '';
+const mobileBannerSrcSet = bannerRaw
+  ? buildImageSrcSet(bannerRaw, MOBILE_BANNER_SRCSET_WIDTHS, {
+      aspectRatio: '4:5',
+      crop: 'fill',
+      quality: 'auto',
+      format: 'auto',
+    })
+  : '';
 const descriptionHtml = category.description?.trim() ?? '';
 const highlights = (category.highlights ?? []).map((h) => h.trim()).filter(Boolean);
+const productCountLabel = `${products.length} ${products.length === 1 ? 'piece' : 'pieces'}`;
 // SEO meta description must be plain text, even when the admin entered rich text via TipTap.
 const metaDescription =
   stripHtml(descriptionHtml).slice(0, 160) ||
@@ -97,26 +111,21 @@ const categoryJsonLd = {
   canonical={canonicalUrl}
   jsonLd={categoryJsonLd}
 >
-  <section
-    class="relative w-full h-[32vh] sm:h-[40vh] md:h-[44vh] min-h-[220px] sm:min-h-[280px] md:min-h-[320px] max-h-[520px] overflow-hidden bg-surface-container-low"
-    aria-label={`${category.name} banner`}
-  >
-    <img
-      src={bannerImage}
-      srcset={bannerSrcSet || undefined}
-      sizes="100vw"
-      alt=""
-      class="w-full h-full object-cover object-center"
-      fetchpriority="high"
-    />
-    <div class="absolute inset-0 bg-black/30"></div>
-    <div class="relative h-full max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-end pb-16">
-      <span class="font-sans text-label-caps text-white mb-6">
-        {brandName.toUpperCase()} — COLLECTIONS
-      </span>
-      <h1 class="font-serif text-h1-display text-white max-w-3xl">{category.name}</h1>
-    </div>
-  </section>
+  <CollectionsHero
+    title={category.name}
+    eyebrow={`${brandName.toUpperCase()} — COLLECTIONS`}
+    bannerSrc={bannerImage}
+    bannerSrcSet={bannerSrcSet}
+    mobileBannerSrc={mobileBannerImage}
+    mobileBannerSrcSet={mobileBannerSrcSet}
+    prominence="secondary"
+    breadcrumbs={[
+      { label: 'Shop', href: '/shop' },
+      { label: category.name },
+    ]}
+    meta={productCountLabel}
+    ariaLabel={`${category.name} banner`}
+  />
 
   <main class="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-16 md:pt-20 pb-section-gap">
     <CategoryIntro

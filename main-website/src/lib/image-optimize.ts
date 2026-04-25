@@ -18,6 +18,14 @@ export function isOptimizableUrl(url: string): boolean {
 export interface ImageTransformOptions {
   width?: number;
   height?: number;
+  /**
+   * Aspect ratio for crop, e.g. `'4:5'` or `'16/9'`. Forward slashes are
+   * normalized to colons so callers can use the CSS-style notation.
+   * When set together with `width`, Cloudinary derives height (and vice versa)
+   * — useful for art-directed responsive `srcset`s where every breakpoint
+   * needs the same crop but a different pixel width.
+   */
+  aspectRatio?: string;
   crop?: 'fill' | 'limit' | 'fit' | 'thumb' | 'scale' | 'pad';
   quality?: 'auto' | number;
   format?: 'auto' | 'webp' | 'avif' | 'jpg' | 'png';
@@ -45,6 +53,7 @@ export function optimizedImageUrl(
   const parts: string[] = [];
   if (opts.width) parts.push(`w_${opts.width}`);
   if (opts.height) parts.push(`h_${opts.height}`);
+  if (opts.aspectRatio) parts.push(`ar_${opts.aspectRatio.replace('/', ':')}`);
   if (opts.crop) parts.push(`c_${opts.crop}`);
   if (opts.quality) parts.push(opts.quality === 'auto' ? 'q_auto' : `q_${opts.quality}`);
   if (opts.format) parts.push(opts.format === 'auto' ? 'f_auto' : `f_${opts.format}`);

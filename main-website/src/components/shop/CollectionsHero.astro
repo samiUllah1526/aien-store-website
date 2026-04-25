@@ -1,0 +1,170 @@
+---
+/**
+ * CollectionsHero — shared editorial banner for `/shop`, category pages, and
+ * other top-level editorial pages (e.g. `/about`).
+ *
+ * Visual contract:
+ *   - Mobile uses a 4:5 art-directed crop, desktop a 21:9 (primary) or 16:9 (secondary)
+ *     cinematic crop. `min-h` keeps short viewports legible; `max-h` prevents the
+ *     hero from dwarfing tall portrait monitors.
+ *   - Layered scrim guarantees ~4.5:1 contrast for overlaid text on any photo:
+ *     a strong bottom-up dark wash plus a left-side vignette where the title
+ *     sits, plus a soft top scrim to balance.
+ *   - Title uses Noto Serif at weight 500 (vs. 400 elsewhere) — a serif at
+ *     regular weight reads thinly over imagery; medium holds up.
+ *   - Subtle two-layer text-shadow on the .aien-hero-text utility class adds
+ *     edge definition without the dated "drop shadow" look.
+ *   - Eyebrow has a small horizontal rule for editorial hierarchy.
+ *   - Optional breadcrumb (above eyebrow), lede (below title for taglines),
+ *     and meta line (small caps, e.g. inventory count). Reveal animation
+ *     respects `prefers-reduced-motion` (handled in global.css).
+ */
+interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  title: string;
+  eyebrow?: string;
+  bannerSrc: string;
+  bannerSrcSet?: string;
+  mobileBannerSrc?: string;
+  mobileBannerSrcSet?: string;
+  /** `primary` for `/shop` landing & editorial pages, `secondary` for category pages. */
+  prominence?: 'primary' | 'secondary';
+  breadcrumbs?: Crumb[];
+  /** Tagline / subtitle paragraph below the title (body-lg). */
+  lede?: string;
+  /** Small caps line below title/lede (e.g. "24 pieces"). */
+  meta?: string;
+  /**
+   * Force the title onto a single line — drop the `max-w-3xl` clamp and
+   * `whitespace-nowrap` it. Use for short brand-style titles (e.g. About
+   * page) where the admin controls the value. Long titles will overflow,
+   * so leave `false` for category names.
+   */
+  singleLineTitle?: boolean;
+  ariaLabel: string;
+}
+
+const {
+  title,
+  eyebrow,
+  bannerSrc,
+  bannerSrcSet,
+  mobileBannerSrc,
+  mobileBannerSrcSet,
+  prominence = 'secondary',
+  breadcrumbs,
+  lede,
+  meta,
+  singleLineTitle = false,
+  ariaLabel,
+} = Astro.props as Props;
+
+const isPrimary = prominence === 'primary';
+
+const sectionHeightClass = isPrimary
+  ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] min-h-[420px] sm:min-h-[440px] lg:min-h-[560px] max-h-[80vh]'
+  : 'aspect-[4/5] sm:aspect-[16/9] min-h-[400px] sm:min-h-[420px] lg:min-h-[480px] max-h-[64vh]';
+
+const titleScaleClass = isPrimary
+  ? 'text-h1-display lg:text-[clamp(3.5rem,7vw,6rem)]'
+  : 'text-h1-display lg:text-[clamp(2.75rem,5.5vw,4.5rem)]';
+
+const titleWidthClass = singleLineTitle ? 'whitespace-nowrap' : 'max-w-3xl';
+
+const hasBreadcrumbs = Array.isArray(breadcrumbs) && breadcrumbs.length > 0;
+---
+
+<section
+  class={`relative w-full overflow-hidden bg-surface-container-low ${sectionHeightClass}`}
+  aria-label={ariaLabel}
+>
+  <picture>
+    {mobileBannerSrc && (
+      <source
+        media="(max-width: 640px)"
+        srcset={mobileBannerSrcSet || mobileBannerSrc}
+        sizes="100vw"
+      />
+    )}
+    <img
+      src={bannerSrc}
+      srcset={bannerSrcSet || undefined}
+      sizes="100vw"
+      alt=""
+      class="absolute inset-0 w-full h-full object-cover object-center"
+      fetchpriority="high"
+      decoding="async"
+    />
+  </picture>
+
+  <div
+    class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 via-black/10 to-transparent"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/45 to-transparent"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="absolute inset-y-0 left-0 w-2/3 md:w-1/2 bg-gradient-to-r from-black/55 via-black/15 to-transparent"
+    aria-hidden="true"
+  ></div>
+
+  <div class="relative h-full max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-end pb-14 md:pb-20 lg:pb-24">
+    {hasBreadcrumbs && (
+      <nav aria-label="Breadcrumb" class="aien-hero-reveal mb-4">
+        <ol class="flex items-center flex-wrap gap-x-2 gap-y-1 font-sans text-label-caps text-white aien-hero-text">
+          {breadcrumbs!.map((crumb, i) => {
+            const isLast = i === breadcrumbs!.length - 1;
+            return (
+              <li class="flex items-center gap-x-2">
+                {crumb.href && !isLast ? (
+                  <a
+                    href={crumb.href}
+                    class="hover:opacity-80 underline-offset-2 hover:underline transition-opacity"
+                  >
+                    {crumb.label}
+                  </a>
+                ) : (
+                  <span aria-current={isLast ? 'page' : undefined} class="text-white">
+                    {crumb.label}
+                  </span>
+                )}
+                {!isLast && (
+                  <span aria-hidden="true" class="text-white/60">/</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    )}
+
+    {eyebrow && (
+      <div class="aien-hero-reveal aien-hero-reveal-1 flex items-center gap-3 mb-5 md:mb-6">
+        <span aria-hidden="true" class="block h-px w-6 bg-white/80"></span>
+        <span class="font-sans text-label-caps text-white aien-hero-text">{eyebrow}</span>
+      </div>
+    )}
+
+    <h1 class={`aien-hero-reveal aien-hero-reveal-2 font-serif font-medium text-white tracking-tight aien-hero-text ${titleWidthClass} ${titleScaleClass}`}>
+      {title}
+    </h1>
+
+    {lede && (
+      <p class="aien-hero-reveal aien-hero-reveal-3 mt-5 md:mt-7 font-sans text-body-lg max-w-2xl text-white aien-hero-text">
+        {lede}
+      </p>
+    )}
+
+    {meta && (
+      <p class="aien-hero-reveal aien-hero-reveal-3 mt-4 md:mt-5 font-sans text-label-caps text-white aien-hero-text">
+        {meta}
+      </p>
+    )}
+  </div>
+</section>

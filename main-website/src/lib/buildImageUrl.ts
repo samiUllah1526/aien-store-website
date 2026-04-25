@@ -21,8 +21,10 @@ import { optimizedImageUrl, type ImageTransformOptions } from './image-optimize'
 import { storeApiBaseUrl } from '../config';
 
 export const IMAGE_PRESETS = {
-  /** Full-bleed hero / category / shop / about banners. */
-  heroBanner:     { width: 1920, height: 800,  crop: 'fill', quality: 'auto', format: 'auto' },
+  /** Full-bleed hero / category / shop / about banners (desktop, 2:1 cinematic). */
+  heroBanner:     { width: 1920, height: 960,  crop: 'fill', quality: 'auto', format: 'auto' },
+  /** Mobile art-directed crop for collection / category banners (4:5 portrait). */
+  heroBannerMobile:{ width: 800,  aspectRatio: '4:5', crop: 'fill', quality: 'auto', format: 'auto' },
   /** Bento grid primary card (home page LCP candidate). */
   bentoPrimary:   { width: 1200, height: 1200, crop: 'fill', quality: 'auto', format: 'auto' },
   /** Bento grid secondary card. */

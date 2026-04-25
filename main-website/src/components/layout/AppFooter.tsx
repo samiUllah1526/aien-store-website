@@ -20,6 +20,8 @@ export interface AppFooterSocial {
 }
 
 interface AppFooterProps {
+  /** Public logo URL (same as header) when settings provide a logo */
+  logoSrc: string;
   copyrightText: string;
   tagline?: string;
   email: string;
@@ -35,6 +37,7 @@ const SOCIAL_BTN =
   'w-9 h-9 inline-flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-on-background transition-colors duration-300';
 
 export default function AppFooter({
+  logoSrc,
   copyrightText,
   tagline,
   email,
@@ -54,13 +57,24 @@ export default function AppFooter({
       <div className={`${SITE_CONTAINER_CLASS} py-20 md:py-24`}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
-          <div className="md:col-span-1 flex flex-col gap-6">
+          <div className="md:col-span-1 flex flex-col items-start gap-6 text-left">
             <a
               href="/"
-              className="font-sans font-bold text-xl tracking-tighter text-on-background focus-ring rounded"
+              className="inline-flex items-center justify-start font-sans font-bold text-xl tracking-tighter text-on-background focus-ring rounded-full"
               aria-label={`${brandName} home`}
             >
-              {brandName.toUpperCase()}
+              {logoSrc ? (
+                <span className="block h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-outline-variant/40 bg-surface-container overflow-hidden">
+                  <img
+                    src={logoSrc}
+                    alt={brandName}
+                    className="h-full w-full object-cover object-center"
+                    decoding="async"
+                  />
+                </span>
+              ) : (
+                brandName.toUpperCase()
+              )}
             </a>
             <p className="font-body-md text-xs text-on-surface-variant max-w-xs leading-relaxed">
               {tagline ||

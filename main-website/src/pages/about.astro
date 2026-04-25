@@ -3,11 +3,13 @@
  * About: content and optional full-bleed banner from site settings (admin-editable).
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import CollectionsHero from '../components/shop/CollectionsHero.astro';
 import { aboutMetaDescription, brandName } from '../config';
 import { getPublicSettings } from '../lib/settings';
 import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../lib/buildImageUrl';
 
 const BANNER_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
+const MOBILE_BANNER_SRCSET_WIDTHS = [480, 640, 800] as const;
 
 const settings = await getPublicSettings();
 const a = settings.about;
@@ -20,6 +22,17 @@ const bannerRaw = a.bannerImageUrl?.trim();
 const bannerSrc = bannerRaw ? buildImageUrl(bannerRaw, IMAGE_PRESETS.heroBanner) : '';
 const bannerSrcSet = bannerRaw
   ? buildImageSrcSet(bannerRaw, BANNER_SRCSET_WIDTHS, {
+      crop: 'fill',
+      quality: 'auto',
+      format: 'auto',
+    })
+  : '';
+const mobileBannerSrc = bannerRaw
+  ? buildImageUrl(bannerRaw, IMAGE_PRESETS.heroBannerMobile)
+  : '';
+const mobileBannerSrcSet = bannerRaw
+  ? buildImageSrcSet(bannerRaw, MOBILE_BANNER_SRCSET_WIDTHS, {
+      aspectRatio: '4:5',
       crop: 'fill',
       quality: 'auto',
       format: 'auto',
@@ -41,33 +54,32 @@ const displayContent = aboutContent.trim() ? aboutContent : fallbackContent;
 ---
 
 <BaseLayout title={`About — ${brandName}`} description={aboutMetaDescription}>
-  {bannerSrc && (
-    <section
-      class="relative w-full aspect-video min-h-[280px] max-h-[85vh] overflow-hidden"
-      aria-label="About"
-    >
-      <div class="absolute inset-0">
-        <img
-          src={bannerSrc}
-          srcset={bannerSrcSet || undefined}
-          sizes="100vw"
-          alt=""
-          class="w-full h-full object-cover object-center"
-          fetchpriority="high"
-          draggable="false"
-        />
-      </div>
-    </section>
-  )}
+  {bannerSrc ? (
+    <CollectionsHero
+      title={aboutTitle}
+      eyebrow={`${brandName.toUpperCase()} — STORY`}
+      bannerSrc={bannerSrc}
+      bannerSrcSet={bannerSrcSet}
+      mobileBannerSrc={mobileBannerSrc}
+      mobileBannerSrcSet={mobileBannerSrcSet}
+      prominence="primary"
+      lede={aboutSubtitle}
+      singleLineTitle
+      ariaLabel="About"
+    />
+  ) : null}
+
   <article class="max-w-prose mx-auto px-4 sm:px-6 py-16 md:py-24">
-    <header class="mb-14">
-      <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">
-        {aboutTitle}
-      </h1>
-      <p class="mt-4 text-lg text-ash font-display">
-        {aboutSubtitle}
-      </p>
-    </header>
+    {!bannerSrc && (
+      <header class="mb-14">
+        <h1 class="font-display text-3xl md:text-4xl text-soft-charcoal dark:text-off-white leading-tight">
+          {aboutTitle}
+        </h1>
+        <p class="mt-4 text-lg text-ash font-display">
+          {aboutSubtitle}
+        </p>
+      </header>
+    )}
 
     <div class="space-y-10 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed about-content" set:html={displayContent} />
   </article>

@@ -12,7 +12,7 @@ import { brandName } from '../../config';
 import { getApiBaseUrl, api } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
 import CartIcon from '../cart/CartIcon';
-import ThemeToggle from '../ThemeToggle';
+// import ThemeToggle from '../ThemeToggle'; // temporarily hidden in header
 import ProfileMenu from './ProfileMenu';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
@@ -184,16 +184,18 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
           </button>
           <a
             href="/"
-            className="font-sans font-bold text-xl sm:text-2xl tracking-[0.2em] text-on-background transition-opacity hover:opacity-80 focus-ring rounded"
+            className="inline-flex items-center justify-center font-sans font-bold text-xl sm:text-2xl tracking-[0.2em] text-on-background transition-opacity hover:opacity-80 focus-ring rounded-full"
             aria-label={`${brandName} home`}
           >
             {logoSrc ? (
-              <img
-                src={logoSrc}
-                alt={brandName}
-                className="h-7 sm:h-8 w-auto max-w-[140px] sm:max-w-[180px] max-h-10 object-contain"
-                decoding="async"
-              />
+              <span className="block h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full border border-outline-variant/40 bg-surface-container overflow-hidden">
+                <img
+                  src={logoSrc}
+                  alt={brandName}
+                  className="h-full w-full object-cover object-center"
+                  decoding="async"
+                />
+              </span>
             ) : (
               brandName.toUpperCase()
             )}
@@ -219,7 +221,7 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
               <span className="material-symbols-outlined" aria-hidden>search</span>
             </button>
           </li>
-          <li className="hidden sm:flex items-center"><ThemeToggle /></li>
+          {/* <li className="hidden sm:flex items-center"><ThemeToggle /></li> */}
           <li><CartIcon /></li>
           <ProfileMenu />
         </ul>
