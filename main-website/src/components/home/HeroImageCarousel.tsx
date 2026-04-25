@@ -1,35 +1,67 @@
 /**
- * Hero image carousel: full-width, full-aesthetic, modern.
- * Fade transition, arrows, dots, autoplay. Respects prefers-reduced-motion.
+ * Editorial hero — full-bleed photographic stage with display title overlay.
+ * When more than one slide is provided, a fade carousel auto-advances and a
+ * minimal indicator row appears. Honors prefers-reduced-motion.
+ *
+ * Slide data shape (`HeroSlide`) is preserved so the Astro page wiring in
+ * `src/pages/index.astro` continues to work unchanged.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { HeroSlide } from '../../config';
+import { brandName, defaultMetaDescription } from '../../config';
+import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
-const AUTO_INTERVAL_MS = 5000;
-const TRANSITION_DURATION = 0.6;
+const AUTO_INTERVAL_MS = 6500;
+const FADE_DURATION = 0.9;
+const HERO_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
+
+const heroHeadlineFallback = (() => {
+  const s = defaultMetaDescription.trim();
+  const dot = s.indexOf('.');
+  return dot >= 0 ? s.slice(0, dot + 1).trim() : s;
+})();
+
+const URDU_OR_ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+function isUrduOrArabicScript(s: string): boolean {
+  return URDU_OR_ARABIC.test(s);
+}
 
 interface HeroImageCarouselProps {
   slides: HeroSlide[];
-  /** When true, auto-advance is disabled. */
+  /** Eyebrow above the headline. */
+  eyebrow?: string;
+  /** Display headline (uses serif h1-display). */
+  headline?: string;
+  /** CTA destination — defaults to /shop. */
+  ctaHref?: string;
+  ctaLabel?: string;
   reducedMotion?: boolean;
 }
 
-export default function HeroImageCarousel({ slides, reducedMotion = false }: HeroImageCarouselProps) {
+export default function HeroImageCarousel({
+  slides,
+  eyebrow = 'NEW SEASON RELEASE',
+  headline = heroHeadlineFallback,
+  ctaHref = '/shop',
+  ctaLabel = 'Explore Collection',
+  reducedMotion = false,
+}: HeroImageCarouselProps) {
   const [index, setIndex] = useState(0);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [prefersReduced, setPrefersReduced] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
   const count = slides.length;
-  const effectiveReduced = reducedMotion || prefersReducedMotion;
+  const effectiveReduced = reducedMotion || prefersReduced;
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mq.matches);
-    const handler = () => setPrefersReducedMotion(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const apply = () => setPrefersReduced(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
   }, []);
 
   const goTo = useCallback(
@@ -37,7 +69,7 @@ export default function HeroImageCarousel({ slides, reducedMotion = false }: Her
       if (count <= 1) return;
       setIndex((i) => (i + delta + count) % count);
     },
-    [count]
+    [count],
   );
 
   useEffect(() => {
@@ -46,113 +78,127 @@ export default function HeroImageCarousel({ slides, reducedMotion = false }: Her
     return () => clearInterval(id);
   }, [count, effectiveReduced, goTo]);
 
-  const onTouchStart = (e: React.TouchEvent) => setTouchStart(e.touches[0].clientX);
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart == null) return;
-    const dx = e.changedTouches[0].clientX - touchStart;
-    if (Math.abs(dx) > 50) goTo(dx > 0 ? -1 : 1);
-    setTouchStart(null);
-  };
-
-  if (count === 0) return null;
+  if (count === 0) {
+    // Editorial fallback so the homepage never renders empty.
+    return (
+      <section className="relative w-full h-[42vh] sm:h-[60vh] md:h-[70vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] bg-surface-container-low flex items-center justify-center">
+        <div className="text-center px-6">
+          <p className="eyebrow mb-6">{eyebrow}</p>
+          <h1
+            className={`font-serif text-h1-display text-on-background max-w-2xl mx-auto mb-10 ${
+              isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
+            }`}
+          >
+            {headline}
+          </h1>
+          <a href={ctaHref} className="btn-primary">{ctaLabel}</a>
+        </div>
+      </section>
+    );
+  }
 
   const current = slides[index];
+  const currentSrc = buildImageUrl(current.src, IMAGE_PRESETS.heroBanner) || current.src;
+  const currentSrcSet = buildImageSrcSet(current.src, HERO_SRCSET_WIDTHS, {
+    crop: 'fill',
+    quality: 'auto',
+    format: 'auto',
+  });
 
   return (
     <section
-      className="relative w-full aspect-video min-h-[280px] max-h-[85vh] flex flex-col justify-center overflow-hidden"
-      aria-label="Hero carousel"
+      className="relative w-full h-[42vh] sm:h-[60vh] md:h-[72vh] lg:h-[80vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] max-h-[920px] overflow-hidden bg-surface-container-low"
+      aria-label={`${brandName} hero`}
       aria-roledescription="carousel"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchStart == null) return;
+        const dx = e.changedTouches[0].clientX - touchStart;
+        if (Math.abs(dx) > 50) goTo(dx > 0 ? -1 : 1);
+        setTouchStart(null);
+      }}
     >
       <div className="absolute inset-0">
         <AnimatePresence initial={false} mode="wait">
-          <motion.div
+          <motion.img
             key={index}
+            src={currentSrc}
+            srcSet={currentSrcSet || undefined}
+            sizes="100vw"
+            alt={current.alt ?? ''}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: TRANSITION_DURATION, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="absolute inset-0"
-          >
-            <img
-              src={current.src}
-              alt={current.alt ?? ''}
-              className="w-full h-full object-cover object-center"
-              fetchPriority="high"
-              draggable={false}
-            />
-          </motion.div>
+            transition={{ duration: FADE_DURATION, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="w-full h-full object-cover object-center"
+            loading={index === 0 ? 'eager' : 'lazy'}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            draggable={false}
+          />
         </AnimatePresence>
       </div>
 
-      {/* Subtle gradient overlay for readability of controls */}
+      {/* Editorial scrim — keeps text legible without flattening the image. */}
+      <div className="absolute inset-0 bg-black/15 pointer-events-none" aria-hidden />
       <div
-        className="absolute inset-0 bg-gradient-to-t from-charcoal/40 via-transparent to-charcoal/20 pointer-events-none"
+        className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"
         aria-hidden
       />
 
-      {count > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={() => goTo(-1)}
-            aria-label="Previous slide"
-            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-off-white/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:bg-off-white dark:hover:bg-charcoal transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-mehndi/50"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(1)}
-            aria-label="Next slide"
-            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-off-white/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:bg-off-white dark:hover:bg-charcoal transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-mehndi/50"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-          <div
-            className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10"
-            role="tablist"
-            aria-label="Slide indicators"
-          >
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Slide ${i + 1}`}
-                onClick={() => setIndex(i)}
-                className={`rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-mehndi/50 ${
-                  i === index
-                    ? 'w-8 h-2 bg-off-white'
-                    : 'w-2 h-2 bg-off-white/50 hover:bg-off-white/70'
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Optional scroll hint */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.7 }}
-        transition={{ delay: 1.5, duration: 0.8 }}
-        className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-10 hidden sm:block"
-        aria-hidden
-      >
+      <div className="relative h-full max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-center items-start">
         <motion.span
-          className="block w-px h-10 bg-off-white/80"
-          animate={{ scaleY: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </motion.div>
+          key={`eyebrow-${index}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.6 }}
+          className="font-sans text-label-caps text-white mb-6"
+        >
+          {eyebrow}
+        </motion.span>
+        <motion.h1
+          key={`headline-${index}`}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.7 }}
+          className={`font-serif text-h1-display text-white max-w-3xl mb-12 ${
+            isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
+          }`}
+        >
+          {headline}
+        </motion.h1>
+        <motion.a
+          key={`cta-${index}`}
+          href={ctaHref}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.6 }}
+          className="bg-white text-primary px-12 py-5 font-sans text-button uppercase tracking-widest hover:bg-secondary-container transition-colors duration-300"
+        >
+          {ctaLabel}
+        </motion.a>
+      </div>
+
+      {count > 1 && (
+        <div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10"
+          role="tablist"
+          aria-label="Slide indicators"
+        >
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={`Slide ${i + 1}`}
+              onClick={() => setIndex(i)}
+              className={`h-px transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                i === index ? 'w-12 bg-white' : 'w-6 bg-white/40 hover:bg-white/70'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

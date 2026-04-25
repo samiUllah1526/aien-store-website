@@ -29,6 +29,7 @@ export class CategoriesService {
         name: dto.name,
         slug: dto.slug,
         description: dto.description ?? null,
+        highlights: dto.highlights ?? [],
         bannerImageUrl: dto.bannerImageUrl ?? null,
         showOnLanding: dto.showOnLanding ?? false,
         landingOrder: dto.landingOrder ?? null,
@@ -43,6 +44,7 @@ export class CategoriesService {
       name: string;
       slug: string;
       description: string | null;
+      highlights: string[];
       bannerImageUrl: string | null;
       showOnLanding: boolean;
       landingOrder: number | null;
@@ -77,6 +79,7 @@ export class CategoriesService {
       name: c.name,
       slug: c.slug,
       description: c.description,
+      highlights: c.highlights,
       bannerImageUrl: c.bannerImageUrl,
       showOnLanding: c.showOnLanding,
       landingOrder: c.landingOrder,
@@ -94,6 +97,7 @@ export class CategoriesService {
       name: string;
       slug: string;
       description: string | null;
+      highlights: string[];
       bannerImageUrl: string | null;
       landingOrder: number | null;
       productCount: number;
@@ -109,6 +113,7 @@ export class CategoriesService {
       name: c.name,
       slug: c.slug,
       description: c.description,
+      highlights: c.highlights,
       bannerImageUrl: c.bannerImageUrl,
       landingOrder: c.landingOrder,
       productCount: c._count.productCategories,
@@ -159,6 +164,7 @@ export class CategoriesService {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.slug !== undefined && { slug: dto.slug }),
       ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.highlights !== undefined && { highlights: dto.highlights }),
       ...(dto.bannerImageUrl !== undefined && {
         bannerImageUrl: dto.bannerImageUrl,
       }),

@@ -7,6 +7,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { formatMoney } from '../../lib/formatMoney';
+import { stripHtml } from '../../lib/stripHtml';
 
 export interface CarouselProduct {
   id: string;
@@ -171,7 +172,11 @@ export default function ProductCarousel({
           onTouchMove={handleDragMove}
           onTouchEnd={handleDragEnd}
         >
-          {products.map((product, i) => (
+          {products.map((product, i) => {
+            // Hover overlay text — strip rich-text HTML so tags don't render
+            // verbatim once products move to a TipTap editor.
+            const descriptionPlain = stripHtml(product.description);
+            return (
             <motion.a
               key={product.id}
               href={`/shop/${product.slug}`}
@@ -218,9 +223,9 @@ export default function ProductCarousel({
                     {product.urduVerse}
                   </p>
                 )}
-                {product.description && (
+                {descriptionPlain && (
                   <p className="text-off-white/75 text-sm max-w-xs mt-4 leading-relaxed">
-                    {product.description}
+                    {descriptionPlain}
                   </p>
                 )}
               </motion.div>
@@ -241,7 +246,8 @@ export default function ProductCarousel({
               </div>
             </div>
             </motion.a>
-          ))}
+            );
+          })}
         </div>
         <button
           type="button"

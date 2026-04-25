@@ -8,6 +8,8 @@ import { useCart } from '../../store/cartStore';
 import { MAX_CART_QUANTITY } from '../../store/cartStore';
 import { formatMoney } from '../../lib/formatMoney';
 import ColorSwatch from '../product/ColorSwatch';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { colorAriaLabel } from '../../lib/colorDisplay';
 
 export default function CartSidebar() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalItems, totalAmount, cartCurrency, hasMixedCurrencies } =
@@ -64,14 +66,14 @@ export default function CartSidebar() {
                   className="flex gap-3 pb-4 border-b border-ash/20 last:border-0"
                 >
                   <img
-                    src={item.image}
+                    src={buildImageUrl(item.image, IMAGE_PRESETS.cartItem)}
                     alt=""
                     className="w-20 h-20 object-cover bg-ash/20 rounded-lg"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-soft-charcoal dark:text-off-white truncate">{item.name}</p>
                     <p className="text-sm text-ash">
-                      <ColorSwatch color={item.color} size="sm" aria-label={`Color: ${item.color}`} />
+                      <ColorSwatch color={item.color} size="sm" aria-label={colorAriaLabel(item.color)} />
                       {' / '}{item.size} × {item.quantity}
                     </p>
                     <p className="text-sm text-soft-charcoal dark:text-off-white font-medium mt-1">

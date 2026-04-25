@@ -2,15 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   AIEN editorial design system — base layer.
+   Body uses Inter for UI; serif (Noto Serif) is reserved for display headings
+   via the `font-display` / `font-serif` utilities.
+   =========================================================================== */
 @layer base {
   html {
-    @apply scroll-smooth;
+    @apply scroll-smooth antialiased;
   }
-  /* Single source for default typeface: Montserrat. All text inherits unless .urdu-text. */
   body {
-    @apply font-sans text-soft-charcoal dark:text-off-white bg-bone dark:bg-charcoal antialiased;
-    overflow-x: hidden; /* Prevent horizontal scroll on small screens */
-    -webkit-tap-highlight-color: transparent; /* Cleaner tap on mobile */
+    @apply font-sans bg-background text-on-background antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: theme('colors.secondary-container');
+    color: theme('colors.on-secondary-container');
   }
   .urdu-text {
     @apply font-urdu text-right;
@@ -19,14 +30,90 @@
   }
 }
 
-html {
-  @apply transition-colors duration-400;
+@layer components {
+  /* Editorial label — small all-caps tracking-wide marker used as eyebrow text. */
+  .eyebrow {
+    @apply font-sans text-label-caps uppercase text-on-surface-variant;
+  }
+
+  /* Primary CTA — black filled, transitions to teal on hover. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center bg-primary text-on-primary
+           font-sans text-button uppercase tracking-widest
+           px-12 py-5 transition-colors duration-300
+           hover:bg-secondary focus:outline-none focus-visible:ring-2
+           focus-visible:ring-secondary/40 focus-visible:ring-offset-2;
+  }
+
+  /* Outlined CTA — inverse of btn-primary. */
+  .btn-outline {
+    @apply inline-flex items-center justify-center border border-primary
+           text-primary font-sans text-button uppercase tracking-widest
+           px-12 py-5 transition-all duration-300
+           hover:bg-primary hover:text-on-primary
+           focus:outline-none focus-visible:ring-2
+           focus-visible:ring-primary/40 focus-visible:ring-offset-2;
+  }
+
+  /* Quiet underline link — used for "VIEW ALL" and similar editorial links. */
+  .link-underline {
+    @apply inline-block font-sans text-label-caps uppercase
+           border-b border-current pb-1 transition-opacity hover:opacity-70;
+  }
+
+  /* Material Symbols rendering tweak so icons match the AIEN editorial weight. */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  /* ---------------------------------------------------------------------------
+     Rich-text rendering for admin-authored HTML (TipTap output) — currently used
+     by category descriptions. Keeps typography aligned with the AIEN palette so
+     editorial body copy reads consistently regardless of who authored it.
+     Scope: only descendants of `.aien-rich-text`; safe to apply elsewhere if a
+     future admin field also produces TipTap HTML.
+     --------------------------------------------------------------------------- */
+  .aien-rich-text > :first-child {
+    margin-top: 0;
+  }
+  .aien-rich-text > :last-child {
+    margin-bottom: 0;
+  }
+  .aien-rich-text p {
+    @apply mb-4 leading-relaxed;
+  }
+  .aien-rich-text h2 {
+    @apply font-serif text-h3-section text-on-surface mt-6 mb-3;
+  }
+  .aien-rich-text h3 {
+    @apply font-serif text-body-lg text-on-surface mt-5 mb-2 font-medium;
+  }
+  .aien-rich-text ul {
+    @apply list-disc pl-5 mb-4 space-y-1;
+  }
+  .aien-rich-text ol {
+    @apply list-decimal pl-5 mb-4 space-y-1;
+  }
+  .aien-rich-text a {
+    @apply text-primary underline underline-offset-2 hover:opacity-70 transition-opacity;
+  }
+  .aien-rich-text strong {
+    @apply font-semibold text-on-surface;
+  }
+  .aien-rich-text em {
+    @apply italic;
+  }
+  .aien-rich-text blockquote {
+    @apply border-l-2 border-outline-variant pl-4 italic text-on-surface-variant my-4;
+  }
 }
 
-/* Soft focus – accessibility without loud accent */
 @layer utilities {
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-ash/40 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal;
+    @apply focus:outline-none focus:ring-2 focus:ring-secondary/40
+           focus:ring-offset-2 focus:ring-offset-background;
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -34,6 +121,12 @@ html {
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  .filter-border {
+    border-bottom: 1px solid theme('colors.outline-variant');
+  }
+  .filter-border:focus-within {
+    border-bottom-color: theme('colors.primary');
   }
 }
 
@@ -44,3 +137,8 @@ html {
 .announcement-marquee-track {
   animation: announcement-marquee 35s linear infinite;
 }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: theme('colors.outline-variant'); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: theme('colors.outline'); }

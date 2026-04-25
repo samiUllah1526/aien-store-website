@@ -24,7 +24,7 @@ export default function CollectionGrid({
   return (
     <section className="py-24 md:py-32 px-4 sm:px-6" aria-label="Collection">
       <div className="max-w-5xl mx-auto">
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 md:gap-20">
+        <ul className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-8 sm:gap-12 md:gap-20">
           {displayed.map((product) => (
             <li key={product.id}>
               <a href={`/shop/${product.slug}`} className="block group">

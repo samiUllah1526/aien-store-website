@@ -3,11 +3,13 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  MaxLength,
   Matches,
   ValidateIf,
   IsBoolean,
   IsInt,
   IsArray,
+  ArrayMaxSize,
   IsUUID,
 } from 'class-validator';
 
@@ -28,6 +30,14 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(120, { each: true })
+  highlights?: string[];
 
   @IsOptional()
   @IsString()

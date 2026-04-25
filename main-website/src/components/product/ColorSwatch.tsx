@@ -1,13 +1,9 @@
 /**
  * Renders a color swatch circle (and optional label) for e‑commerce style color display.
- * Shows the actual color in a circle when the value is a hex code; otherwise a neutral circle + label.
+ * Shows the actual color in a circle when the value is a hex code; labels never show raw hex.
  */
 
-const HEX_PATTERN = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-function isHexColor(value: string): boolean {
-  return HEX_PATTERN.test(value.trim());
-}
+import { colorAriaLabel, colorUiLabel, formatColorLabel, isHexColorString } from '../../lib/colorDisplay';
 
 function normalizeHex(value: string): string {
   const trimmed = value.trim();
@@ -46,14 +42,16 @@ export default function ColorSwatch({
   className = '',
   ariaLabel,
 }: ColorSwatchProps) {
-  const isHex = isHexColor(color);
+  const isHex = isHexColorString(color);
   const style = isHex ? { backgroundColor: normalizeHex(color) } : undefined;
+
+  const label = formatColorLabel(color) || (isHexColorString(color) ? 'Color' : color);
 
   return (
     <span
       className={`inline-flex items-center gap-2 ${className}`}
-      title={color}
-      aria-label={ariaLabel ?? (showLabel ? undefined : `Color: ${color}`)}
+      title={colorUiLabel(color)}
+      aria-label={ariaLabel ?? (showLabel ? undefined : colorAriaLabel(color))}
     >
       <span
         className={`shrink-0 rounded-full border border-ash/30 ${sizeClasses[size]} ${
@@ -62,7 +60,7 @@ export default function ColorSwatch({
         style={style}
         aria-hidden
       />
-      {showLabel && <span>{color}</span>}
+      {showLabel && <span>{label}</span>}
     </span>
   );
 }

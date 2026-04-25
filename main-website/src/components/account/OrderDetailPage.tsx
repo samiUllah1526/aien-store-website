@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { ordersApi, type OrderDto } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
-import { getApiBaseUrl } from '../../lib/api';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
@@ -86,9 +86,8 @@ export default function OrderDetailPage({ orderId: propOrderId }: { orderId: str
     );
   }
 
-  const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const imageUrl = (path: string | null | undefined) =>
-    path && (path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`);
+    path ? buildImageUrl(path, IMAGE_PRESETS.orderItem) : '';
 
   return (
     <div className="space-y-8">
