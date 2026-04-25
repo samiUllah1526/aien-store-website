@@ -7,18 +7,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShopGrid from '../../components/shop/ShopGrid';
 import { brandName, shopMetaDescription, storeApiBaseUrl } from '../../config';
 import { fetchAllProductsAtBuild } from '../../lib/fetchStoreProductsBuild';
+import { stripHtml } from '../../lib/stripHtml';
+import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const DEFAULT_BANNER_IMAGE =
   'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1920&q=80&auto=format&fit=crop';
 const DEFAULT_SHOP_DESCRIPTION =
   'Refined essentials for the modern silhouette. Our core collection emphasizes structured drapery and premium technical fabrics.';
+const BANNER_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
 
-function toFullImageUrl(url: string): string {
-  if (!url) return '';
-  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-}
-
-let bannerImage = DEFAULT_BANNER_IMAGE;
+let bannerRawUrl: string | null = null;
 let shopDescription = DEFAULT_SHOP_DESCRIPTION;
 try {
   const res = await fetch(`${storeApiBaseUrl}/categories/landing`);
@@ -26,8 +24,10 @@ try {
   if (res.ok && json.success && Array.isArray(json.data) && json.data.length > 0) {
     const cat = json.data[0] as { bannerImageUrl?: string | null; description?: string | null };
     const raw = cat.bannerImageUrl?.trim();
-    if (raw) bannerImage = toFullImageUrl(raw);
-    const desc = cat.description?.trim();
+    if (raw) bannerRawUrl = raw;
+    // Category description is now rich-text HTML (TipTap) — flatten to plain
+    // text for this hero subtitle, otherwise raw `<h2>...` tags would render.
+    const desc = stripHtml(cat.description);
     if (desc) shopDescription = desc;
   }
 } catch (err) {
@@ -40,15 +40,28 @@ try {
 } catch (err) {
   console.error('[shop index] products error:', err);
 }
+
+const bannerSrc = bannerRawUrl
+  ? buildImageUrl(bannerRawUrl, IMAGE_PRESETS.heroBanner)
+  : DEFAULT_BANNER_IMAGE;
+const bannerSrcSet = bannerRawUrl
+  ? buildImageSrcSet(bannerRawUrl, BANNER_SRCSET_WIDTHS, {
+      crop: 'fill',
+      quality: 'auto',
+      format: 'auto',
+    })
+  : '';
 ---
 
 <BaseLayout title={`Shop — ${brandName}`} description={shopMetaDescription}>
   <section
-    class="relative w-full h-[44vh] min-h-[320px] max-h-[520px] overflow-hidden bg-surface-container-low"
+    class="relative w-full h-[32vh] sm:h-[40vh] md:h-[44vh] min-h-[220px] sm:min-h-[280px] md:min-h-[320px] max-h-[520px] overflow-hidden bg-surface-container-low"
     aria-label="Shop banner"
   >
     <img
-      src={bannerImage}
+      src={bannerSrc}
+      srcset={bannerSrcSet || undefined}
+      sizes="100vw"
       alt=""
       class="w-full h-full object-cover object-center"
       fetchpriority="high"

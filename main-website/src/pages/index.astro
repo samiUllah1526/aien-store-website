@@ -14,6 +14,7 @@ import {
   storeApiBaseUrl,
 } from '../config';
 import { getPublicSettings, type PublicSettings } from '../lib/settings';
+import { buildImageUrl, IMAGE_PRESETS } from '../lib/buildImageUrl';
 
 function absoluteMediaUrl(apiRoot: string, pathOrUrl: string | null | undefined): string | undefined {
   if (!pathOrUrl?.trim()) return undefined;
@@ -75,11 +76,6 @@ function buildHomepageStoreJsonLd(settings: PublicSettings, apiRoot: string): Re
 
 const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
 
-function toAbsoluteUrl(raw: string): string {
-  if (!raw) return '';
-  return raw.startsWith('http') ? raw : `${baseUrl}${raw.startsWith('/') ? '' : '/'}${raw}`;
-}
-
 function mapProduct(p: Record<string, unknown>): Product {
   const rawVariants = Array.isArray(p.variants) ? (p.variants as Array<Record<string, unknown>>) : [];
   const variants = rawVariants.map((v) => ({
@@ -89,8 +85,12 @@ function mapProduct(p: Record<string, unknown>): Product {
     stockQuantity: Number(v.stockQuantity ?? 0),
     priceOverrideCents: v.priceOverrideCents != null ? Number(v.priceOverrideCents) : null,
     isActive: v.isActive !== false,
-    image: typeof v.image === 'string' ? toAbsoluteUrl(v.image) : '',
-    images: Array.isArray(v.images) ? (v.images as string[]).map(toAbsoluteUrl).filter(Boolean) : [],
+    image: typeof v.image === 'string' ? buildImageUrl(v.image, IMAGE_PRESETS.productCard) : '',
+    images: Array.isArray(v.images)
+      ? (v.images as string[])
+          .map((img) => buildImageUrl(img, IMAGE_PRESETS.productCard))
+          .filter(Boolean)
+      : [],
   }));
   const variantImage = variants.find((v) => v.image)?.image ?? '';
   const img = (p.image as string) || variantImage;
@@ -106,7 +106,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     name: String(p.name),
     price: effectivePrice,
     currency: String(p.currency ?? 'PKR'),
-    image: toAbsoluteUrl(img),
+    image: buildImageUrl(img, IMAGE_PRESETS.productCard),
     variants,
     inStock: p.inStock !== false,
     urduVerse: (p.urduVerse as string | null) ?? null,

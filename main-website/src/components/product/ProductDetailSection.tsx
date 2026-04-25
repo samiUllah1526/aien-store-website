@@ -17,40 +17,63 @@ export interface ProductDetailSectionProps {
   currency: string;
   image: string;
   images: string[];
+  /**
+   * Parallel array to `images`: 200×200 thumbnail variants used by the
+   * carousel strip. Same length and order as `images`. Falls back to `images`
+   * inside the carousel when omitted.
+   */
+  thumbnails?: string[];
   variants: ProductVariant[];
   inStock?: boolean;
   children?: ReactNode;
 }
 
-/** Build a merged list of all variant + product images and a map variantId -> first index. */
+/**
+ * Build a merged list of all variant + product images and a map
+ * variantId -> first index. Builds a parallel thumbnails fullList in lockstep
+ * so the carousel can pair each main slide with its 200×200 strip variant.
+ *
+ * Variants carry their own optional `thumbnails` array (set by the page from
+ * the raw URL via `productThumb`); when missing, we fall back to the variant
+ * main image, which is acceptable but heavier — admins should always provide
+ * variant images so thumbnails get computed at build time.
+ */
 function buildFullImageListAndVariantIndices(
   variants: ProductVariant[],
   productImages: string[],
-  productImage: string
-): { fullList: string[]; variantStartIndex: Record<string, number> } {
+  productImage: string,
+  productThumbnails: string[] | undefined,
+  productImageThumb: string | undefined,
+): {
+  fullList: string[];
+  thumbList: string[];
+  variantStartIndex: Record<string, number>;
+} {
   const fullList: string[] = [];
+  const thumbList: string[] = [];
   const seen = new Set<string>();
   const variantStartIndex: Record<string, number> = {};
 
-  const add = (url: string) => {
+  const add = (url: string, thumb?: string) => {
     if (!url || seen.has(url)) return;
     seen.add(url);
     fullList.push(url);
+    thumbList.push(thumb || url);
   };
 
   for (const v of variants) {
     variantStartIndex[v.id] = fullList.length;
     if (v.images?.length) {
-      v.images.forEach(add);
+      v.images.forEach((src, i) => add(src, v.thumbnails?.[i]));
     } else if (v.image) {
-      add(v.image);
+      add(v.image, v.thumbnails?.[0]);
     }
   }
 
-  productImages.forEach(add);
-  if (productImage) add(productImage);
+  productImages.forEach((src, i) => add(src, productThumbnails?.[i]));
+  if (productImage) add(productImage, productImageThumb);
 
-  return { fullList, variantStartIndex };
+  return { fullList, thumbList, variantStartIndex };
 }
 
 export default function ProductDetailSection({
@@ -61,6 +84,7 @@ export default function ProductDetailSection({
   currency,
   image,
   images,
+  thumbnails,
   variants,
   inStock = true,
   children,
@@ -74,9 +98,21 @@ export default function ProductDetailSection({
   );
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(defaultVariant);
 
-  const { fullList: displayImages, variantStartIndex } = useMemo(
-    () => buildFullImageListAndVariantIndices(variants, images, image),
-    [variants, images, image],
+  // Page passes `thumbnails` parallel to product `images`; the [0] entry also
+  // doubles as the thumb for the lone product `image` when present (they're
+  // built from the same raw URL).
+  const productImageThumb = thumbnails?.[0];
+
+  const { fullList: displayImages, thumbList: displayThumbs, variantStartIndex } = useMemo(
+    () =>
+      buildFullImageListAndVariantIndices(
+        variants,
+        images,
+        image,
+        thumbnails,
+        productImageThumb,
+      ),
+    [variants, images, image, thumbnails, productImageThumb],
   );
 
   const scrollToIndex = selectedVariant ? variantStartIndex[selectedVariant.id] ?? 0 : 0;
@@ -86,6 +122,7 @@ export default function ProductDetailSection({
       <div className="lg:col-span-7">
         <ProductImageCarousel
           images={displayImages}
+          thumbnails={displayThumbs}
           alt={name}
           scrollToIndex={scrollToIndex}
         />

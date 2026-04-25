@@ -14,6 +14,8 @@ import { useState, useEffect } from 'react';
 import { useCart, useCartStore, MAX_CART_QUANTITY } from '../../store/cartStore';
 import { formatMoney } from '../../lib/formatMoney';
 import ColorSwatch from '../product/ColorSwatch';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
 
 const ESTIMATED_TAX_RATE = 0.08;
 
@@ -81,7 +83,7 @@ export default function CartPage() {
               >
                 {item.image ? (
                   <img
-                    src={item.image}
+                    src={buildImageUrl(item.image, IMAGE_PRESETS.cartItem)}
                     alt=""
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
@@ -100,9 +102,9 @@ export default function CartPage() {
                       </h3>
                     </a>
                     <p className="font-sans text-label-caps text-on-surface-variant mt-2 inline-flex items-center gap-2 uppercase">
-                      <ColorSwatch color={item.color} size="sm" aria-label={`Color: ${item.color}`} />
+                      <ColorSwatch color={item.color} size="sm" aria-label={colorAriaLabel(item.color)} />
                       <span>
-                        {item.color} / Size {item.size}
+                        {colorUiLabel(item.color)} / Size {item.size}
                       </span>
                     </p>
                   </div>

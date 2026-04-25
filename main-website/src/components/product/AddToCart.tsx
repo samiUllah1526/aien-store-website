@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { favoritesApi } from '../../lib/api';
 import { ONE_SIZE_LABEL } from './constants';
 import ColorSwatch from './ColorSwatch';
+import { colorAriaLabel, colorUiLabel, formatColorLabel, isHexColorString } from '../../lib/colorDisplay';
 import Tooltip from '../Tooltip';
 
 export type ProductVariant = {
@@ -28,6 +29,12 @@ export type ProductVariant = {
   isActive: boolean;
   image?: string;
   images?: string[];
+  /**
+   * Optional 200×200 variants of `images`, parallel by index. Used by the
+   * product detail thumbnail strip to ship a fraction of the bytes; ignored
+   * by Add-to-cart and other consumers.
+   */
+  thumbnails?: string[];
 };
 
 interface Props {
@@ -168,7 +175,11 @@ export default function AddToCart({
       {colors.length > 0 && (
         <div>
           <span className="font-sans text-label-caps uppercase block mb-4">
-            Color: <span className="text-on-surface-variant">{selectedColor}</span>
+            Color:{' '}
+            <span className="text-on-surface-variant">
+              {formatColorLabel(selectedColor) ||
+                (isHexColorString(selectedColor) ? '—' : selectedColor)}
+            </span>
           </span>
           <div className="flex flex-wrap gap-3">
             {colors.map((color) => {
@@ -188,8 +199,8 @@ export default function AddToCart({
                       : 'ring-0 hover:ring-1 hover:ring-offset-2 hover:ring-outline-variant'
                   }`}
                   aria-pressed={active}
-                  aria-label={`Color: ${color}`}
-                  title={color}
+                  aria-label={colorAriaLabel(color)}
+                  title={colorUiLabel(color)}
                 >
                   <ColorSwatch color={color} size="md" />
                 </button>

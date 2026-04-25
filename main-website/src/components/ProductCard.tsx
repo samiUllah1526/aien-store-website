@@ -17,6 +17,7 @@ import { useCart } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { favoritesApi } from '../lib/api';
 import { formatMoney } from '../lib/formatMoney';
+import { formatColorLabel, isHexColorString } from '../lib/colorDisplay';
 import { ONE_SIZE_LABEL } from './product/constants';
 
 export interface ProductCardVariant {
@@ -254,11 +255,19 @@ export default function ProductCard({ product, emphasizePrice = true }: ProductC
           <div className="flex justify-between items-start gap-4">
             <div className="min-w-0">
               <h4 className="font-sans text-body-md text-on-surface truncate">{product.name}</h4>
-              {quickAddVariant?.color && (
-                <p className="font-sans text-label-caps text-on-surface-variant mt-1">
-                  {quickAddVariant.color.toUpperCase()}
-                </p>
-              )}
+              {quickAddVariant?.color &&
+                (() => {
+                  const c = quickAddVariant.color;
+                  const label = formatColorLabel(c);
+                  if (!label && isHexColorString(c)) return null;
+                  const line = label || c;
+                  if (!line.trim()) return null;
+                  return (
+                    <p className="font-sans text-label-caps text-on-surface-variant mt-1">
+                      {line.toUpperCase()}
+                    </p>
+                  );
+                })()}
             </div>
             <div className="text-right shrink-0">
               <span
@@ -396,11 +405,18 @@ function QuickViewModal({
               {product.name}
             </h2>
 
-            {variantColor && (
-              <p className="font-sans text-label-caps text-on-surface-variant mb-6">
-                {variantColor.toUpperCase()}
-              </p>
-            )}
+            {variantColor &&
+              (() => {
+                const label = formatColorLabel(variantColor);
+                if (!label && isHexColorString(variantColor)) return null;
+                const line = label || variantColor;
+                if (!line.trim()) return null;
+                return (
+                  <p className="font-sans text-label-caps text-on-surface-variant mb-6">
+                    {line.toUpperCase()}
+                  </p>
+                );
+              })()}
 
             <div className="flex items-baseline gap-3 mb-2">
               <span className="font-sans text-body-lg text-secondary">

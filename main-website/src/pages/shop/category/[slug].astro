@@ -11,6 +11,10 @@ import ShopGrid from '../../../components/shop/ShopGrid';
 import CategoryIntro from '../../../components/shop/CategoryIntro.astro';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../../config';
 import { fetchAllProductsAtBuild } from '../../../lib/fetchStoreProductsBuild';
+import { stripHtml } from '../../../lib/stripHtml';
+import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../../lib/buildImageUrl';
+
+const BANNER_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
 
 type StoreCategory = {
   id: string;
@@ -45,11 +49,6 @@ export async function getStaticPaths() {
 
 const { category } = Astro.props as { category: StoreCategory };
 
-function toFullImageUrl(url: string): string {
-  if (!url) return '';
-  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-}
-
 const DEFAULT_CATEGORY_BANNER =
   'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1920&q=80&auto=format&fit=crop';
 
@@ -61,11 +60,19 @@ try {
 }
 
 const bannerRaw = category.bannerImageUrl?.trim();
-const bannerImage = bannerRaw ? toFullImageUrl(bannerRaw) : DEFAULT_CATEGORY_BANNER;
+const bannerImage = bannerRaw
+  ? buildImageUrl(bannerRaw, IMAGE_PRESETS.heroBanner)
+  : DEFAULT_CATEGORY_BANNER;
+const bannerSrcSet = bannerRaw
+  ? buildImageSrcSet(bannerRaw, BANNER_SRCSET_WIDTHS, {
+      crop: 'fill',
+      quality: 'auto',
+      format: 'auto',
+    })
+  : '';
 const descriptionHtml = category.description?.trim() ?? '';
 const highlights = (category.highlights ?? []).map((h) => h.trim()).filter(Boolean);
 // SEO meta description must be plain text, even when the admin entered rich text via TipTap.
-const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 const metaDescription =
   stripHtml(descriptionHtml).slice(0, 160) ||
   `Browse ${category.name} — cultural-art streetwear with poetry on fabric.`;
@@ -91,11 +98,13 @@ const categoryJsonLd = {
   jsonLd={categoryJsonLd}
 >
   <section
-    class="relative w-full h-[44vh] min-h-[320px] max-h-[520px] overflow-hidden bg-surface-container-low"
+    class="relative w-full h-[32vh] sm:h-[40vh] md:h-[44vh] min-h-[220px] sm:min-h-[280px] md:min-h-[320px] max-h-[520px] overflow-hidden bg-surface-container-low"
     aria-label={`${category.name} banner`}
   >
     <img
       src={bannerImage}
+      srcset={bannerSrcSet || undefined}
+      sizes="100vw"
       alt=""
       class="w-full h-full object-cover object-center"
       fetchpriority="high"

@@ -14,6 +14,8 @@
  */
 
 import type { LandingCategory } from './HomePage';
+import { stripHtml } from '../../lib/stripHtml';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const DEFAULT_PRIMARY_IMAGE =
   'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80&auto=format&fit=crop';
@@ -53,15 +55,27 @@ export default function FeaturedBento({
 
   if (!primary && !secondary) return null;
 
+  // Category descriptions are now rich-text HTML (TipTap). Strip tags before
+  // rendering in this card preview — HTML tags would otherwise leak through
+  // (and the surrounding `uppercase` class would render them as `<H2>` etc.).
+  const primaryDescription = stripHtml(primary?.description);
+
+  const primaryImageSrc = primary
+    ? buildImageUrl(primary.bannerImageUrl, IMAGE_PRESETS.bentoPrimary) || DEFAULT_PRIMARY_IMAGE
+    : DEFAULT_PRIMARY_IMAGE;
+  const secondaryImageSrc = secondary
+    ? buildImageUrl(secondary.bannerImageUrl, IMAGE_PRESETS.bentoSecondary) || DEFAULT_SECONDARY_IMAGE
+    : DEFAULT_SECONDARY_IMAGE;
+
   return (
     <section
-      className="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-section-gap"
+      className="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-section-gap"
       aria-label="Featured collections"
     >
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
         <div>
           <p className="eyebrow mb-4">FEATURED</p>
-          <h2 className="font-serif text-h2-editorial text-on-background">
+          <h2 className="font-serif text-h2-editorial-sm lg:text-h2-editorial text-on-background">
             Curated Collections
           </h2>
         </div>
@@ -70,24 +84,26 @@ export default function FeaturedBento({
         </a>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter md:h-[800px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 md:auto-rows-fr gap-gutter md:h-[560px] lg:h-[620px] xl:h-[680px]">
         {primary && (
           <a
             href={categoryHref(primary.slug)}
-            className="md:col-span-8 relative overflow-hidden group h-[420px] md:h-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            className="md:col-span-8 relative overflow-hidden group h-[320px] sm:h-[400px] md:h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
           >
             <img
-              src={primary.bannerImageUrl ?? DEFAULT_PRIMARY_IMAGE}
+              src={primaryImageSrc}
               alt={primary.name}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              loading="eager"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
             <div className="absolute bottom-8 md:bottom-12 left-8 md:left-12 right-8 md:right-12">
               <p className="font-sans text-label-caps text-white/80 mb-3">SHOP THE SERIES</p>
               <h3 className="font-serif text-h3-section text-white mb-4">{primary.name}</h3>
-              {primary.description && (
+              {primaryDescription && (
                 <p className="font-body-md text-white/80 mb-6 max-w-md uppercase tracking-widest line-clamp-2">
-                  {primary.description}
+                  {primaryDescription}
                 </p>
               )}
               <span className="link-underline text-white border-white">
@@ -97,14 +113,14 @@ export default function FeaturedBento({
           </a>
         )}
 
-        <div className="md:col-span-4 flex flex-col gap-gutter">
+        <div className="md:col-span-4 flex flex-col gap-gutter md:h-full min-h-0">
           {secondary && (
             <a
               href={categoryHref(secondary.slug)}
-              className="flex-1 relative overflow-hidden group h-[260px] md:h-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+              className="flex-1 min-h-0 relative overflow-hidden group h-[260px] md:h-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
             >
               <img
-                src={secondary.bannerImageUrl ?? DEFAULT_SECONDARY_IMAGE}
+                src={secondaryImageSrc}
                 alt={secondary.name}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -115,7 +131,7 @@ export default function FeaturedBento({
             </a>
           )}
 
-          <div className="flex-1 bg-surface-container-high p-10 md:p-12 flex flex-col justify-center">
+          <div className="flex-1 min-h-0 bg-surface-container-high p-10 md:p-12 flex flex-col justify-center">
             {editorial.eyebrow && (
               <p className="eyebrow mb-4">{editorial.eyebrow}</p>
             )}

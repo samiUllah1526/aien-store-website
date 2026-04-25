@@ -49,7 +49,7 @@ export default function NewsletterSection({
       aria-label="Newsletter signup"
     >
       <div className="max-w-2xl mx-auto px-6">
-        <h2 className="font-serif text-h2-editorial mb-8">{title}</h2>
+        <h2 className="font-serif text-h2-editorial-sm mb-8">{title}</h2>
         <p className="font-body-lg text-on-primary/70 mb-12">{body}</p>
 
         <form

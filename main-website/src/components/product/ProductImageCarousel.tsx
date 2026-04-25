@@ -8,6 +8,13 @@ import { useState, useCallback, useEffect } from 'react';
 export interface ProductImageCarouselProps {
   /** Full image URLs (from API). At least one recommended. */
   images: string[];
+  /**
+   * Optional 200×200 variants of `images`, in the same order. When provided
+   * and the same length as `images`, the thumbnail strip uses these — saves
+   * ~95% of bytes vs. shipping the 1200×1600 main variant for an 80×80 cell.
+   * When omitted (or length mismatched), the strip falls back to `images`.
+   */
+  thumbnails?: string[];
   /** Alt text for the main image (e.g. product name). */
   alt: string;
   /** Optional class for the outer container. */
@@ -18,11 +25,14 @@ export interface ProductImageCarouselProps {
 
 export default function ProductImageCarousel({
   images,
+  thumbnails,
   alt,
   className = '',
   scrollToIndex,
 }: ProductImageCarouselProps) {
   const list = images.length > 0 ? images : [];
+  const thumbList =
+    thumbnails && thumbnails.length === list.length ? thumbnails : list;
   const maxIndex = list.length > 0 ? list.length - 1 : 0;
   const clamp = (i: number) => Math.min(Math.max(0, i), maxIndex);
 
@@ -69,12 +79,14 @@ export default function ProductImageCarousel({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       {/* Main image + arrows */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-ash/10">
+      <div className="relative aspect-[3/4] w-full max-h-[70vh] md:max-h-[720px] overflow-hidden rounded-xl bg-ash/10">
         <img
           key={selectedIndex}
           src={mainSrc}
           alt={`${alt} — image ${selectedIndex + 1} of ${list.length}`}
           className="absolute inset-0 h-full w-full object-cover animate-fade-in"
+          loading={selectedIndex === 0 ? 'eager' : 'lazy'}
+          fetchPriority={selectedIndex === 0 ? 'high' : 'auto'}
         />
         {list.length > 1 && (
           <>
@@ -120,7 +132,7 @@ export default function ProductImageCarousel({
               }`}
             >
               <img
-                src={src}
+                src={thumbList[i] ?? src}
                 alt=""
                 className="h-full w-full object-cover"
                 loading="lazy"

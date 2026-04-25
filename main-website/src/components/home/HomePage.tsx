@@ -12,6 +12,8 @@
  */
 
 import type { HeroSlide } from '../../config';
+import { defaultMetaDescription } from '../../config';
+import { stripHtml } from '../../lib/stripHtml';
 import HeroImageCarousel from './HeroImageCarousel';
 import FeaturedBento from './FeaturedBento';
 import CuratedSelection from './CuratedSelection';
@@ -79,9 +81,17 @@ export default function HomePage({
   const populatedCategories = landingCategories.filter((c) => c.productCount > 0);
   const remainingCategories = populatedCategories.slice(2);
 
+  const taglineLine = (() => {
+    const s = defaultMetaDescription.trim();
+    const dot = s.indexOf('.');
+    return dot >= 0 ? s.slice(0, dot + 1).trim() : s;
+  })();
+  const heroHeadline =
+    shopAll.find((p) => p.urduVerse?.trim())?.urduVerse?.trim() ?? taglineLine;
+
   return (
     <div className="flex flex-col">
-      <HeroImageCarousel slides={heroSlides} />
+      <HeroImageCarousel slides={heroSlides} headline={heroHeadline} />
 
       {shopAll.length > 0 && (
         <CuratedSelection
@@ -98,7 +108,10 @@ export default function HomePage({
         <CuratedSelection
           key={cat.id}
           products={productsBySlug[cat.slug] ?? []}
-          eyebrow={cat.description ? cat.description.toUpperCase().slice(0, 60) : undefined}
+          eyebrow={(() => {
+            const plain = stripHtml(cat.description);
+            return plain ? plain.toUpperCase().slice(0, 60) : undefined;
+          })()}
           title={cat.name}
           viewAllHref={`/shop/category/${encodeURIComponent(cat.slug)}`}
           viewAllLabel="View Collection"

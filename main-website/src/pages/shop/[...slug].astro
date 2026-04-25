@@ -8,6 +8,8 @@ import ProductDetailSection from '../../components/product/ProductDetailSection'
 import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
 import { formatMoney } from '../../lib/formatMoney';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../config';
+import { stripHtml } from '../../lib/stripHtml';
+import { buildImageUrl, toAbsoluteUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 export async function getStaticPaths() {
   const limit = 100;
@@ -38,11 +40,6 @@ if (!slug) {
   return Astro.redirect('/shop');
 }
 
-function toFullImageUrl(url: string): string {
-  if (!url) return '';
-  return url.startsWith('http') ? url : `${storeApiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-}
-
 let product: {
   id: string;
   name: string;
@@ -50,8 +47,12 @@ let product: {
   description: string | null;
   price: number;
   currency: string;
+  /** Main carousel slide src (1200×1600 Cloudinary variant). */
   image: string;
+  /** Main carousel slides (1200×1600 Cloudinary variants). */
   images: string[];
+  /** Parallel array of 200×200 thumbnail variants for the carousel strip. */
+  thumbnails: string[];
   variants: Array<{
     id: string;
     color: string;
@@ -61,6 +62,8 @@ let product: {
     isActive: boolean;
     image?: string;
     images?: string[];
+    /** 200×200 variants of `images`; same length and order. */
+    thumbnails?: string[];
   }>;
   sizes?: string[];
   inStock: boolean;
@@ -75,19 +78,42 @@ try {
   const json = await res.json();
   if (res.ok && json.success && json.data) {
     const p = json.data;
-    const image = toFullImageUrl(p.image ?? '');
-    const images = Array.isArray(p.images) ? p.images.map((img: string) => toFullImageUrl(img)).filter(Boolean) : (image ? [image] : []);
-    const variants = (Array.isArray(p.variants) ? p.variants : []).map((variant: { image?: string; images?: string[] } & Record<string, unknown>) => {
-      const variantImage = toFullImageUrl((variant.image as string) ?? '');
-      const variantImages = Array.isArray(variant.images)
-        ? variant.images.map((img: string) => toFullImageUrl(img)).filter(Boolean)
-        : (variantImage ? [variantImage] : []);
-      return {
-        ...variant,
-        image: variantImage,
-        images: variantImages,
-      };
-    });
+    // Apply transforms from the *raw* URL each time so we don't accidentally
+    // chain Cloudinary transforms (e.g. building a 1200×1600 then re-cropping
+    // it to 200×200 would upscale the cropped intermediate, not the source).
+    const rawImage = (p.image as string) ?? '';
+    const rawImages = Array.isArray(p.images) ? (p.images as string[]) : [];
+    const image = buildImageUrl(rawImage, IMAGE_PRESETS.productDetail);
+    const images = rawImages
+      .map((img) => buildImageUrl(img, IMAGE_PRESETS.productDetail))
+      .filter(Boolean);
+    const variants = (Array.isArray(p.variants) ? p.variants : []).map(
+      (variant: { image?: string; images?: string[] } & Record<string, unknown>) => {
+        const rawV = (variant.image as string) ?? '';
+        const rawVImages = Array.isArray(variant.images) ? (variant.images as string[]) : [];
+        const variantImage = buildImageUrl(rawV, IMAGE_PRESETS.productDetail);
+        const variantImages = rawVImages.length
+          ? rawVImages
+              .map((img) => buildImageUrl(img, IMAGE_PRESETS.productDetail))
+              .filter(Boolean)
+          : variantImage
+            ? [variantImage]
+            : [];
+        const variantThumbnails = rawVImages.length
+          ? rawVImages
+              .map((img) => buildImageUrl(img, IMAGE_PRESETS.productThumb))
+              .filter(Boolean)
+          : rawV
+            ? [buildImageUrl(rawV, IMAGE_PRESETS.productThumb)].filter(Boolean)
+            : [];
+        return {
+          ...variant,
+          image: variantImage,
+          images: variantImages,
+          thumbnails: variantThumbnails,
+        };
+      },
+    );
     product = {
       id: p.id,
       name: p.name,
@@ -96,7 +122,12 @@ try {
       price: p.price,
       currency: p.currency,
       image,
-      images: images.length > 0 ? images : (image ? [image] : []),
+      images: images.length > 0 ? images : image ? [image] : [],
+      thumbnails: rawImages.length
+        ? rawImages.map((img) => buildImageUrl(img, IMAGE_PRESETS.productThumb)).filter(Boolean)
+        : rawImage
+          ? [buildImageUrl(rawImage, IMAGE_PRESETS.productThumb)].filter(Boolean)
+          : [],
       variants,
       sizes: p.sizes,
       inStock: p.inStock !== false,
@@ -128,17 +159,24 @@ const displayImages =
     : product.images;
 
 const canonicalUrl = siteUrl ? `${siteUrl}/shop/${product.slug}` : undefined;
-const ogImage = displayImages?.[0] ?? product.image;
-const ogImageAbs = ogImage && (ogImage.startsWith('http') ? ogImage : `${siteUrl || storeApiBaseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`);
+const rawOgImage = displayImages?.[0] ?? product.image;
+const ogImageAbs = rawOgImage
+  ? toAbsoluteUrl(buildImageUrl(rawOgImage, IMAGE_PRESETS.ogImage), siteUrl || storeApiBaseUrl)
+  : undefined;
 
 const productImages = (displayImages ?? (product.image ? [product.image] : [])).map((img: string) =>
-  img.startsWith('http') ? img : `${siteUrl || storeApiBaseUrl}${img.startsWith('/') ? '' : '/'}${img}`,
+  toAbsoluteUrl(img, siteUrl || storeApiBaseUrl),
 );
+// Meta description and JSON-LD must always be plain text. If/when product
+// descriptions move to TipTap rich-text, stripping here keeps these channels
+// safe; the on-page body below is the only place that will need to switch to
+// rich rendering at that point.
+const productDescriptionPlain = stripHtml(product.description) || undefined;
 const productJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   name: product.name,
-  description: product.description ?? undefined,
+  description: productDescriptionPlain,
   image: productImages.length ? productImages : undefined,
   offers: {
     '@type': 'Offer',
@@ -152,7 +190,7 @@ const productJsonLd = {
 
 <BaseLayout
   title={`${product.name} — ${brandName}`}
-  description={product.description ?? undefined}
+  description={productDescriptionPlain}
   image={ogImageAbs}
   canonical={canonicalUrl}
   jsonLd={productJsonLd}
@@ -190,6 +228,7 @@ const productJsonLd = {
       currency={product.currency}
       image={product.image}
       images={product.images}
+      thumbnails={product.thumbnails}
       variants={product.variants}
       inStock={product.inStock}
     >
@@ -217,6 +256,16 @@ const productJsonLd = {
         </div>
       )}
 
+      {/*
+        NOTE: product description is currently plain text. When products migrate
+        to a TipTap rich-text editor (like categories), switch this to render
+        via `set:html` with the `aien-rich-text` class:
+
+          <div class="aien-rich-text font-body-md text-on-surface-variant"
+               set:html={product.description} />
+
+        Keep `productDescriptionPlain` (above) for meta description and JSON-LD.
+      */}
       {product.description && (
         <div class="border-t border-outline-variant pt-8 mb-2">
           <p class="font-body-md text-on-surface-variant leading-relaxed">

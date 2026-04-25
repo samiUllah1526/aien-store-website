@@ -14,6 +14,7 @@ import { formatMoney } from '../../lib/formatMoney';
 import CartIcon from '../cart/CartIcon';
 import ThemeToggle from '../ThemeToggle';
 import ProfileMenu from './ProfileMenu';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 interface LandingCategory {
   id: string;
@@ -187,7 +188,12 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
             aria-label={`${brandName} home`}
           >
             {logoSrc ? (
-              <img src={logoSrc} alt={brandName} className="h-7 sm:h-8 w-auto object-contain max-h-10" />
+              <img
+                src={logoSrc}
+                alt={brandName}
+                className="h-7 sm:h-8 w-auto max-w-[140px] sm:max-w-[180px] max-h-10 object-contain"
+                decoding="async"
+              />
             ) : (
               brandName.toUpperCase()
             )}
@@ -297,7 +303,7 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
                           <span className="flex-shrink-0 w-20 h-24 bg-surface-container overflow-hidden">
                             {product.image ? (
                               <img
-                                src={product.image}
+                                src={buildImageUrl(product.image, IMAGE_PRESETS.cartPreview)}
                                 alt=""
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                               />

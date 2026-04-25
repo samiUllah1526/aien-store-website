@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { formatMoney } from '../../lib/formatMoney';
+import { stripHtml } from '../../lib/stripHtml';
 
 export interface FeaturedProduct {
   id: string;
@@ -29,7 +30,11 @@ export default function FeaturedPieces({ products }: { products: FeaturedProduct
   return (
     <section className="py-24 md:py-32 px-4 sm:px-6" aria-label="Featured pieces">
       <ul className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
-        {displayed.map((product) => (
+        {displayed.map((product) => {
+          // Hover overlay is a small text label — strip any rich-text HTML so
+          // tags don't leak through if products move to a TipTap editor later.
+          const descriptionPlain = stripHtml(product.description);
+          return (
           <li key={product.id}>
             <a
               href={`/shop/${product.slug}`}
@@ -54,9 +59,9 @@ export default function FeaturedPieces({ products }: { products: FeaturedProduct
                       {product.urduVerse}
                     </p>
                   )}
-                  {product.description && (
+                  {descriptionPlain && (
                     <p className="text-off-white/80 text-sm max-w-xs leading-relaxed">
-                      {product.description}
+                      {descriptionPlain}
                     </p>
                   )}
                 </div>
@@ -71,7 +76,8 @@ export default function FeaturedPieces({ products }: { products: FeaturedProduct
               </div>
             </a>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

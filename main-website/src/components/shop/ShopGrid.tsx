@@ -12,7 +12,8 @@
 
 import { useMemo, useState } from 'react';
 import ProductCard, { type ProductCardProduct } from '../ProductCard';
-import { getApiBaseUrl } from '../../lib/api';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
 
 export interface Product extends ProductCardProduct {
   category: string;
@@ -43,18 +44,13 @@ export function mapApiProductToProduct(p: {
   compareAtPrice?: number | null;
   saleBadgeText?: string | null;
 }): Product {
-  const baseUrl = getApiBaseUrl().replace(/\/$/, '');
   const firstCategory = p.categories?.[0] ?? p.category ?? '';
   const variants = (p.variants ?? []).map((v) => ({
     ...v,
-    image: v.image
-      ? v.image.startsWith('http')
-        ? v.image
-        : `${baseUrl}${v.image.startsWith('/') ? '' : '/'}${v.image}`
-      : '',
-    images: (v.images ?? []).map((img) =>
-      img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`,
-    ),
+    image: buildImageUrl(v.image, IMAGE_PRESETS.productCard),
+    images: (v.images ?? [])
+      .map((img) => buildImageUrl(img, IMAGE_PRESETS.productCard))
+      .filter(Boolean),
   }));
   return {
     id: p.id,
@@ -63,11 +59,7 @@ export function mapApiProductToProduct(p: {
     category: (firstCategory || '').toLowerCase(),
     price: p.price,
     currency: p.currency,
-    image: p.image
-      ? p.image.startsWith('http')
-        ? p.image
-        : `${baseUrl}${p.image.startsWith('/') ? '' : '/'}${p.image}`
-      : '',
+    image: buildImageUrl(p.image, IMAGE_PRESETS.productCard),
     variants,
     sizes: p.sizes,
     inStock: p.inStock,
@@ -260,9 +252,9 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
                       key={color}
                       type="button"
                       onClick={() => toggle(selectedColors, color, setSelectedColors)}
-                      title={color}
+                      title={colorUiLabel(color)}
                       aria-pressed={active}
-                      aria-label={`Color: ${color}`}
+                      aria-label={colorAriaLabel(color)}
                       className={`w-7 h-7 rounded-full border transition-transform ${
                         active
                           ? 'ring-1 ring-offset-2 ring-primary scale-110'
@@ -367,7 +359,7 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
             No products match your selection.
           </p>
         ) : (
-          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-gutter gap-y-16">
+          <ul className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-x-3 sm:gap-x-gutter gap-y-10 sm:gap-y-16">
             {visible.map((product) => (
               <li key={product.id}>
                 <ProductCard product={product} />

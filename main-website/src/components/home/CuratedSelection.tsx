@@ -38,7 +38,9 @@ export default function CuratedSelection({
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-16">
         <div>
           {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
-          <h2 className="font-serif text-h2-editorial text-on-background">{title}</h2>
+          <h2 className="font-serif text-h2-editorial-sm lg:text-h2-editorial text-on-background">
+            {title}
+          </h2>
         </div>
         <a href={viewAllHref} className="link-underline self-start md:self-end">
           {viewAllLabel}

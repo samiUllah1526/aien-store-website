@@ -10,10 +10,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { HeroSlide } from '../../config';
-import { brandName } from '../../config';
+import { brandName, defaultMetaDescription } from '../../config';
+import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const AUTO_INTERVAL_MS = 6500;
 const FADE_DURATION = 0.9;
+const HERO_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
+
+const heroHeadlineFallback = (() => {
+  const s = defaultMetaDescription.trim();
+  const dot = s.indexOf('.');
+  return dot >= 0 ? s.slice(0, dot + 1).trim() : s;
+})();
+
+const URDU_OR_ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+function isUrduOrArabicScript(s: string): boolean {
+  return URDU_OR_ARABIC.test(s);
+}
 
 interface HeroImageCarouselProps {
   slides: HeroSlide[];
@@ -30,7 +44,7 @@ interface HeroImageCarouselProps {
 export default function HeroImageCarousel({
   slides,
   eyebrow = 'NEW SEASON RELEASE',
-  headline = 'The Geometry of Silence',
+  headline = heroHeadlineFallback,
   ctaHref = '/shop',
   ctaLabel = 'Explore Collection',
   reducedMotion = false,
@@ -67,10 +81,14 @@ export default function HeroImageCarousel({
   if (count === 0) {
     // Editorial fallback so the homepage never renders empty.
     return (
-      <section className="relative w-full h-[70vh] min-h-[520px] bg-surface-container-low flex items-center justify-center">
+      <section className="relative w-full h-[42vh] sm:h-[60vh] md:h-[70vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] bg-surface-container-low flex items-center justify-center">
         <div className="text-center px-6">
           <p className="eyebrow mb-6">{eyebrow}</p>
-          <h1 className="font-serif text-h1-display text-on-background max-w-2xl mx-auto mb-10">
+          <h1
+            className={`font-serif text-h1-display text-on-background max-w-2xl mx-auto mb-10 ${
+              isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
+            }`}
+          >
             {headline}
           </h1>
           <a href={ctaHref} className="btn-primary">{ctaLabel}</a>
@@ -80,10 +98,16 @@ export default function HeroImageCarousel({
   }
 
   const current = slides[index];
+  const currentSrc = buildImageUrl(current.src, IMAGE_PRESETS.heroBanner) || current.src;
+  const currentSrcSet = buildImageSrcSet(current.src, HERO_SRCSET_WIDTHS, {
+    crop: 'fill',
+    quality: 'auto',
+    format: 'auto',
+  });
 
   return (
     <section
-      className="relative w-full h-[80vh] min-h-[520px] max-h-[920px] overflow-hidden bg-surface-container-low"
+      className="relative w-full h-[42vh] sm:h-[60vh] md:h-[72vh] lg:h-[80vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] max-h-[920px] overflow-hidden bg-surface-container-low"
       aria-label={`${brandName} hero`}
       aria-roledescription="carousel"
       onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
@@ -98,14 +122,17 @@ export default function HeroImageCarousel({
         <AnimatePresence initial={false} mode="wait">
           <motion.img
             key={index}
-            src={current.src}
+            src={currentSrc}
+            srcSet={currentSrcSet || undefined}
+            sizes="100vw"
             alt={current.alt ?? ''}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: FADE_DURATION, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="w-full h-full object-cover object-center"
-            fetchPriority="high"
+            loading={index === 0 ? 'eager' : 'lazy'}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
             draggable={false}
           />
         </AnimatePresence>
@@ -133,7 +160,9 @@ export default function HeroImageCarousel({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
-          className="font-serif text-h1-display text-white max-w-3xl mb-12"
+          className={`font-serif text-h1-display text-white max-w-3xl mb-12 ${
+            isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
+          }`}
         >
           {headline}
         </motion.h1>

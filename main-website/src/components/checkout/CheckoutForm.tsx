@@ -20,6 +20,7 @@ import { useAuthStore } from '../../store/authStore';
 import { api, profileApi, uploadPaymentProof } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
 import ColorSwatch from '../product/ColorSwatch';
+import { colorAriaLabel } from '../../lib/colorDisplay';
 import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './checkoutSchema';
 
 export interface QuoteLineItem {
@@ -795,7 +796,7 @@ export default function CheckoutForm() {
                                 <ColorSwatch
                                   color={swatchColor}
                                   size="sm"
-                                  aria-label={`Color: ${swatchColor}`}
+                                  aria-label={colorAriaLabel(swatchColor)}
                                 />
                               )}
                               <span>
@@ -835,7 +836,7 @@ export default function CheckoutForm() {
                               <ColorSwatch
                                 color={item.color}
                                 size="sm"
-                                aria-label={`Color: ${item.color}`}
+                                aria-label={colorAriaLabel(item.color)}
                               />
                             )}
                             <span>

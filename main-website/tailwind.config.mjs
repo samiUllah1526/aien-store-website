@@ -104,6 +104,7 @@ export default {
         'body-lg': ['18px', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
         button: ['14px', { lineHeight: '1', letterSpacing: '0.05em', fontWeight: '500' }],
         'h3-section': ['32px', { lineHeight: '1.3', fontWeight: '400' }],
+        'h2-editorial-sm': ['36px', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' }],
         'h2-editorial': ['48px', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' }],
         'h1-display': [
           'clamp(48px, 8vw, 84px)',

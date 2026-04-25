@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { favoritesApi, getApiBaseUrl } from '../../lib/api';
+import { favoritesApi } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 interface ProductLike {
   id: string;
@@ -86,12 +87,10 @@ export default function FavoritesPage() {
     );
   }
 
-  const baseUrl = getApiBaseUrl().replace(/\/$/, '');
-  const imageUrl = (img: string) =>
-    img && (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`);
+  const imageUrl = (img: string) => buildImageUrl(img, IMAGE_PRESETS.productCard);
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => (
         <div
           key={product.id}
