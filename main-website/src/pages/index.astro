@@ -74,13 +74,26 @@ function buildHomepageStoreJsonLd(settings: PublicSettings, apiRoot: string): Re
 }
 
 const baseUrl = storeApiBaseUrl.replace(/\/$/, '');
-function mapProduct(p: Record<string, unknown>): Product {
 
-  const variants = Array.isArray(p.variants)
-    ? (p.variants as Array<{ image?: string }>)
-    : [];
-  const variantImage = variants.find((v) => typeof v?.image === 'string' && v.image.length > 0)?.image ?? '';
-  const img = (p.image || variantImage) as string;
+function toAbsoluteUrl(raw: string): string {
+  if (!raw) return '';
+  return raw.startsWith('http') ? raw : `${baseUrl}${raw.startsWith('/') ? '' : '/'}${raw}`;
+}
+
+function mapProduct(p: Record<string, unknown>): Product {
+  const rawVariants = Array.isArray(p.variants) ? (p.variants as Array<Record<string, unknown>>) : [];
+  const variants = rawVariants.map((v) => ({
+    id: String(v.id ?? ''),
+    color: String(v.color ?? ''),
+    size: String(v.size ?? ''),
+    stockQuantity: Number(v.stockQuantity ?? 0),
+    priceOverrideCents: v.priceOverrideCents != null ? Number(v.priceOverrideCents) : null,
+    isActive: v.isActive !== false,
+    image: typeof v.image === 'string' ? toAbsoluteUrl(v.image) : '',
+    images: Array.isArray(v.images) ? (v.images as string[]).map(toAbsoluteUrl).filter(Boolean) : [],
+  }));
+  const variantImage = variants.find((v) => v.image)?.image ?? '';
+  const img = (p.image as string) || variantImage;
   const price = Number(p.price);
   const salePrice = p.salePrice != null ? Number(p.salePrice) : null;
   const originalPrice = p.originalPrice != null ? Number(p.originalPrice) : null;
@@ -93,7 +106,9 @@ function mapProduct(p: Record<string, unknown>): Product {
     name: String(p.name),
     price: effectivePrice,
     currency: String(p.currency ?? 'PKR'),
-    image: img ? (img.startsWith('http') ? img : `${baseUrl}${img.startsWith('/') ? '' : '/'}${img}`) : '',
+    image: toAbsoluteUrl(img),
+    variants,
+    inStock: p.inStock !== false,
     urduVerse: (p.urduVerse as string | null) ?? null,
     urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
     description: (p.description as string | null) ?? null,

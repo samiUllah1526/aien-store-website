@@ -82,27 +82,29 @@ export default function ProductDetailSection({
   const scrollToIndex = selectedVariant ? variantStartIndex[selectedVariant.id] ?? 0 : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-      <div className="w-full">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+      <div className="lg:col-span-7">
         <ProductImageCarousel
           images={displayImages}
           alt={name}
           scrollToIndex={scrollToIndex}
         />
       </div>
-      <div className="flex flex-col">
+      <div className="lg:col-span-5 lg:sticky lg:top-28 self-start h-fit">
         {children}
-        <AddToCart
-          productId={productId}
-          name={name}
-          slug={slug}
-          price={price}
-          currency={currency}
-          image={image}
-          variants={variants}
-          inStock={inStock}
-          onVariantChange={setSelectedVariant}
-        />
+        <div className="mt-12">
+          <AddToCart
+            productId={productId}
+            name={name}
+            slug={slug}
+            price={price}
+            currency={currency}
+            image={image}
+            variants={variants}
+            inStock={inStock}
+            onVariantChange={setSelectedVariant}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,28 +1,44 @@
 /**
- * Home page: landing layout per e-commerce reference.
- * Hero carousel, motto, SHOP ALL, category banners (from backend), feature strip.
+ * Homepage composition — AIEN editorial flow.
+ *
+ *   1. Editorial hero (image carousel from admin settings)
+ *   2. Curated selection from "Shop All"
+ *   3. Featured bento grid (top categories)
+ *   4. One curated selection per remaining landing category
+ *   5. Newsletter "Join the Circle"
+ *
+ * Data props are unchanged from the previous shape so the Astro entry in
+ * `src/pages/index.astro` continues to work without modification.
  */
 
 import type { HeroSlide } from '../../config';
-import CinematicVideoHero from './CinematicVideoHero';
 import HeroImageCarousel from './HeroImageCarousel';
-import LandingMotto from './LandingMotto';
-import ProductCarousel from './ProductCarousel';
-import CategoryBanner from './CategoryBanner';
-import FeatureStrip from './FeatureStrip';
-import SiteContainer from '../layout/SiteContainer';
+import FeaturedBento from './FeaturedBento';
+import CuratedSelection from './CuratedSelection';
+import NewsletterSection from './NewsletterSection';
 
 interface HomePageProps {
   videoSrc?: string;
   videoPoster?: string;
-  /** Hero image carousel slides. When length > 0, carousel is shown instead of video hero. */
+  /** Hero image carousel slides. */
   heroSlides?: HeroSlide[];
-  /** Build-time fetched product list for SHOP ALL carousel. */
+  /** Build-time fetched product list for the lead curated selection. */
   shopAll?: Product[];
   /** Build-time fetched landing categories. */
   landingCategories?: LandingCategory[];
   /** Build-time fetched products grouped by category slug. */
   productsBySlug?: Record<string, Product[]>;
+}
+
+export interface ProductVariantSummary {
+  id: string;
+  color: string;
+  size: string;
+  stockQuantity: number;
+  priceOverrideCents?: number | null;
+  isActive: boolean;
+  image?: string;
+  images?: string[];
 }
 
 export interface Product {
@@ -32,9 +48,10 @@ export interface Product {
   price: number;
   currency: string;
   image: string;
-  /** Optional; home `mapProduct` merges variant into `image`, so this is often omitted. */
   variantImage?: string;
-  variants?: { image?: string }[];
+  /** Full variant payload (id/color/size/stock) so cards can quick-add. */
+  variants?: ProductVariantSummary[];
+  inStock?: boolean;
   urduVerse?: string | null;
   urduVerseTransliteration?: string | null;
   description?: string | null;
@@ -43,7 +60,6 @@ export interface Product {
   saleBadgeText?: string | null;
 }
 
-/** Landing category from GET /categories/landing */
 export interface LandingCategory {
   id: string;
   name: string;
@@ -54,53 +70,42 @@ export interface LandingCategory {
   productCount: number;
 }
 
-const DEFAULT_BANNER_IMAGE = 'https://picsum.photos/seed/category/600/750';
-
 export default function HomePage({
-  videoSrc = '/videos/hero.mp4',
-  videoPoster,
   heroSlides = [],
   shopAll = [],
   landingCategories = [],
   productsBySlug = {},
 }: HomePageProps) {
-  const useHeroCarousel = heroSlides.length > 0;
+  const populatedCategories = landingCategories.filter((c) => c.productCount > 0);
+  const remainingCategories = populatedCategories.slice(2);
+
   return (
     <div className="flex flex-col">
-      {/* Full-bleed hero */}
-      {useHeroCarousel ? (
-        <HeroImageCarousel slides={heroSlides} />
-      ) : (
-        <CinematicVideoHero src={videoSrc} poster={videoPoster} />
+      <HeroImageCarousel slides={heroSlides} />
+
+      {shopAll.length > 0 && (
+        <CuratedSelection
+          products={shopAll}
+          eyebrow="SHOP CURATED"
+          title="Featured Selection"
+          viewAllHref="/shop"
+        />
       )}
 
-      <div className="flex flex-col gap-y-16 md:gap-y-24 pt-16 md:pt-24">
-        <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
-          <LandingMotto />
-          <ProductCarousel products={shopAll} title="SHOP ALL" showSaleBadge />
-        </SiteContainer>
+      <FeaturedBento categories={populatedCategories} />
 
-        {landingCategories
-          .filter((cat) => cat.productCount > 0)
-          .map((cat) => (
-          <div key={cat.id} className="contents">
-            <CategoryBanner
-              imageSrc={cat.bannerImageUrl ?? DEFAULT_BANNER_IMAGE}
-              imageAlt={cat.name}
-            />
-            <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
-              <ProductCarousel
-                products={productsBySlug[cat.slug] ?? []}
-                title={cat.name.toUpperCase()}
-              />
-            </SiteContainer>
-          </div>
-        ))}
+      {remainingCategories.map((cat) => (
+        <CuratedSelection
+          key={cat.id}
+          products={productsBySlug[cat.slug] ?? []}
+          eyebrow={cat.description ? cat.description.toUpperCase().slice(0, 60) : undefined}
+          title={cat.name}
+          viewAllHref={`/shop/category/${encodeURIComponent(cat.slug)}`}
+          viewAllLabel="View Collection"
+        />
+      ))}
 
-        <SiteContainer className="flex flex-col gap-y-16 md:gap-y-24">
-          <FeatureStrip />
-        </SiteContainer>
-      </div>
+      <NewsletterSection />
     </div>
   );
 }

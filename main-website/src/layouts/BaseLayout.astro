@@ -88,8 +88,14 @@ const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pat
     <link rel="icon" type={faviconType} href={faviconHref} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    {/* AIEN typography: Inter for body/UI, Noto Serif for editorial display headings,
+        Noto Nastaliq Urdu for occasional poetry, Material Symbols for icons. */}
     <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:ital,wght@0,400;0,500;0,700;1,400&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
@@ -116,7 +122,7 @@ const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pat
       </script>
     )}
   </head>
-  <body class="min-h-screen flex flex-col bg-bone dark:bg-charcoal text-soft-charcoal dark:text-off-white antialiased transition-colors duration-400">
+  <body class="min-h-screen flex flex-col bg-background text-on-background antialiased font-sans">
     <LayoutShell client:load siteSettings={siteSettings} landingCategories={landingCategories}>
       <slot />
     </LayoutShell>

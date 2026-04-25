@@ -1,9 +1,16 @@
 /**
- * Product card with quick actions on hover: wishlist, quick view, add to cart.
- * Rounded corners, subtle animations.
+ * Editorial AIEN product card.
+ *
+ * - 3:4 image with subtle hover zoom.
+ * - Quick-add CTA reveals on hover (variant-aware via the existing cart store).
+ * - Optional wishlist toggle wired to the favorites API.
+ * - Title + price metadata sits below the image with editorial typography.
+ *
+ * The exported component name and `Product` shape are preserved so existing
+ * usages (HomePage, ShopGrid, etc.) keep working.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useCart } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { favoritesApi } from '../lib/api';
@@ -31,12 +38,19 @@ export interface ProductCardProduct {
   variants?: ProductCardVariant[];
   sizes?: string[];
   inStock?: boolean;
+  compareAtPrice?: number | null;
+  saleBadgeText?: string | null;
 }
 
-export default function ProductCard({ product }: { product: ProductCardProduct }) {
+interface ProductCardProps {
+  product: ProductCardProduct;
+  /** Show the price in the editorial teal accent. Default true. */
+  emphasizePrice?: boolean;
+}
+
+export default function ProductCard({ product, emphasizePrice = true }: ProductCardProps) {
   const { addItem, openCart } = useCart();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
-  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
@@ -49,23 +63,23 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
         if (!cancelled && Array.isArray(ids)) setWishlisted(ids.includes(product.id));
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isLoggedIn, product.id]);
 
-  const activeVariants = (product.variants ?? []).filter((variant) => variant.isActive);
+  const activeVariants = (product.variants ?? []).filter((v) => v.isActive);
   const quickAddVariant =
-    activeVariants.find((variant) => variant.stockQuantity > 0) ?? activeVariants[0];
+    activeVariants.find((v) => v.stockQuantity > 0) ?? activeVariants[0];
   const defaultSize = quickAddVariant?.size ?? product.sizes?.[0] ?? ONE_SIZE_LABEL;
   const inStock = product.inStock !== false && !!quickAddVariant && quickAddVariant.stockQuantity > 0;
+  const onSale =
+    product.compareAtPrice != null && product.compareAtPrice > product.price;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    if (!inStock || !quickAddVariant) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
+  const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!inStock || !quickAddVariant) return;
     addItem({
       productId: product.id,
       variantId: quickAddVariant.id,
@@ -79,168 +93,128 @@ export default function ProductCard({ product }: { product: ProductCardProduct }
       quantity: 1,
     });
     openCart();
-    setQuickViewOpen(false);
+  };
+
+  const handleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      const returnTo =
+        typeof window !== 'undefined'
+          ? encodeURIComponent(window.location.pathname + window.location.search)
+          : '';
+      window.location.href = `/login?returnTo=${returnTo}`;
+      return;
+    }
+    setFavoriteLoading(true);
+    try {
+      if (wishlisted) {
+        await favoritesApi.remove(product.id);
+        setWishlisted(false);
+      } else {
+        await favoritesApi.add(product.id);
+        setWishlisted(true);
+      }
+    } catch {
+      // keep current state on error
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   return (
-    <>
-      <div className="group relative">
-        <a href={`/shop/${product.slug}`} className="block">
-          <div className="aspect-[3/4] overflow-hidden rounded-xl bg-ash/10 mb-3 relative">
-            {!inStock && (
-              <span className="absolute left-3 top-3 z-10 rounded-md bg-charcoal/90 dark:bg-charcoal px-2.5 py-1 text-xs font-medium text-off-white">
-                Out of stock
-              </span>
-            )}
+    <article className="group">
+      <a
+        href={`/shop/${product.slug}`}
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      >
+        <div className="relative aspect-[3/4] bg-surface-container-low overflow-hidden mb-6">
+          {product.saleBadgeText && (
+            <span className="absolute left-4 top-4 z-10 bg-primary text-on-primary px-3 py-1 font-sans text-label-caps">
+              {product.saleBadgeText}
+            </span>
+          )}
+          {!inStock && (
+            <span className="absolute right-4 top-4 z-10 bg-on-background/80 text-on-primary px-3 py-1 font-sans text-label-caps">
+              Sold Out
+            </span>
+          )}
+
+          {product.image ? (
             <img
               src={product.image}
               alt=""
-              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            {/* Quick actions: appear on hover */}
-            <div
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+              <span className="material-symbols-outlined" aria-hidden>image</span>
+            </div>
+          )}
+
+          {/* Wishlist button — top-right */}
+          <button
+            type="button"
+            onClick={handleWishlist}
+            disabled={favoriteLoading}
+            className="absolute right-4 top-4 z-10 inline-flex items-center justify-center w-10 h-10 bg-white/80 backdrop-blur-md text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:opacity-50"
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            style={product.saleBadgeText ? { top: 64 } : undefined}
+          >
+            <svg
+              className="w-5 h-5"
+              fill={wishlisted ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
               aria-hidden
             >
-              <button
-                type="button"
-                disabled={favoriteLoading}
-                onClick={async (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!isLoggedIn) {
-                    const returnTo = typeof window !== 'undefined' ? encodeURIComponent(window.location.pathname + window.location.search) : '';
-                    window.location.href = `/login?returnTo=${returnTo}`;
-                    return;
-                  }
-                  setFavoriteLoading(true);
-                  try {
-                    if (wishlisted) {
-                      await favoritesApi.remove(product.id);
-                      setWishlisted(false);
-                    } else {
-                      await favoritesApi.add(product.id);
-                      setWishlisted(true);
-                    }
-                  } catch {
-                    // keep current state on error
-                  } finally {
-                    setFavoriteLoading(false);
-                  }
-                }}
-                className="w-10 h-10 rounded-full bg-bone/95 dark:bg-charcoal/95 shadow-sm flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors focus-ring disabled:opacity-50"
-                aria-label={wishlisted ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill={wishlisted ? 'currentColor' : 'none'}
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setQuickViewOpen(true);
-                }}
-                className="w-10 h-10 rounded-full bg-bone/95 dark:bg-charcoal/95 shadow-sm flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors focus-ring"
-                aria-label="Quick view"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={!inStock}
-                className="w-10 h-10 rounded-full bg-bone/95 dark:bg-charcoal/95 shadow-sm flex items-center justify-center text-soft-charcoal dark:text-off-white hover:text-mehndi transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-soft-charcoal dark:disabled:hover:text-off-white"
-                aria-label={inStock ? 'Add to cart' : 'Out of stock'}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <p className="font-display text-lg text-soft-charcoal dark:text-off-white group-hover:text-mehndi transition-colors">
-            {product.name}
-          </p>
-          <p className="text-ash text-sm mt-1">
-            {formatMoney(product.price, product.currency)}
-          </p>
-        </a>
-      </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          </button>
 
-      {/* Quick view modal */}
-      {quickViewOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/50"
-          onClick={() => setQuickViewOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Quick view"
-        >
-          <div
-            className="bg-bone dark:bg-charcoal rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-end mb-2">
-              <button
-                type="button"
-                onClick={() => setQuickViewOpen(false)}
-                className="p-2 text-soft-charcoal dark:text-off-white hover:text-mehndi rounded-lg"
-                aria-label="Close"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <a href={`/shop/${product.slug}`} className="block aspect-[3/4] overflow-hidden rounded-xl bg-ash/10 mb-4">
-              <img src={product.image} alt="" className="w-full h-full object-cover" />
-            </a>
-            <h3 className="font-display text-xl text-soft-charcoal dark:text-off-white">{product.name}</h3>
-            <p className="text-mehndi font-medium mt-1">{formatMoney(product.price, product.currency)}</p>
-            <p className="text-sm text-ash mt-2">Size: {defaultSize} (change on product page)</p>
-            <div className="mt-4 flex gap-2">
-              <a
-                href={`/shop/${product.slug}`}
-                className="flex-1 py-2 text-center rounded-lg border border-ash/40 text-soft-charcoal dark:text-off-white hover:bg-ash/20 transition-colors"
-              >
-                View details
-              </a>
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={!inStock}
-                className="flex-1 py-2 rounded-lg bg-soft-charcoal dark:bg-off-white text-bone dark:text-charcoal hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {inStock ? 'Add to cart' : 'Out of stock'}
-              </button>
-            </div>
+          {/* Quick add — bottom overlay */}
+          {inStock && (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md text-primary py-4 font-sans text-button uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            >
+              Quick Add
+            </button>
+          )}
+        </div>
+
+        <div className="flex justify-between items-start gap-4">
+          <div className="min-w-0">
+            <h4 className="font-sans text-body-md text-on-surface truncate">{product.name}</h4>
+            {quickAddVariant?.color && (
+              <p className="font-sans text-label-caps text-on-surface-variant mt-1">
+                {quickAddVariant.color.toUpperCase()}
+              </p>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <span
+              className={`font-sans text-body-md ${
+                emphasizePrice ? 'text-secondary' : 'text-on-surface'
+              }`}
+            >
+              {formatMoney(product.price, product.currency)}
+            </span>
+            {onSale && (
+              <span className="block font-sans text-label-caps text-on-surface-variant line-through mt-1">
+                {formatMoney(product.compareAtPrice ?? 0, product.currency)}
+              </span>
+            )}
           </div>
         </div>
-      )}
-    </>
+      </a>
+    </article>
   );
 }

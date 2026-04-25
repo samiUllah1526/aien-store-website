@@ -157,7 +157,30 @@ const productJsonLd = {
   canonical={canonicalUrl}
   jsonLd={productJsonLd}
 >
-  <article class="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+  <article class="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-12 md:py-16">
+    <nav
+      class="flex mb-12 font-sans text-label-caps text-on-surface-variant gap-2 uppercase"
+      aria-label="Breadcrumb"
+    >
+      <a class="hover:text-on-background" href="/">Home</a>
+      <span aria-hidden>/</span>
+      {product.categories?.[0] ? (
+        <>
+          <a
+            class="hover:text-on-background"
+            href={`/shop/category/${product.categories[0].slug}`}
+          >{product.categories[0].name}</a>
+          <span aria-hidden>/</span>
+        </>
+      ) : (
+        <>
+          <a class="hover:text-on-background" href="/shop">Shop</a>
+          <span aria-hidden>/</span>
+        </>
+      )}
+      <span class="text-on-background truncate max-w-[60vw]">{product.name}</span>
+    </nav>
+
     <ProductDetailSection
       client:load
       productId={product.id}
@@ -170,33 +193,37 @@ const productJsonLd = {
       variants={product.variants}
       inStock={product.inStock}
     >
-      {product.urduVerse && (
-        <AnimatedUrduVerse
-          client:load
-          verse={product.urduVerse}
-          transliteration={product.urduVerseTransliteration}
-        />
-      )}
+      {product.categories?.length ? (
+        <p class="font-sans text-label-caps text-on-surface-variant uppercase tracking-widest mb-2">
+          {product.categories.map((c) => c.name).join(' / ')}
+        </p>
+      ) : null}
 
-      <h1 class="font-display text-2xl md:text-3xl text-soft-charcoal dark:text-off-white">
+      <h1 class="font-serif text-h2-editorial text-on-background mb-4">
         {product.name}
       </h1>
 
-      {product.description && (
-        <p class="mt-6 text-soft-charcoal/90 dark:text-off-white/90 leading-relaxed max-w-prose">
-          {product.description}
-        </p>
-      )}
-
-      <p class="mt-8 text-ash text-sm">
+      <p class="font-body-lg text-secondary mb-8">
         {formatMoney(product.price, product.currency)}
       </p>
 
-      {product.categories?.length ? (
-        <p class="mt-1 text-ash text-sm">
-          {product.categories.map((c) => c.name).join(', ')}
-        </p>
-      ) : null}
+      {product.urduVerse && (
+        <div class="mb-8">
+          <AnimatedUrduVerse
+            client:load
+            verse={product.urduVerse}
+            transliteration={product.urduVerseTransliteration}
+          />
+        </div>
+      )}
+
+      {product.description && (
+        <div class="border-t border-outline-variant pt-8 mb-2">
+          <p class="font-body-md text-on-surface-variant leading-relaxed">
+            {product.description}
+          </p>
+        </div>
+      )}
     </ProductDetailSection>
   </article>
 </BaseLayout>
