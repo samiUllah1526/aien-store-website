@@ -217,14 +217,6 @@ export default function CartPage() {
                 Complimentary climate-neutral delivery on qualifying orders.
               </p>
             </div>
-            <div className="flex gap-4 items-start text-on-surface-variant">
-              <span className="material-symbols-outlined text-lg" aria-hidden>
-                assignment_return
-              </span>
-              <p className="font-sans text-label-caps leading-relaxed">
-                14-day extended returns for all collections.
-              </p>
-            </div>
           </div>
         </aside>
       </div>
