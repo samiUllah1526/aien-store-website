@@ -213,7 +213,10 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  /** Rich-text HTML from the admin TipTap editor; legacy plain text renders identically. */
   description: string | null;
+  /** Bullet list shown on storefront category page (max 20 items, ≤120 chars each). */
+  highlights: string[];
   bannerImageUrl: string | null;
   showOnLanding: boolean;
   landingOrder: number | null;

@@ -1,0 +1,73 @@
+---
+/**
+ * Category page editorial intro block.
+ *
+ * Layout rules (decided with UX):
+ * - When `highlights` are present → 2-column grid (description left, highlights right)
+ *   to fill the right-side whitespace that previously looked unbalanced.
+ * - When `highlights` is empty → single column, centered, max-w-prose for comfortable
+ *   line length, no awkward right-side gap.
+ * - When neither description nor highlights are present → render `fallbackText` only,
+ *   centered, so the page still has a short intro line.
+ *
+ * `description` is HTML produced by the admin's TipTap rich-text editor. Legacy plain-text
+ * descriptions are HTML-safe (just escaped text without tags) and render identically.
+ * The HTML is rendered via Astro's `set:html`; styling lives in `.aien-rich-text` in
+ * `src/styles/global.css`.
+ */
+interface Props {
+  categoryName: string;
+  description: string;
+  highlights: string[];
+  fallbackText: string;
+}
+
+const { description, highlights, fallbackText } = Astro.props as Props;
+
+const hasDescription = description.trim().length > 0;
+const hasHighlights = highlights.length > 0;
+const isTwoCol = hasDescription && hasHighlights;
+---
+
+{
+  isTwoCol ? (
+    <section class="mb-12 grid grid-cols-1 gap-x-16 gap-y-10 md:grid-cols-2 items-start">
+      <div class="max-w-prose">
+        <p class="font-sans text-label-caps text-on-surface-variant mb-4">About the collection</p>
+        <div class="aien-rich-text font-body-md text-on-surface-variant" set:html={description} />
+      </div>
+      <div class="max-w-prose">
+        <p class="font-sans text-label-caps text-on-surface-variant mb-4">Feature highlights</p>
+        <ul class="space-y-2 font-body-md text-on-surface-variant">
+          {highlights.map((h) => (
+            <li class="flex gap-3">
+              <span aria-hidden="true" class="text-secondary mt-1">—</span>
+              <span>{h}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  ) : hasDescription ? (
+    <section class="mb-12 mx-auto max-w-prose text-center">
+      <p class="font-sans text-label-caps text-on-surface-variant mb-4">About the collection</p>
+      <div class="aien-rich-text font-body-md text-on-surface-variant" set:html={description} />
+    </section>
+  ) : hasHighlights ? (
+    <section class="mb-12 mx-auto max-w-prose text-center">
+      <p class="font-sans text-label-caps text-on-surface-variant mb-4">Feature highlights</p>
+      <ul class="space-y-2 font-body-md text-on-surface-variant inline-block text-left">
+        {highlights.map((h) => (
+          <li class="flex gap-3">
+            <span aria-hidden="true" class="text-secondary mt-1">—</span>
+            <span>{h}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : (
+    <section class="mb-12 mx-auto max-w-prose text-center">
+      <p class="font-body-lg text-on-surface-variant">{fallbackText}</p>
+    </section>
+  )
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { z } from 'zod';
+import { Controller } from 'react-hook-form';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
 import type { ProductListItem } from '../lib/types';
@@ -13,6 +14,8 @@ import { uploadMedia } from '../lib/media-upload';
 import { AdminImagePreviewModal } from './AdminImagePreviewModal';
 import { ImageCropModal, ASPECT_BANNER } from './ImageCropModal';
 import { resolveAdminImageUrl } from '../lib/resolveImageUrl';
+import { RichTextEditor } from './RichTextEditor';
+import { CategoryTabs, type CategoryTab } from './CategoryTabs';
 
 function slugFromName(value: string): string {
   return value
@@ -288,6 +291,16 @@ const categoryFormSchema = z.object({
     .min(1, 'Slug is required')
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens only'),
   description: z.string().optional(),
+  highlights: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, 'Highlight cannot be empty')
+        .max(120, 'Highlight must be 120 characters or fewer'),
+    )
+    .max(20, 'You can add up to 20 highlights')
+    .default([]),
   bannerImageUrl: z.string().optional(),
   showOnLanding: z.boolean().default(false),
   landingOrder: z.string().optional(),
@@ -304,6 +317,7 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
       name: category?.name ?? '',
       slug: category?.slug ?? '',
       description: category?.description ?? '',
+      highlights: category?.highlights ?? [],
       bannerImageUrl: category?.bannerImageUrl ?? '',
       showOnLanding: category?.showOnLanding ?? false,
       landingOrder: category?.landingOrder != null ? String(category.landingOrder) : '',
@@ -312,6 +326,8 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
   });
   const showOnLanding = form.watch('showOnLanding');
   const bannerImageUrl = form.watch('bannerImageUrl');
+  const highlights = form.watch('highlights') ?? [];
+  const [activeTab, setActiveTab] = useState<CategoryTab>('basics');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
@@ -427,41 +443,53 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
     if (file) openBannerCrop(file);
   };
 
-  const handleSubmit = form.handleSubmit(async (values) => {
-    form.clearErrors('root.serverError');
-    setSubmitting(true);
-    try {
-      const landingOrder = values.landingOrder?.trim();
-      const payload: Record<string, unknown> = {
-        name: values.name.trim(),
-        slug: values.slug.trim(),
-        description: values.description?.trim() || undefined,
-        bannerImageUrl: values.bannerImageUrl?.trim() || (category ? null : undefined),
-        showOnLanding: values.showOnLanding,
-        landingOrder: landingOrder ? Number.parseInt(landingOrder, 10) : category ? null : undefined,
-        parentId: values.parentId || null,
-      };
-      if (category && canAssignProducts) {
-        payload.productIds = [...new Set(selectedProductIds)];
+  const handleSubmit = form.handleSubmit(
+    async (values) => {
+      form.clearErrors('root.serverError');
+      setSubmitting(true);
+      try {
+        const landingOrder = values.landingOrder?.trim();
+        const cleanedHighlights = (values.highlights ?? [])
+          .map((h) => h.trim())
+          .filter((h) => h.length > 0);
+        const payload: Record<string, unknown> = {
+          name: values.name.trim(),
+          slug: values.slug.trim(),
+          description: values.description?.trim() || undefined,
+          highlights: cleanedHighlights,
+          bannerImageUrl: values.bannerImageUrl?.trim() || (category ? null : undefined),
+          showOnLanding: values.showOnLanding,
+          landingOrder: landingOrder ? Number.parseInt(landingOrder, 10) : category ? null : undefined,
+          parentId: values.parentId || null,
+        };
+        if (category && canAssignProducts) {
+          payload.productIds = [...new Set(selectedProductIds)];
+        }
+        if (category) {
+          await api.put(`/categories/${category.id}`, payload);
+        } else {
+          await api.post('/categories', payload);
+        }
+        toastSuccess('Category saved.');
+        onSuccess();
+      } catch (err) {
+        mapApiErrorToForm(err, form.setError);
+      } finally {
+        setSubmitting(false);
       }
-      if (category) {
-        await api.put(`/categories/${category.id}`, payload);
-      } else {
-        await api.post('/categories', payload);
-      }
-      toastSuccess('Category saved.');
-      onSuccess();
-    } catch (err) {
-      mapApiErrorToForm(err, form.setError);
-    } finally {
-      setSubmitting(false);
-    }
-  });
+    },
+    (errs) => {
+      // Jump to the first tab with a validation error so the user can see what to fix.
+      if (errs.name || errs.slug) setActiveTab('basics');
+      else if (errs.description || errs.highlights) setActiveTab('content');
+      else if (errs.bannerImageUrl || errs.landingOrder) setActiveTab('placement');
+    },
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/50 dark:bg-black/60" aria-hidden onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {category ? 'Edit category' : 'Add category'}
@@ -483,74 +511,190 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
             {rootError}
           </div>
         )}
+        <CategoryTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          hasErrors={{
+            basics: Boolean(form.formState.errors.name || form.formState.errors.slug),
+            content: Boolean(
+              form.formState.errors.description || form.formState.errors.highlights,
+            ),
+            placement: Boolean(
+              form.formState.errors.bannerImageUrl || form.formState.errors.landingOrder,
+            ),
+            products: false,
+          }}
+        />
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="cat-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Name
-            </label>
-            <input
-              id="cat-name"
-              type="text"
-              required
-              {...form.register('name', {
-                onChange: (e) => {
-                  if (!category && !form.formState.dirtyFields.slug) {
-                    form.setValue('slug', slugFromName(e.target.value), { shouldValidate: true });
-                  }
-                },
-              })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-            {form.formState.errors.name && <p className="mt-1 text-xs text-red-600">{form.formState.errors.name.message}</p>}
+          {/* Basics tab */}
+          <div
+            role="tabpanel"
+            id="cat-panel-basics"
+            aria-labelledby="cat-tab-basics"
+            hidden={activeTab !== 'basics'}
+            className="space-y-4"
+          >
+            <div>
+              <label htmlFor="cat-name" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Name
+              </label>
+              <input
+                id="cat-name"
+                type="text"
+                required
+                {...form.register('name', {
+                  onChange: (e) => {
+                    if (!category && !form.formState.dirtyFields.slug) {
+                      form.setValue('slug', slugFromName(e.target.value), { shouldValidate: true });
+                    }
+                  },
+                })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              {form.formState.errors.name && <p className="mt-1 text-xs text-red-600">{form.formState.errors.name.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="cat-slug" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Slug
+              </label>
+              <input
+                id="cat-slug"
+                type="text"
+                required
+                {...form.register('slug')}
+                placeholder="e.g. shirts"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+              />
+              {form.formState.errors.slug && <p className="mt-1 text-xs text-red-600">{form.formState.errors.slug.message}</p>}
+            </div>
+            <input type="hidden" {...form.register('parentId')} />
           </div>
-          <div>
-            <label htmlFor="cat-slug" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Slug
-            </label>
-            <input
-              id="cat-slug"
-              type="text"
-              required
-              {...form.register('slug')}
-              placeholder="e.g. shirts"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-            />
-            {form.formState.errors.slug && <p className="mt-1 text-xs text-red-600">{form.formState.errors.slug.message}</p>}
-          </div>
-          <div>
-            <label htmlFor="cat-desc" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Description (optional)
-            </label>
-            <textarea
-              id="cat-desc"
-              rows={2}
-              {...form.register('description')}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <input type="hidden" {...form.register('parentId')} />
-          {canAssignProducts &&
-            (membersLoading ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading products…</p>
-            ) : (
-              <div>
-                <SearchableMultiSelect
-                  label="Products"
-                  placeholder="Search products…"
-                  emptyMessage="No products found"
-                  selectedIds={selectedProductIds}
-                  onSelectedIdsChange={setSelectedProductIds}
-                  fetchItems={fetchProductsForPicker}
-                />
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Category membership matches your selection here. Save with Update.
-                </p>
+
+          {/* Content tab */}
+          <div
+            role="tabpanel"
+            id="cat-panel-content"
+            aria-labelledby="cat-tab-content"
+            hidden={activeTab !== 'content'}
+            className="space-y-6"
+          >
+            <div>
+              <label htmlFor="cat-desc" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Description (optional)
+              </label>
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                Shown above the product grid on the storefront category page. Use bold, links, and lists sparingly.
+              </p>
+              <Controller
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <RichTextEditor
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    placeholder="Tell customers what this collection is about…"
+                  />
+                )}
+              />
+              {form.formState.errors.description && (
+                <p className="mt-1 text-xs text-red-600">{form.formState.errors.description.message}</p>
+              )}
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Feature highlights (optional)
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  {highlights.length}/20
+                </span>
               </div>
-            ))}
-          <div>
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Banner image (optional)
-            </span>
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                Short bullet points (max 120 chars each). When present, they render in a second column next to the description on the storefront.
+              </p>
+              {highlights.length === 0 ? (
+                <p className="mb-2 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                  No highlights yet. The description will display centered on the storefront.
+                </p>
+              ) : (
+                <ul className="mb-2 space-y-2">
+                  {highlights.map((value, idx) => {
+                    const itemError = Array.isArray(form.formState.errors.highlights)
+                      ? form.formState.errors.highlights[idx]
+                      : undefined;
+                    return (
+                      <li key={idx} className="flex items-start gap-2">
+                        <input
+                          type="text"
+                          value={value}
+                          maxLength={120}
+                          onChange={(e) => {
+                            const next = highlights.slice();
+                            next[idx] = e.target.value;
+                            form.setValue('highlights', next, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          placeholder={`Highlight ${idx + 1}`}
+                          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+                          aria-label={`Highlight ${idx + 1}`}
+                          aria-invalid={Boolean(itemError)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = highlights.filter((_, i) => i !== idx);
+                            form.setValue('highlights', next, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          className="shrink-0 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                          aria-label={`Remove highlight ${idx + 1}`}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <button
+                type="button"
+                disabled={highlights.length >= 20}
+                onClick={() => {
+                  if (highlights.length >= 20) return;
+                  form.setValue('highlights', [...highlights, ''], { shouldDirty: true });
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                + Add highlight
+              </button>
+              {form.formState.errors.highlights && !Array.isArray(form.formState.errors.highlights) && (
+                <p className="mt-1 text-xs text-red-600">{form.formState.errors.highlights.message}</p>
+              )}
+              {Array.isArray(form.formState.errors.highlights) &&
+                form.formState.errors.highlights.some(Boolean) && (
+                  <ul className="mt-1 space-y-1">
+                    {form.formState.errors.highlights.map((e, i) =>
+                      e?.message ? (
+                        <li key={i} className="text-xs text-red-600">
+                          Highlight {i + 1}: {e.message}
+                        </li>
+                      ) : null,
+                    )}
+                  </ul>
+                )}
+            </div>
+          </div>
+
+          {/* Placement tab */}
+          <div
+            role="tabpanel"
+            id="cat-panel-placement"
+            aria-labelledby="cat-tab-placement"
+            hidden={activeTab !== 'placement'}
+            className="space-y-4"
+          >
+            <div>
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Banner image (optional)
+              </span>
             <input
               ref={bannerFileInputRef}
               id="cat-banner-file"
@@ -695,39 +839,71 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
               onApply={handleBannerCropApply}
               applying={bannerCropApplying}
             />
-          </div>
-          {!category && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              After you create this category, edit it to assign products from here or from each product&apos;s page.
-            </p>
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              id="cat-show-landing"
-              type="checkbox"
-              {...form.register('showOnLanding')}
-              className="h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
-            />
-            <label htmlFor="cat-show-landing" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Show on storefront landing page
-            </label>
-          </div>
-          {showOnLanding && (
-            <div>
-              <label htmlFor="cat-landing-order" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Landing order (lower = first)
-              </label>
-              <input
-                id="cat-landing-order"
-                type="number"
-                min={0}
-                {...form.register('landingOrder')}
-                placeholder="0"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
-              />
             </div>
-          )}
-          <div className="flex gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="cat-show-landing"
+                type="checkbox"
+                {...form.register('showOnLanding')}
+                className="h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800"
+              />
+              <label htmlFor="cat-show-landing" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Show on storefront landing page
+              </label>
+            </div>
+            {showOnLanding && (
+              <div>
+                <label htmlFor="cat-landing-order" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Landing order (lower = first)
+                </label>
+                <input
+                  id="cat-landing-order"
+                  type="number"
+                  min={0}
+                  {...form.register('landingOrder')}
+                  placeholder="0"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Products tab */}
+          <div
+            role="tabpanel"
+            id="cat-panel-products"
+            aria-labelledby="cat-tab-products"
+            hidden={activeTab !== 'products'}
+            className="space-y-4"
+          >
+            {!category ? (
+              <div className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                After you create this category, edit it to assign products from here or from each product&apos;s page.
+              </div>
+            ) : !canAssignProducts ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                You don&apos;t have permission to assign products to categories.
+              </p>
+            ) : membersLoading ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading products…</p>
+            ) : (
+              <div>
+                <SearchableMultiSelect
+                  label="Products"
+                  placeholder="Search products…"
+                  emptyMessage="No products found"
+                  selectedIds={selectedProductIds}
+                  onSelectedIdsChange={setSelectedProductIds}
+                  fetchItems={fetchProductsForPicker}
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Category membership matches your selection here. Save with Update.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
             <button
               type="submit"
               disabled={submitting || uploadingBanner || (canAssignProducts && membersLoading)}

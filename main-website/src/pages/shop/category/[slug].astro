@@ -8,6 +8,7 @@
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShopGrid from '../../../components/shop/ShopGrid';
+import CategoryIntro from '../../../components/shop/CategoryIntro.astro';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../../config';
 import { fetchAllProductsAtBuild } from '../../../lib/fetchStoreProductsBuild';
 
@@ -15,7 +16,10 @@ type StoreCategory = {
   id: string;
   name: string;
   slug: string;
+  /** Rich-text HTML from the admin TipTap editor; legacy plain text renders identically. */
   description: string | null;
+  /** Bullet list shown beside the description on the storefront category page. */
+  highlights?: string[];
   bannerImageUrl: string | null;
 };
 
@@ -58,8 +62,12 @@ try {
 
 const bannerRaw = category.bannerImageUrl?.trim();
 const bannerImage = bannerRaw ? toFullImageUrl(bannerRaw) : DEFAULT_CATEGORY_BANNER;
-const description =
-  category.description?.trim() ||
+const descriptionHtml = category.description?.trim() ?? '';
+const highlights = (category.highlights ?? []).map((h) => h.trim()).filter(Boolean);
+// SEO meta description must be plain text, even when the admin entered rich text via TipTap.
+const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const metaDescription =
+  stripHtml(descriptionHtml).slice(0, 160) ||
   `Browse ${category.name} — cultural-art streetwear with poetry on fabric.`;
 const canonicalUrl = siteUrl ? `${siteUrl}/shop/category/${category.slug}` : undefined;
 const ogImageAbs =
@@ -70,14 +78,14 @@ const categoryJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: category.name,
-  description,
+  description: metaDescription,
   ...(canonicalUrl && { url: canonicalUrl }),
 };
 ---
 
 <BaseLayout
   title={`${category.name} — ${brandName}`}
-  description={description}
+  description={metaDescription}
   image={ogImageAbs}
   canonical={canonicalUrl}
   jsonLd={categoryJsonLd}
@@ -102,9 +110,12 @@ const categoryJsonLd = {
   </section>
 
   <main class="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-16 md:pt-20 pb-section-gap">
-    <header class="mb-12 max-w-2xl">
-      <p class="font-body-lg text-on-surface-variant">{description}</p>
-    </header>
+    <CategoryIntro
+      categoryName={category.name}
+      description={descriptionHtml}
+      highlights={highlights}
+      fallbackText={`Browse ${category.name} — cultural-art streetwear with poetry on fabric.`}
+    />
     <ShopGrid client:load products={products} />
   </main>
 </BaseLayout>

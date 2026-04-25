@@ -2,9 +2,12 @@ import {
   IsString,
   IsOptional,
   MinLength,
+  MaxLength,
   Matches,
   IsBoolean,
   IsInt,
+  IsArray,
+  ArrayMaxSize,
 } from 'class-validator';
 
 export class CreateCategoryDto {
@@ -22,6 +25,14 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(120, { each: true })
+  highlights?: string[];
 
   @IsOptional()
   @IsString()

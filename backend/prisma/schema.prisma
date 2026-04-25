@@ -250,7 +250,10 @@ model Category {
   id          String    @id @default(uuid()) @db.Uuid
   name        String    @map("name")
   slug        String    @unique @map("slug")
+  /** Rich-text HTML stored from the admin TipTap editor. Plain-text legacy values render identically. */
   description String?   @map("description")
+  /** Bullet list shown on the storefront category page (max 20 items, ≤120 chars each). */
+  highlights  String[]  @default([]) @map("highlights")
   /** Optional banner image URL for category/landing sections. */
   bannerImageUrl String? @map("banner_image_url")
   /** When true, category appears on the storefront landing page in order of landingOrder. */

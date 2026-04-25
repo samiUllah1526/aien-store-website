@@ -67,6 +67,47 @@
     font-size: 20px;
     line-height: 1;
   }
+
+  /* ---------------------------------------------------------------------------
+     Rich-text rendering for admin-authored HTML (TipTap output) — currently used
+     by category descriptions. Keeps typography aligned with the AIEN palette so
+     editorial body copy reads consistently regardless of who authored it.
+     Scope: only descendants of `.aien-rich-text`; safe to apply elsewhere if a
+     future admin field also produces TipTap HTML.
+     --------------------------------------------------------------------------- */
+  .aien-rich-text > :first-child {
+    margin-top: 0;
+  }
+  .aien-rich-text > :last-child {
+    margin-bottom: 0;
+  }
+  .aien-rich-text p {
+    @apply mb-4 leading-relaxed;
+  }
+  .aien-rich-text h2 {
+    @apply font-serif text-h3-section text-on-surface mt-6 mb-3;
+  }
+  .aien-rich-text h3 {
+    @apply font-serif text-body-lg text-on-surface mt-5 mb-2 font-medium;
+  }
+  .aien-rich-text ul {
+    @apply list-disc pl-5 mb-4 space-y-1;
+  }
+  .aien-rich-text ol {
+    @apply list-decimal pl-5 mb-4 space-y-1;
+  }
+  .aien-rich-text a {
+    @apply text-primary underline underline-offset-2 hover:opacity-70 transition-opacity;
+  }
+  .aien-rich-text strong {
+    @apply font-semibold text-on-surface;
+  }
+  .aien-rich-text em {
+    @apply italic;
+  }
+  .aien-rich-text blockquote {
+    @apply border-l-2 border-outline-variant pl-4 italic text-on-surface-variant my-4;
+  }
 }
 
 @layer utilities {
