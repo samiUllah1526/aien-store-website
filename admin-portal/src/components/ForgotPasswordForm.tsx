@@ -44,7 +44,12 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
+    <form
+      method="post"
+      action="/admin/forgot-password"
+      onSubmit={handleSubmit}
+      className="w-full max-w-sm space-y-4"
+    >
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">
           {error}
