@@ -51,6 +51,38 @@ export function replacePlaceholders(
 }
 
 /**
+ * Inline `<mj-include path="..."/>` directives by substituting in the referenced
+ * file's contents. We do this ourselves (instead of relying on MJML's own
+ * include resolution) so that {{placeholders}} living inside partials are
+ * processed by `replacePlaceholders` together with the host template.
+ *
+ * Supports relative paths (resolved against `baseDir`) and recursive includes.
+ * Cycle-safe via a visited set.
+ */
+function inlineMjIncludes(
+  source: string,
+  baseDir: string,
+  visited: Set<string> = new Set(),
+): string {
+  const includeRe =
+    /<mj-include\s+[^>]*path\s*=\s*"([^"]+)"[^>]*\/?>(?:\s*<\/mj-include>)?/g;
+  return source.replace(includeRe, (_match, rawPath: string) => {
+    const includePath = path.resolve(baseDir, rawPath);
+    if (visited.has(includePath)) {
+      return ''; // break cycles
+    }
+    if (!fs.existsSync(includePath)) {
+      console.warn(`[Mail] mj-include path not found: ${includePath}`);
+      return '';
+    }
+    const partial = fs.readFileSync(includePath, 'utf-8');
+    const next = new Set(visited);
+    next.add(includePath);
+    return inlineMjIncludes(partial, path.dirname(includePath), next);
+  });
+}
+
+/**
  * Load MJML template, replace placeholders, compile to HTML.
  * Returns { html, text } where text is a plain-text fallback (strip tags).
  */
@@ -60,7 +92,8 @@ export function renderMjmlTemplate(
 ): { html: string; text: string } {
   const { filePath, templatesDir } = resolveTemplatePath(templateName);
   const raw = fs.readFileSync(filePath, 'utf-8');
-  const mjmlSource = replacePlaceholders(raw, vars);
+  const inlined = inlineMjIncludes(raw, templatesDir);
+  const mjmlSource = replacePlaceholders(inlined, vars);
   const result = mjml2html(mjmlSource, {
     validationLevel: 'soft',
     filePath: templatesDir,

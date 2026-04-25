@@ -30,6 +30,7 @@
     "db:pull": "prisma db pull",
     "db:seed": "prisma db seed",
     "db:restore-settings": "ts-node -r tsconfig-paths/register scripts/restore-settings.ts",
+    "preview:emails": "ts-node -r tsconfig-paths/register scripts/preview-emails.ts",
     "job:voucher-expired": "ts-node -r tsconfig-paths/register scripts/job-voucher-expired.ts",
     "app-reset": "npm run db:migrate:reset && npm run db:seed && npm run db:restore-settings"
   },

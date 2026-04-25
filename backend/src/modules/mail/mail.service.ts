@@ -415,19 +415,39 @@ export class MailService implements IMailService {
   private buildOrderItemsTableHtml(
     items: Array<{ productName: string; quantity: number; unitCents: number }>,
   ): string {
-    const borderColor = '#E8E6E2';
-    const headerBg = '#F3F1ED';
-    const textColor = '#1A1A1A';
-    const mutedColor = '#8A8A8A';
-    const rowStyle = `padding:10px 12px;border-bottom:1px solid ${borderColor};color:${textColor};font-family:Montserrat,Arial,sans-serif;font-size:14px`;
-    const headerStyle = `padding:10px 12px;background-color:${headerBg};color:${textColor};font-family:Montserrat,Arial,sans-serif;font-size:13px;font-weight:600;border-bottom:2px solid ${borderColor}`;
+    const fontStack = "Inter, Arial, 'Helvetica Neue', sans-serif";
+    const ruleColor = '#c4c7c7';
+    const inkColor = '#1b1c1c';
+    const mutedColor = '#444748';
+    const headerStyle = `padding:14px 0 12px;border-bottom:1px solid ${ruleColor};color:${mutedColor};font-family:${fontStack};font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;`;
+    const cellBase = `padding:18px 0;border-bottom:1px solid ${ruleColor};font-family:${fontStack};font-size:14px;line-height:1.5;color:${inkColor};vertical-align:top;`;
+    const productCell = `${cellBase}text-align:left;`;
+    const qtyCell = `${cellBase}text-align:center;color:${mutedColor};`;
+    const unitCell = `${cellBase}text-align:right;color:${mutedColor};font-variant-numeric:tabular-nums;`;
+    const totalCell = `${cellBase}text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;`;
+
     const rows = items
       .map(
         (i) =>
-          `<tr><td style="${rowStyle}">${this.escapeHtml(i.productName)}</td><td style="${rowStyle};text-align:center">${i.quantity}</td><td style="${rowStyle};text-align:right;color:${mutedColor}">${this.formatCurrency(i.unitCents, '')}</td><td style="${rowStyle};text-align:right;font-weight:600">${this.formatCurrency(i.quantity * i.unitCents, '')}</td></tr>`,
+          `<tr>` +
+          `<td style="${productCell}">${this.escapeHtml(i.productName)}</td>` +
+          `<td style="${qtyCell}">${i.quantity}</td>` +
+          `<td style="${unitCell}">${this.formatCurrency(i.unitCents, '')}</td>` +
+          `<td style="${totalCell}">${this.formatCurrency(i.quantity * i.unitCents, '')}</td>` +
+          `</tr>`,
       )
       .join('');
-    return `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;font-family:Montserrat,Arial,sans-serif"><thead><tr><th style="${headerStyle};text-align:left">Product</th><th style="${headerStyle};text-align:center">Qty</th><th style="${headerStyle};text-align:right">Unit</th><th style="${headerStyle};text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return (
+      `<table width="100%" cellpadding="0" cellspacing="0" role="presentation"` +
+      ` style="border-collapse:collapse;margin:0;width:100%;font-family:${fontStack};">` +
+      `<thead><tr>` +
+      `<th style="${headerStyle}text-align:left">Item</th>` +
+      `<th style="${headerStyle}text-align:center;width:56px">Qty</th>` +
+      `<th style="${headerStyle}text-align:right;width:100px">Unit</th>` +
+      `<th style="${headerStyle}text-align:right;width:120px">Total</th>` +
+      `</tr></thead>` +
+      `<tbody>${rows}</tbody></table>`
+    );
   }
 
   private escapeHtml(s: string): string {

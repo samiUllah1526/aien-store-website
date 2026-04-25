@@ -1,47 +1,83 @@
 <mjml>
   <mj-head>
-    <mj-title>Order Confirmation</mj-title>
-    <mj-preview>Your order {{orderId}} has been received.</mj-preview>
-    <mj-font name="Montserrat" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" />
+    <mj-title>Order confirmed</mj-title>
+    <mj-preview>Order {{orderId}} — we've received your order.</mj-preview>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <mj-font name="Noto Serif" href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500;600&display=swap" />
     <mj-attributes>
-      <mj-all font-family="Montserrat, Arial, sans-serif" />
-      <mj-text color="#1A1A1A" font-size="16px" line-height="26px" />
-      <mj-section padding="20px 0" />
-      <mj-button font-family="Montserrat, Arial, sans-serif" font-weight="600" border-radius="6px" />
+      <mj-all font-family="Inter, Arial, sans-serif" />
+      <mj-text color="#1b1c1c" font-size="16px" line-height="1.65" />
+      <mj-section padding="0" />
     </mj-attributes>
+    <mj-style inline="inline">
+      .aien-eyebrow { font-family: Inter, Arial, sans-serif !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.20em !important; text-transform: uppercase !important; color: #444748 !important; }
+      .aien-h1 { font-family: 'Noto Serif', Georgia, serif !important; font-size: 32px !important; line-height: 1.2 !important; letter-spacing: -0.01em !important; font-weight: 400 !important; color: #1b1c1c !important; }
+      .aien-lede { color: #444748 !important; font-size: 16px !important; line-height: 1.7 !important; }
+      .aien-fine { color: #747878 !important; font-size: 13px !important; line-height: 1.6 !important; }
+      .aien-meta-label { font-family: Inter, Arial, sans-serif !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.18em !important; text-transform: uppercase !important; color: #747878 !important; }
+      .aien-meta-value { font-family: Inter, Arial, sans-serif !important; font-size: 15px !important; color: #1b1c1c !important; line-height: 1.4 !important; }
+      .aien-section-title { font-family: Inter, Arial, sans-serif !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.20em !important; text-transform: uppercase !important; color: #444748 !important; }
+      .aien-total-label { font-family: Inter, Arial, sans-serif !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 0.18em !important; text-transform: uppercase !important; color: #444748 !important; }
+      .aien-total-value { font-family: 'Noto Serif', Georgia, serif !important; font-size: 24px !important; line-height: 1.2 !important; color: #2b685c !important; font-weight: 500 !important; }
+    </mj-style>
   </mj-head>
-  <mj-body background-color="#F3F1ED" width="600px">
-    <!-- Brand bar -->
-    <mj-section background-color="#2F3A32" padding="16px 24px" vertical-align="middle">
-      <mj-column width="100%">
-        <mj-text font-size="18px" font-weight="600" color="#F8F6F2" padding="0" align="left">
-          {{companyName}}
+  <mj-body background-color="#fbf9f9" width="600px">
+    <mj-include path="./_header.mjml" />
+
+    <mj-section background-color="#ffffff" padding="48px 40px 16px" border-top="1px solid #1b1c1c">
+      <mj-column>
+        <mj-text css-class="aien-eyebrow" padding="0 0 18px">Order · Confirmed</mj-text>
+        <mj-text css-class="aien-h1" padding="0 0 20px">
+          Thank you, {{customerName}}.
+        </mj-text>
+        <mj-text css-class="aien-lede">
+          We've received your order and will be in touch as soon as it ships. A summary is below for your records.
         </mj-text>
       </mj-column>
     </mj-section>
-    <mj-section background-color="#FFFFFF" padding="32px 24px" border-radius="0 0 8px 8px" border-top="3px solid #2F3A32">
-      <mj-column width="100%">
-        <mj-text font-size="24px" font-weight="700" color="#1A1A1A" padding-bottom="8px">
-          Order confirmed
-        </mj-text>
-        <mj-text color="#1A1A1A">Hello {{customerName}},</mj-text>
-        <mj-text color="#1A1A1A">Thank you for your order. We've received it and will process it shortly.</mj-text>
+
+    <mj-section background-color="#ffffff" padding="32px 40px 0">
+      <mj-column width="50%" vertical-align="top">
+        <mj-text css-class="aien-meta-label" padding="0 0 6px">Order</mj-text>
+        <mj-text css-class="aien-meta-value" padding="0">{{orderId}}</mj-text>
+      </mj-column>
+      <mj-column width="50%" vertical-align="top">
+        <mj-text css-class="aien-meta-label" padding="0 0 6px">Date</mj-text>
+        <mj-text css-class="aien-meta-value" padding="0">{{orderDate}}</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section background-color="#FFFFFF" padding="0 24px 24px" border-radius="0 0 8px 8px">
-      <mj-column width="100%">
-        <mj-text font-size="14px" color="#8A8A8A">Order ID: <strong style="color:#1A1A1A">{{orderId}}</strong></mj-text>
-        <mj-text font-size="14px" color="#8A8A8A">Date: {{orderDate}}</mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#1A1A1A" padding-top="20px">Order summary</mj-text>
+
+    <mj-section background-color="#ffffff" padding="32px 40px 0">
+      <mj-column>
+        <mj-text css-class="aien-section-title" padding="0 0 12px">Order summary</mj-text>
+        <mj-divider border-color="#1b1c1c" border-width="1px" width="100%" padding="0 0 0" />
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 40px 0">
+      <mj-column>
         <mj-raw>{{itemsTable_html}}</mj-raw>
-        <mj-text font-size="18px" font-weight="700" color="#2F3A32" padding-top="20px">Total: {{totalFormatted}}</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section background-color="#FFFFFF" padding="0 24px 32px" border-radius="0 0 8px 8px">
-      <mj-column width="100%">
-        <mj-text color="#1A1A1A">If you have any questions, please reply to this email.</mj-text>
-        <mj-text font-size="14px" color="#8A8A8A" padding-top="24px">— {{companyName}}</mj-text>
+
+    <mj-section background-color="#ffffff" padding="20px 40px 0">
+      <mj-column width="50%" vertical-align="middle">
+        <mj-text css-class="aien-total-label" padding="0">Total</mj-text>
+      </mj-column>
+      <mj-column width="50%" vertical-align="middle">
+        <mj-text css-class="aien-total-value" align="right" padding="0">{{totalFormatted}}</mj-text>
       </mj-column>
     </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 40px 48px">
+      <mj-column>
+        <mj-divider border-color="#c4c7c7" border-width="1px" width="100%" padding="32px 0 24px" />
+        <mj-text css-class="aien-fine">
+          Have a question about this order? Reply to this email and a member of our team will get back to you.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-include path="./_footer.mjml" />
   </mj-body>
 </mjml>
