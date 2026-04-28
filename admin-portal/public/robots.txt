@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Allow Googlebot to fetch favicon and image assets
+Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /favicon-*.png
+Allow: /apple-touch-icon.png
+
+Sitemap: https://admin.aien.store/sitemap.xml
