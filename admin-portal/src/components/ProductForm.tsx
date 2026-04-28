@@ -231,22 +231,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files?.length) return;
+      const fileList = e.target.files;
+      if (!fileList?.length) return;
+      // Materialize into a real array BEFORE resetting the input — `FileList`
+      // is live and gets cleared by `e.target.value = ''`, which would otherwise
+      // leave us with an empty array and silently abort the crop queue.
+      const files = Array.from(fileList);
       form.clearErrors('root.serverError');
       e.target.value = '';
-      startCropQueue(Array.from(files), null);
+      startCropQueue(files, null);
     },
     [form, startCropQueue],
   );
 
   const handleVariantFileSelect = useCallback(
     (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files?.length) return;
+      const fileList = e.target.files;
+      if (!fileList?.length) return;
+      const files = Array.from(fileList);
       form.clearErrors('root.serverError');
       e.target.value = '';
-      startCropQueue(Array.from(files), index);
+      startCropQueue(files, index);
     },
     [form, startCropQueue],
   );
