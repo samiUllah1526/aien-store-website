@@ -2,7 +2,7 @@
  * Homepage composition — AIEN editorial flow.
  *
  *   1. Editorial hero (image carousel from admin settings)
- *   2. Curated selection from "Shop All"
+ *   2. Featured products (admin "featured" flag) in "Featured Selection"
  *   3. Featured bento grid (top categories)
  *   4. One curated selection per remaining landing category
  *   5. Newsletter "Join the Circle"
@@ -60,6 +60,7 @@ export interface Product {
   sizes?: string[];
   compareAtPrice?: number | null;
   saleBadgeText?: string | null;
+  featured?: boolean;
 }
 
 export interface LandingCategory {
@@ -89,13 +90,15 @@ export default function HomePage({
   const heroHeadline =
     shopAll.find((p) => p.urduVerse?.trim())?.urduVerse?.trim() ?? taglineLine;
 
+  const featuredProducts = shopAll.filter((p) => p.featured);
+
   return (
     <div className="flex flex-col">
       <HeroImageCarousel slides={heroSlides} headline={heroHeadline} />
 
-      {shopAll.length > 0 && (
+      {featuredProducts.length > 0 && (
         <CuratedSelection
-          products={shopAll}
+          products={featuredProducts}
           eyebrow="SHOP CURATED"
           title="Featured Selection"
           viewAllHref="/shop"

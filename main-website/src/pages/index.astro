@@ -115,6 +115,7 @@ function mapProduct(p: Record<string, unknown>): Product {
     sizes: (p.sizes as string[] | undefined) ?? undefined,
     compareAtPrice: compareAt,
     saleBadgeText: (p.saleBadgeText as string | null) ?? null,
+    featured: !!p.featured,
   };
 }
 
