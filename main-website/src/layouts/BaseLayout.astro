@@ -17,6 +17,12 @@ interface Props {
   canonical?: string;
   /** JSON-LD structured data (Product, etc.) */
   jsonLd?: object;
+  /** Open Graph type (default: "website"; product pages should pass "product"). */
+  ogType?: string;
+  /** Comma-separated keywords for the optional <meta name="keywords"> tag. */
+  keywords?: string;
+  /** Robots directive (default allows indexing with rich previews). */
+  robots?: string;
 }
 
 const settings = await getPublicSettings();
@@ -51,11 +57,31 @@ const siteSettings = {
   announcement: settings.announcement,
 };
 
-const { title: titleProp, description: descProp, image: imageProp, canonical: canonicalProp, jsonLd } = Astro.props;
+const {
+  title: titleProp,
+  description: descProp,
+  image: imageProp,
+  canonical: canonicalProp,
+  jsonLd,
+  ogType = 'website',
+  keywords: keywordsProp,
+  robots: robotsProp,
+} = Astro.props;
 const title = titleProp ?? seo.siteTitle;
 const description = descProp ?? seo.defaultDescription;
 const image = imageProp ?? (seo.ogImageDefault || undefined);
 const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pathname}` : undefined);
+const ogSiteName = seo.siteTitle?.trim() || 'Aien';
+/** Default Aien-brand keyword set; per-page overrides may supply richer terms. */
+const defaultKeywords = [
+  'AIEN', 'Aien', 'ع', 'Aien store', 'aien.store',
+  'streetwear Pakistan', 'Sufi streetwear', 'Ishq', 'Urdu poetry clothing',
+  'baggy tees', 'oversized hoodies', 'cultural streetwear', 'Pakistani streetwear brand',
+  'Lahore streetwear', 'Karachi streetwear', 'Islamabad streetwear',
+].join(', ');
+const keywords = (keywordsProp?.trim() || defaultKeywords);
+/** Default robots directive — encourages rich snippets and large image previews. */
+const robots = robotsProp?.trim() || 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 ---
 <!doctype html>
 <html lang="en">
@@ -67,21 +93,36 @@ const canonical = canonicalProp ?? (seo.siteUrl ? `${seo.siteUrl}${Astro.url.pat
       (function(){var el=document.documentElement;try{var s=localStorage.getItem(themeStorageKey);var dark=s==='dark'||(s!=='light'&&typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)el.classList.add('dark');else el.classList.remove('dark');}catch(e){el.classList.remove('dark');}})();
     </script>
     <meta name="description" content={description} />
+    <meta name="keywords" content={keywords} />
+    <meta name="author" content={ogSiteName} />
+    <meta name="robots" content={robots} />
+    <meta name="googlebot" content={robots} />
     {canonical && <link rel="canonical" href={canonical} />}
-    {image && (
-      <>
-        <meta property="og:image" content={image} />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content={image} />
-      </>
-    )}
+    {/* Open Graph (Facebook, LinkedIn, WhatsApp, Discord, …) */}
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={ogSiteName} />
+    <meta property="og:locale" content="en_PK" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
+    {image && (
+      <>
+        <meta property="og:image" content={image} />
+        <meta property="og:image:alt" content={title} />
+      </>
+    )}
+    {/* Twitter / X cards */}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {image && <meta name="twitter:image" content={image} />}
     {seo.googleSiteVerification && (
       <meta name="google-site-verification" content={seo.googleSiteVerification} />
     )}
     {seo.twitterHandle && <meta name="twitter:site" content={`@${seo.twitterHandle}`} />}
+    {seo.twitterHandle && <meta name="twitter:creator" content={`@${seo.twitterHandle}`} />}
+    {/* Sitemap reference for crawlers that look at <link rel="sitemap"> */}
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
     {jsonLd && (
       <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     )}

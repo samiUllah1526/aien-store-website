@@ -1,10 +1,27 @@
+# Aien — robots.txt
+# Allow all crawlers everything except authenticated / transactional flows.
+
 User-agent: *
 Allow: /
 
-# Allow Googlebot to fetch favicon and image assets
+# Block private / authenticated routes from being indexed.
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /api/
+
+# Explicit allows for assets (some bots over-block on Disallow-by-extension).
 Allow: /favicon.ico
 Allow: /favicon.svg
 Allow: /favicon-*.png
 Allow: /apple-touch-icon.png
+Allow: /site.webmanifest
+Allow: /videos/
+Allow: /_astro/
 
-Sitemap: https://www.aien.store/sitemap.xml
+# Sitemap index — preferred entry point for Google, Bing, and other crawlers.
+Sitemap: https://www.aien.store/sitemap-index.xml
