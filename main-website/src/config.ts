@@ -49,22 +49,22 @@ export const heroSlides: HeroSlide[] = [
 /** Brand name */
 export const brandName = envStr('PUBLIC_BRAND_NAME', 'Aien');
 
-/** Default meta description */
+/** Default meta description (used as the canonical AIEN site description). */
 export const defaultMetaDescription = envStr(
   'PUBLIC_META_DESCRIPTION',
-  'Cultural-art streetwear. Poetry on fabric. Pakistan.'
+  'Aien (ع) is a contemporary streetwear label rooted in Ishq—blending Sufi philosophy, old cultural heritage, and timeless storytelling into modern baggy silhouettes. Crafted with premium fabrics, each piece reflects love, history, and identity in every thread.'
 );
 
 /** Shop page meta description */
 export const shopMetaDescription = envStr(
   'PUBLIC_SHOP_META_DESCRIPTION',
-  'Cultural-art streetwear. Hoodies and oversized shirts. Pakistan.'
+  'Shop AIEN — Sufi-inspired streetwear, oversized hoodies, and baggy tees crafted with premium fabrics in Pakistan. Cultural heritage and modern silhouettes in every piece.'
 );
 
 /** About page meta description */
 export const aboutMetaDescription = envStr(
   'PUBLIC_ABOUT_META_DESCRIPTION',
-  'Cultural-art streetwear. Poetry on fabric. Pakistan.'
+  'AIEN (ع) — a contemporary streetwear label rooted in Ishq. Discover the story behind our Sufi-inspired designs, cultural heritage, and the philosophy of love woven into every thread.'
 );
 
 /** Cart page meta description */

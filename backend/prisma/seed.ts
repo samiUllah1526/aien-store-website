@@ -232,9 +232,9 @@ async function main() {
     {
       key: 'seo',
       value: {
-        siteTitle: 'Adab',
-        defaultDescription: 'Urdu poetry & adab on streetwear. Wear the words.',
-        siteUrl: '',
+        siteTitle: 'Aien',
+        defaultDescription: 'Aien (ع) is a contemporary streetwear label rooted in Ishq—blending Sufi philosophy, old cultural heritage, and timeless storytelling into modern baggy silhouettes. Crafted with premium fabrics, each piece reflects love, history, and identity in every thread.',
+        siteUrl: 'https://www.aien.store',
         ogImageDefault: '',
         twitterHandle: '',
         googleSiteVerification: '',
