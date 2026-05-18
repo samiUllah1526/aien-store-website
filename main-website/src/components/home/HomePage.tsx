@@ -12,7 +12,7 @@
  */
 
 import type { HeroSlide } from '../../config';
-import { defaultMetaDescription } from '../../config';
+import { heroHeadline as configHeroHeadline } from '../../config';
 import { stripHtml } from '../../lib/stripHtml';
 import HeroImageCarousel from './HeroImageCarousel';
 import FeaturedBento from './FeaturedBento';
@@ -82,13 +82,11 @@ export default function HomePage({
   const populatedCategories = landingCategories.filter((c) => c.productCount > 0);
   const remainingCategories = populatedCategories.slice(2);
 
-  const taglineLine = (() => {
-    const s = defaultMetaDescription.trim();
-    const dot = s.indexOf('.');
-    return dot >= 0 ? s.slice(0, dot + 1).trim() : s;
-  })();
+  // Prefer a featured product's Urdu verse when available; otherwise fall
+  // back to the dedicated hero headline (NOT the meta description, which is
+  // a full sentence and renders poorly as an h1).
   const heroHeadline =
-    shopAll.find((p) => p.urduVerse?.trim())?.urduVerse?.trim() ?? taglineLine;
+    shopAll.find((p) => p.urduVerse?.trim())?.urduVerse?.trim() ?? configHeroHeadline;
 
   const featuredProducts = shopAll.filter((p) => p.featured);
 

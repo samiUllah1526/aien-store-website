@@ -46,6 +46,15 @@ export const heroSlides: HeroSlide[] = [
   { src: 'https://picsum.photos/seed/hero3/1920/1080', alt: 'Hero 3' },
 ];
 
+/**
+ * Editorial hero headline — short, headline-worthy phrase shown as the h1
+ * over the hero image / fallback. Intentionally separate from the SEO
+ * meta description (which is sentence-grade, not headline-grade).
+ * A featured product's `urduVerse` will still take priority at runtime;
+ * this is the human-facing fallback when no verse is available.
+ */
+export const heroHeadline = envStr('PUBLIC_HERO_HEADLINE', 'Streetwear, made sacred.');
+
 /** Brand name */
 export const brandName = envStr('PUBLIC_BRAND_NAME', 'Aien');
 

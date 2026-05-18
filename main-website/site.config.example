@@ -24,12 +24,19 @@ PUBLIC_HERO_VIDEO_URL=
 # For YouTube, a thumbnail is used automatically if not provided.
 PUBLIC_HERO_VIDEO_POSTER=
 
+# Editorial hero headline rendered as the h1 over the hero image / fallback.
+# Keep it short — a phrase, not a sentence. Distinct from the SEO meta
+# description, which is sentence-grade copy for search engines.
+# A featured product's `urduVerse` will still take priority at runtime.
+# PUBLIC_HERO_HEADLINE=Streetwear, made sacred.
+
 # ─── Branding (optional) ─────────────────────────────────────────────────────
 
 # Brand name (default: Aien)
 # PUBLIC_BRAND_NAME=Aien
 
-# Default meta description for SEO
+# Default meta description for SEO (used in <meta name="description"> and
+# social previews; not shown as visible page copy).
 # PUBLIC_META_DESCRIPTION=Aien (ع) is a contemporary streetwear label rooted in Ishq—blending Sufi philosophy, old cultural heritage, and timeless storytelling into modern baggy silhouettes. Crafted with premium fabrics, each piece reflects love, history, and identity in every thread.
 
 # Page-specific meta descriptions (optional)

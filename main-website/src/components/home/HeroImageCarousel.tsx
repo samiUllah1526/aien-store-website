@@ -10,18 +10,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { HeroSlide } from '../../config';
-import { brandName, defaultMetaDescription } from '../../config';
+import { brandName, heroHeadline as configHeroHeadline } from '../../config';
 import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const AUTO_INTERVAL_MS = 6500;
 const FADE_DURATION = 0.9;
 const HERO_SRCSET_WIDTHS = [480, 768, 1200, 1920] as const;
-
-const heroHeadlineFallback = (() => {
-  const s = defaultMetaDescription.trim();
-  const dot = s.indexOf('.');
-  return dot >= 0 ? s.slice(0, dot + 1).trim() : s;
-})();
 
 const URDU_OR_ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
@@ -44,7 +38,7 @@ interface HeroImageCarouselProps {
 export default function HeroImageCarousel({
   slides,
   eyebrow = 'NEW SEASON RELEASE',
-  headline = heroHeadlineFallback,
+  headline = configHeroHeadline,
   ctaHref = '/shop',
   ctaLabel = 'Explore Collection',
   reducedMotion = false,
