@@ -11,6 +11,11 @@ on:
       - ".github/workflows/deploy-backend-vps.yml"
       - ".github/workflows/deploy-admin-portal-cloudflare.yml"
       - ".github/workflows/deploy-main-website-cloudflare.yml"
+  schedule:
+    # Nightly static rebuild so newly published product reviews land in the
+    # crawlable HTML + structured data. 22:00 UTC ≈ 03:00 PKT (low traffic).
+    # Rebuilds the main website only; backend/admin jobs are skipped on schedule.
+    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       deploy_backend:
@@ -126,7 +131,8 @@ jobs:
         (needs.deploy_backend.result == 'success' || needs.deploy_backend.result == 'skipped') &&
         (
           (github.event_name == 'push' && needs.detect_changes.outputs.website_changed == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.deploy_main_website)
+          (github.event_name == 'workflow_dispatch' && inputs.deploy_main_website) ||
+          (github.event_name == 'schedule')
         )
       }}
     uses: ./.github/workflows/deploy-main-website-cloudflare.yml
@@ -134,5 +140,5 @@ jobs:
       environment: production
       purge_cache: false
       skip_build: false
-      reason: ${{ github.event_name == 'workflow_dispatch' && inputs.reason || 'Auto deploy from orchestrator (push)' }}
+      reason: ${{ github.event_name == 'workflow_dispatch' && inputs.reason || (github.event_name == 'schedule' && 'Nightly SEO rebuild (product reviews)' || 'Auto deploy from orchestrator (push)') }}
     secrets: inherit

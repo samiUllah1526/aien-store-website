@@ -14,6 +14,7 @@ import { MediaModule } from '../modules/media/media.module';
 import { EmailLogsModule } from '../modules/email-logs/email-logs.module';
 import { JobsModule } from '../modules/jobs/jobs.module';
 import { GithubModule } from '../modules/github/github.module';
+import { ReviewsModule } from '../modules/reviews/reviews.module';
 import { AdminAuthController } from './auth/admin-auth.controller';
 import { AdminDashboardController } from './dashboard/admin-dashboard.controller';
 import { AdminUsersController } from './users/admin-users.controller';
@@ -30,6 +31,7 @@ import { AdminJobsController } from './jobs/admin-jobs.controller';
 import { AdminPermissionsController } from './permissions/admin-permissions.controller';
 import { AdminDeployController } from './deploy/admin-deploy.controller';
 import { AdminSalesCampaignsController } from './sales-campaigns/admin-sales-campaigns.controller';
+import { AdminReviewsController } from './reviews/admin-reviews.controller';
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { AdminSalesCampaignsController } from './sales-campaigns/admin-sales-cam
     MediaModule,
     EmailLogsModule,
     JobsModule,
+    ReviewsModule,
   ],
   controllers: [
     AdminAuthController,
@@ -66,6 +69,7 @@ import { AdminSalesCampaignsController } from './sales-campaigns/admin-sales-cam
     AdminPermissionsController,
     AdminDeployController,
     AdminSalesCampaignsController,
+    AdminReviewsController,
   ],
 })
 export class AdminModule {}
