@@ -9,6 +9,7 @@ import { SettingsModule } from '../modules/settings/settings.module';
 import { MediaModule } from '../modules/media/media.module';
 import { VouchersModule } from '../modules/vouchers/vouchers.module';
 import { ProfileModule } from '../modules/profile/profile.module';
+import { ReviewsModule } from '../modules/reviews/reviews.module';
 import { StoreAuthController } from './auth/store-auth.controller';
 import { StoreProductsController } from './products/store-products.controller';
 import { StoreOrdersController } from './orders/store-orders.controller';
@@ -19,6 +20,7 @@ import { StoreSettingsController } from './settings/store-settings.controller';
 import { StoreMediaController } from './media/store-media.controller';
 import { StoreVouchersController } from './vouchers/store-vouchers.controller';
 import { StoreProfileShippingController } from './profile/store-profile-shipping.controller';
+import { StoreReviewsController } from './reviews/store-reviews.controller';
 
 @Module({
   imports: [
@@ -32,6 +34,7 @@ import { StoreProfileShippingController } from './profile/store-profile-shipping
     MediaModule,
     VouchersModule,
     ProfileModule,
+    ReviewsModule,
   ],
   controllers: [
     StoreAuthController,
@@ -44,6 +47,7 @@ import { StoreProfileShippingController } from './profile/store-profile-shipping
     StoreMediaController,
     StoreVouchersController,
     StoreProfileShippingController,
+    StoreReviewsController,
   ],
 })
 export class StoreModule {}

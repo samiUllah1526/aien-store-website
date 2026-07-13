@@ -146,6 +146,61 @@ export async function uploadPaymentProof(file: File): Promise<string> {
   }
 }
 
+/** Product reviews (public read; verified-buyer write). */
+export interface ReviewDto {
+  id: string;
+  productId: string;
+  authorName: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  isVerified: boolean;
+  adminReply: string | null;
+  adminReplyAt: string | null;
+  createdAt: string;
+}
+
+export interface ReviewSummary {
+  count: number;
+  average: number;
+  distribution: Record<string, number>;
+}
+
+export interface ReviewEligibility {
+  canReview: boolean;
+  alreadyReviewed: boolean;
+  hasVerifiedPurchase: boolean;
+}
+
+interface ReviewListResponse extends ApiListResponse<ReviewDto> {
+  summary?: ReviewSummary;
+}
+
+export const reviewsApi = {
+  async list(
+    productId: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<{ reviews: ReviewDto[]; total: number; summary: ReviewSummary }> {
+    const base = getApiBaseUrl();
+    const url = new URL(`${base}/products/${productId}/reviews`);
+    if (params?.page) url.searchParams.set('page', String(params.page));
+    if (params?.limit) url.searchParams.set('limit', String(params.limit));
+    const res = await fetch(url.toString());
+    const json = (await res.json().catch(() => ({}))) as ReviewListResponse;
+    return {
+      reviews: json.data ?? [],
+      total: json.meta?.total ?? 0,
+      summary: json.summary ?? { count: 0, average: 0, distribution: {} },
+    };
+  },
+  eligibility: (productId: string) =>
+    api
+      .get<ReviewEligibility>(`/products/${productId}/reviews/eligibility`)
+      .then((r) => r.data ?? null),
+  create: (productId: string, body: { rating: number; title?: string; body: string }) =>
+    api.post<ReviewDto>(`/products/${productId}/reviews`, body).then((r) => r.data),
+};
+
 /** Customer order history (requires auth). */
 export const ordersApi = {
   myOrders: (params?: { page?: number; limit?: number }) =>

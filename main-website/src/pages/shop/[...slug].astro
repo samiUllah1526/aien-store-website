@@ -5,6 +5,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductDetailSection from '../../components/product/ProductDetailSection';
+import ProductReviews from '../../components/product/ProductReviews';
 import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
 import { formatMoney } from '../../lib/formatMoney';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../config';
@@ -144,6 +145,50 @@ if (!product) {
   return Astro.redirect('/shop');
 }
 
+// Reviews rendered at build time so their content is in the crawlable HTML and
+// structured data. This is a build-time snapshot refreshed on each deploy (a
+// nightly scheduled rebuild keeps it current). The React island hydrates over
+// this same initial list for "load more" + submission.
+const REVIEWS_PAGE_SIZE = 10;
+interface BuildReview {
+  id: string;
+  productId: string;
+  authorName: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  isVerified: boolean;
+  adminReply: string | null;
+  adminReplyAt: string | null;
+  createdAt: string;
+}
+let initialReviews: BuildReview[] = [];
+let reviewTotal = 0;
+let reviewSummary: { count: number; average: number; distribution: Record<string, number> } = {
+  count: 0,
+  average: 0,
+  distribution: {},
+};
+try {
+  const res = await fetch(
+    `${storeApiBaseUrl}/products/${product.id}/reviews?page=1&limit=${REVIEWS_PAGE_SIZE}`,
+  );
+  const json = await res.json();
+  if (res.ok && json.success) {
+    initialReviews = Array.isArray(json.data) ? (json.data as BuildReview[]) : [];
+    reviewTotal = Number(json.meta?.total) || initialReviews.length;
+    if (json.summary) {
+      reviewSummary = {
+        count: Number(json.summary.count) || 0,
+        average: Number(json.summary.average) || 0,
+        distribution: json.summary.distribution ?? {},
+      };
+    }
+  }
+} catch (err) {
+  console.error('[product page] reviews error:', err);
+}
+
 const defaultVariant =
   product.variants.find((variant) => variant.isActive && variant.stockQuantity > 0) ??
   product.variants.find((variant) => variant.isActive) ??
@@ -184,6 +229,30 @@ const productJsonLd = {
     priceCurrency: product.currency,
     availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
   },
+  ...(reviewSummary.count > 0 && {
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: reviewSummary.average,
+      reviewCount: reviewSummary.count,
+      bestRating: 5,
+      worstRating: 1,
+    },
+  }),
+  ...(initialReviews.length > 0 && {
+    review: initialReviews.map((r) => ({
+      '@type': 'Review',
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: r.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      author: { '@type': 'Person', name: r.authorName },
+      datePublished: r.createdAt,
+      ...(r.title && { name: r.title }),
+      reviewBody: r.body,
+    })),
+  }),
   ...(canonicalUrl && { url: canonicalUrl }),
 };
 ---
@@ -274,5 +343,15 @@ const productJsonLd = {
         </div>
       )}
     </ProductDetailSection>
+
+    <ProductReviews
+      client:visible
+      productId={product.id}
+      productName={product.name}
+      initialReviews={initialReviews}
+      initialSummary={reviewSummary}
+      initialTotal={reviewTotal}
+      pageSize={REVIEWS_PAGE_SIZE}
+    />
   </article>
 </BaseLayout>
