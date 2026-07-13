@@ -4,10 +4,11 @@
  * Renders a two-column layout: carousel on the left, children + AddToCart on the right.
  */
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import type { ProductVariant } from './AddToCart';
 import AddToCart from './AddToCart';
 import ProductImageCarousel from './ProductImageCarousel';
+import { centsToValue, trackPixel } from '../../lib/pixel';
 
 export interface ProductDetailSectionProps {
   productId: string;
@@ -97,6 +98,21 @@ export default function ProductDetailSection({
     [variants],
   );
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(defaultVariant);
+  const viewContentFired = useRef(false);
+
+  useEffect(() => {
+    if (viewContentFired.current) return;
+    viewContentFired.current = true;
+    const displayPrice = selectedVariant?.priceOverrideCents ?? price;
+    trackPixel('ViewContent', {
+      content_type: 'product',
+      content_ids: [productId],
+      content_name: name,
+      value: centsToValue(displayPrice),
+      currency: currency || 'PKR',
+      contents: [{ id: productId, quantity: 1, item_price: centsToValue(displayPrice) }],
+    });
+  }, [productId, name, price, currency, selectedVariant?.priceOverrideCents]);
 
   // Page passes `thumbnails` parallel to product `images`; the [0] entry also
   // doubles as the thumb for the lone product `image` when present (they're
