@@ -75,6 +75,7 @@ export function ReviewsManager() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [replyTarget, setReplyTarget] = useState<AdminReview | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -173,11 +174,22 @@ export function ReviewsManager() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Reviews</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Verified-purchase reviews publish automatically. Hide anything abusive, reply publicly, or delete.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Reviews</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Verified-purchase reviews publish automatically. Hide anything abusive, reply publicly, or delete.
+          </p>
+        </div>
+        {canModerate && (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="inline-flex shrink-0 items-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500"
+          >
+            Add review
+          </button>
+        )}
       </div>
 
       {error && (
@@ -402,6 +414,256 @@ export function ReviewsManager() {
           }}
         />
       )}
+
+      {addOpen && (
+        <AddReviewModal
+          onClose={() => setAddOpen(false)}
+          onSaved={() => {
+            setAddOpen(false);
+            setPage(1);
+            fetchList();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ProductOption {
+  id: string;
+  name: string;
+}
+
+function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [productId, setProductId] = useState('');
+  const [authorName, setAuthorName] = useState('');
+  const [authorEmail, setAuthorEmail] = useState('');
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [reviewDate, setReviewDate] = useState(todayIso);
+  const [isVerified, setIsVerified] = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [status, setStatus] = useState<'APPROVED' | 'PENDING'>('APPROVED');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getList<ProductOption>('/products', { limit: 100, sortBy: 'name', sortOrder: 'asc' })
+      .then((res) => {
+        if (!cancelled) setProducts((res.data ?? []).map((p) => ({ id: p.id, name: p.name })));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const submit = async () => {
+    if (!productId) {
+      setError('Please choose a product.');
+      return;
+    }
+    if (!authorName.trim()) {
+      setError('Please enter the reviewer name.');
+      return;
+    }
+    if (body.trim().length < 3) {
+      setError('Please enter the review text.');
+      return;
+    }
+    if (orderId.trim() && !/^[0-9a-f-]{36}$/i.test(orderId.trim())) {
+      setError('Order ID must be a valid UUID, or leave it blank.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await api.post('/reviews', {
+        productId,
+        authorName: authorName.trim(),
+        ...(authorEmail.trim() ? { authorEmail: authorEmail.trim() } : {}),
+        rating,
+        ...(title.trim() ? { title: title.trim() } : {}),
+        body: body.trim(),
+        isVerified,
+        status,
+        ...(orderId.trim() ? { orderId: orderId.trim() } : {}),
+        ...(reviewDate ? { reviewDate: new Date(reviewDate).toISOString() } : {}),
+      });
+      toastSuccess('Review added');
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add review');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls =
+    'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400';
+  const labelCls = 'mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-review-title"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 id="add-review-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Add review
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300" role="alert">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="ar-product" className={labelCls}>
+              Product
+            </label>
+            <select id="ar-product" value={productId} onChange={(e) => setProductId(e.target.value)} className={inputCls}>
+              <option value="">Select a product…</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="ar-name" className={labelCls}>
+                Reviewer name
+              </label>
+              <input id="ar-name" type="text" value={authorName} maxLength={120} onChange={(e) => setAuthorName(e.target.value)} className={inputCls} placeholder="e.g. Ayesha K." />
+            </div>
+            <div>
+              <label htmlFor="ar-email" className={labelCls}>
+                Email <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input id="ar-email" type="email" value={authorEmail} onChange={(e) => setAuthorEmail(e.target.value)} className={inputCls} placeholder="not shown publicly" />
+            </div>
+          </div>
+
+          <div>
+            <span className={labelCls}>Rating</span>
+            <div className="flex gap-1" onMouseLeave={() => setHoverRating(0)}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setRating(i)}
+                  onMouseEnter={() => setHoverRating(i)}
+                  aria-label={`${i} star${i > 1 ? 's' : ''}`}
+                  className={`text-2xl leading-none ${i <= (hoverRating || rating) ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="ar-title" className={labelCls}>
+              Title <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input id="ar-title" type="text" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
+          </div>
+
+          <div>
+            <label htmlFor="ar-body" className={labelCls}>
+              Review text
+            </label>
+            <textarea id="ar-body" value={body} rows={4} maxLength={4000} onChange={(e) => setBody(e.target.value)} className={inputCls} placeholder="The customer's feedback…" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="ar-date" className={labelCls}>
+                Review date
+              </label>
+              <input id="ar-date" type="date" value={reviewDate} max={todayIso} onChange={(e) => setReviewDate(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="ar-status" className={labelCls}>
+                Visibility
+              </label>
+              <select id="ar-status" value={status} onChange={(e) => setStatus(e.target.value as 'APPROVED' | 'PENDING')} className={inputCls}>
+                <option value="APPROVED">Published</option>
+                <option value="PENDING">Pending (hidden)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="ar-order" className={labelCls}>
+              Linked order ID <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input id="ar-order" type="text" value={orderId} onChange={(e) => setOrderId(e.target.value)} className={inputCls} placeholder="Order UUID this feedback came from" />
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/40 dark:bg-amber-900/20">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={isVerified}
+                onChange={(e) => setIsVerified(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-800 focus:ring-slate-500 dark:border-slate-600"
+              />
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                <span className="font-medium">Show as “Verified Purchase”</span>
+                <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                  Only tick this if the customer genuinely bought this product (including untracked COD / social orders).
+                  Marking non-purchasers as verified can violate consumer-protection law and Google’s review policies.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
+          >
+            {saving ? 'Adding…' : 'Add review'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

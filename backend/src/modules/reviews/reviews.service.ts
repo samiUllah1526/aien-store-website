@@ -1,12 +1,14 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma, ReviewStatus } from '@prisma/client';
+import { OrderStatus, Prisma, ReviewSource, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { CreateAdminReviewDto } from './dto/create-admin-review.dto';
 import { ReviewQueryDto } from './dto/review-query.dto';
 
 /** Order statuses that count as a completed (verified) purchase. */
@@ -157,11 +159,12 @@ export class ReviewsService {
         userId: author.userId,
         orderId,
         authorName,
-        authorEmail: author.email ?? '',
+        authorEmail: author.email ?? null,
         rating: dto.rating,
         title: dto.title?.trim() || null,
         body: dto.body.trim(),
         status: ReviewStatus.APPROVED,
+        source: ReviewSource.CUSTOMER,
         isVerified: true,
       },
       include: { user: { select: { name: true, firstName: true } } },
@@ -170,8 +173,69 @@ export class ReviewsService {
   }
 
   // ---------------------------------------------------------------------------
-  // Admin moderation
+  // Admin authoring (off-platform feedback) + moderation
   // ---------------------------------------------------------------------------
+
+  /**
+   * Create a review from the admin portal (e.g. genuine feedback collected over
+   * WhatsApp/Instagram/in person). `isVerified` is admin-controlled and should
+   * only be set when the purchase genuinely happened. Optionally link a real
+   * order for provenance.
+   */
+  async adminCreate(
+    dto: CreateAdminReviewDto,
+    adminUserId: string,
+  ): Promise<AdminReviewDto> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      select: { id: true },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product ${dto.productId} not found`);
+    }
+
+    // If an order is linked, validate it actually contains this product.
+    if (dto.orderId) {
+      const order = await this.prisma.order.findFirst({
+        where: { id: dto.orderId, items: { some: { productId: dto.productId } } },
+        select: { id: true },
+      });
+      if (!order) {
+        throw new BadRequestException(
+          'The linked order was not found or does not contain this product.',
+        );
+      }
+    }
+
+    let createdAt: Date | undefined;
+    if (dto.reviewDate) {
+      const d = new Date(dto.reviewDate);
+      if (Number.isNaN(d.getTime())) {
+        throw new BadRequestException('Invalid review date.');
+      }
+      createdAt = d;
+    }
+
+    const row = await this.prisma.productReview.create({
+      data: {
+        productId: dto.productId,
+        userId: null,
+        orderId: dto.orderId ?? null,
+        authorName: dto.authorName.trim(),
+        authorEmail: dto.authorEmail?.trim() || null,
+        rating: dto.rating,
+        title: dto.title?.trim() || null,
+        body: dto.body.trim(),
+        status: (dto.status as ReviewStatus) ?? ReviewStatus.APPROVED,
+        source: ReviewSource.ADMIN,
+        createdByUserId: adminUserId,
+        isVerified: dto.isVerified ?? false,
+        ...(createdAt ? { createdAt } : {}),
+      },
+      include: { product: { select: { name: true, slug: true } } },
+    });
+    return this.toAdminDto(row);
+  }
 
   async findAll(
     query: ReviewQueryDto,
@@ -327,6 +391,7 @@ export class ReviewsService {
       title: row.title,
       body: row.body,
       status: row.status,
+      source: row.source,
       isVerified: row.isVerified,
       adminReply: row.adminReply,
       adminReplyAt: row.adminReplyAt,
@@ -341,14 +406,15 @@ export interface AdminReviewDto {
   productId: string;
   productName: string | null;
   productSlug: string | null;
-  userId: string;
+  userId: string | null;
   orderId: string | null;
   authorName: string;
-  authorEmail: string;
+  authorEmail: string | null;
   rating: number;
   title: string | null;
   body: string;
   status: ReviewStatus;
+  source: ReviewSource;
   isVerified: boolean;
   adminReply: string | null;
   adminReplyAt: Date | null;
