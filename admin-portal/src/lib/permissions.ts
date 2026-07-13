@@ -36,6 +36,7 @@ export function getNavItems(): NavItem[] {
     { href: '/admin/categories', label: 'Categories', icon: 'categories', group: 'store', permission: 'categories:read' },
     { href: '/admin/vouchers', label: 'Vouchers', icon: 'vouchers', group: 'store', permission: 'vouchers:read' },
     { href: '/admin/sales-campaigns', label: 'Sales Campaigns', icon: 'vouchers', group: 'store', permission: 'sales-campaigns:read' },
+    { href: '/admin/reviews', label: 'Reviews', icon: 'reviews', group: 'store', permission: 'reviews:read' },
     { href: '/admin/users', label: 'Users', icon: 'users', group: 'admin', permission: 'users:read' },
     {
       href: '/admin/admin-settings',
@@ -82,6 +83,7 @@ export const ROUTE_PERMISSION: Record<string, string> = {
   '/admin/admin-settings': 'superadmin:manage',
   '/admin/vouchers': 'vouchers:read',
   '/admin/sales-campaigns': 'sales-campaigns:read',
+  '/admin/reviews': 'reviews:read',
   '/admin/settings': 'settings:read',
   '/admin/site-deployment': 'deploy:website',
   '/admin/email-logs': 'emaillogs:read',
