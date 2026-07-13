@@ -8,12 +8,15 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ReviewStatus } from '@prisma/client';
 import { ReviewsService } from '../../modules/reviews/reviews.service';
 import { ReviewQueryDto } from '../../modules/reviews/dto/review-query.dto';
+import { CreateAdminReviewDto } from '../../modules/reviews/dto/create-admin-review.dto';
 import {
   ModerateReviewDto,
   ReplyReviewDto,
@@ -38,6 +41,18 @@ export class AdminReviewsController {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     return ApiResponseDto.list(data, { total, page, limit });
+  }
+
+  @Post()
+  @RequirePermission('reviews:moderate')
+  async create(
+    @Body() dto: CreateAdminReviewDto,
+    @Req() req: { user?: { userId: string } },
+  ) {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId) throw new UnauthorizedException();
+    const data = await this.reviewsService.adminCreate(dto, adminUserId);
+    return ApiResponseDto.ok(data, 'Review added');
   }
 
   @Get(':id')

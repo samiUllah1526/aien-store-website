@@ -98,6 +98,7 @@ model User {
   ordersPlaced      Order[]            @relation("CustomerOrders")
   favorites         UserFavorite[]     @relation("UserFavorites")
   reviews           ProductReview[]    @relation("UserReviews")
+  reviewsCreated    ProductReview[]    @relation("ReviewsCreatedByAdmin")
   savedShipping     UserSavedShipping? @relation("UserSavedShipping")
   inventoryMovementsPerformed InventoryMovement[] @relation("InventoryMovementPerformedBy")
   createdSalesCampaigns SalesCampaign[] @relation("SalesCampaignCreatedBy")
@@ -392,30 +393,42 @@ enum ReviewStatus {
   @@map("review_status")
 }
 
+enum ReviewSource {
+  CUSTOMER @map("customer")
+  ADMIN    @map("admin")
+  @@map("review_source")
+}
+
 model ProductReview {
   id           String       @id @default(uuid()) @db.Uuid
   productId    String       @map("product_id") @db.Uuid
-  /** Author (always set: reviews require an authenticated verified buyer). */
-  userId       String       @map("user_id") @db.Uuid
-  /** The delivered order that establishes the verified purchase. */
+  /** Customer author. Null for admin-created reviews (off-platform feedback). */
+  userId       String?      @map("user_id") @db.Uuid
+  /** The fulfilled order that establishes a verified purchase (optional). */
   orderId      String?      @map("order_id") @db.Uuid
   authorName   String       @map("author_name")
-  authorEmail  String       @map("author_email")
+  authorEmail  String?      @map("author_email")
   /** Integer 1..5. */
   rating       Int          @map("rating")
   title        String?      @map("title")
   body         String       @map("body")
   status       ReviewStatus @default(APPROVED) @map("status")
-  /** True when tied to a fulfilled order containing this product. */
+  /** How the review was created. */
+  source       ReviewSource @default(CUSTOMER) @map("source")
+  /** Admin user who created the review (null for customer submissions). */
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  /** Displays the "Verified Purchase" badge. True for customer verified reviews;
+   * admin-set for off-platform purchases they attest are genuine. */
   isVerified   Boolean      @default(true) @map("is_verified")
   adminReply   String?      @map("admin_reply")
   adminReplyAt DateTime?    @map("admin_reply_at") @db.Timestamptz(6)
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user    User    @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
-  order   Order?  @relation("OrderReviews", fields: [orderId], references: [id], onDelete: SetNull)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User?   @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ReviewsCreatedByAdmin", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  order     Order?  @relation("OrderReviews", fields: [orderId], references: [id], onDelete: SetNull)
 
   @@unique([productId, userId])
   @@index([productId, status])
