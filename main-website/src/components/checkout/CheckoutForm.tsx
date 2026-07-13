@@ -19,6 +19,7 @@ import { useCart, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { api, profileApi, uploadPaymentProof } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import { cartItemsToPixelFields, centsToValue, trackPixel } from '../../lib/pixel';
 import ColorSwatch from '../product/ColorSwatch';
 import { colorAriaLabel } from '../../lib/colorDisplay';
 import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './checkoutSchema';
@@ -179,6 +180,15 @@ export default function CheckoutForm() {
       .catch(() => {});
   }, []);
 
+  const initiateCheckoutFired = useRef(false);
+  const purchaseFired = useRef(false);
+
+  useEffect(() => {
+    if (!hasHydrated || items.length === 0 || initiateCheckoutFired.current) return;
+    initiateCheckoutFired.current = true;
+    trackPixel('InitiateCheckout', cartItemsToPixelFields(items));
+  }, [hasHydrated, items]);
+
   const currency = quote?.currency ?? cartCurrency ?? 'PKR';
   const subtotal = quote?.subtotalCents ?? totalAmount;
   const shippingCents = quote?.shippingCents ?? 0;
@@ -272,6 +282,22 @@ export default function CheckoutForm() {
       );
       setOrderId(res.data?.id ?? null);
       setSubmitted(true);
+      if (!purchaseFired.current) {
+        purchaseFired.current = true;
+        const purchaseValue = quote
+          ? centsToValue(quote.totalCents)
+          : centsToValue(items.reduce((sum, i) => sum + i.price * i.quantity, 0));
+        const purchaseCurrency = quote?.currency ?? cartCurrency ?? 'PKR';
+        trackPixel(
+          'Purchase',
+          {
+            ...cartItemsToPixelFields(items),
+            value: purchaseValue,
+            currency: purchaseCurrency,
+          },
+          { eventID: res.data?.id ?? undefined },
+        );
+      }
       if (data.saveInfo && useAuthStore.getState().isLoggedIn()) {
         profileApi
           .saveShipping({

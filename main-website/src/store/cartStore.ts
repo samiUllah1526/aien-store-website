@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { centsToValue, trackPixel } from '../lib/pixel';
 
 /** Maximum quantity per line item in cart. Enforced in UI and should match backend cap. */
 export const MAX_CART_QUANTITY = 99;
@@ -38,12 +39,10 @@ export const useCartStore = create<CartState>()(
     (set) => ({
       items: [],
       isOpen: false,
-  addItem: (item) =>
+  addItem: (item) => {
+    const qty = Math.min(item.quantity ?? 1, MAX_CART_QUANTITY);
     set((state) => {
-      const qty = Math.min(item.quantity ?? 1, MAX_CART_QUANTITY);
-      const existing = state.items.find(
-        (i) => i.variantId === item.variantId
-      );
+      const existing = state.items.find((i) => i.variantId === item.variantId);
       if (existing) {
         return {
           items: state.items.map((i) =>
@@ -54,7 +53,23 @@ export const useCartStore = create<CartState>()(
         };
       }
       return { items: [...state.items, { ...item, quantity: qty }] };
-    }),
+    });
+    trackPixel('AddToCart', {
+      content_type: 'product',
+      content_ids: [item.productId],
+      content_name: item.name,
+      contents: [
+        {
+          id: item.productId,
+          quantity: qty,
+          item_price: centsToValue(item.price),
+        },
+      ],
+      value: centsToValue(item.price * qty),
+      currency: item.currency || 'PKR',
+      num_items: qty,
+    });
+  },
   removeItem: (variantId) =>
     set((state) => ({
       items: state.items.filter(
