@@ -37,6 +37,15 @@ export class ProductResponseDto {
   category: string | null;
   /** First category id (backward compat). */
   categoryId: string | null;
+  /** Primary category for size-guide fallback. */
+  primaryCategoryId: string | null;
+  /** Product's own size guide media id (null if using category fallback only). */
+  sizeGuideMediaId: string | null;
+  /**
+   * Resolved size guide image URL for the storefront:
+   * product size guide → primary category size guide → null.
+   */
+  sizeGuideUrl: string | null;
   featured: boolean;
   urduVerse: string | null;
   urduVerseTransliteration: string | null;

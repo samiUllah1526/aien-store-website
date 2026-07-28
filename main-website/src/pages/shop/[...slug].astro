@@ -71,6 +71,7 @@ let product: {
   urduVerse?: string | null;
   urduVerseTransliteration?: string | null;
   categories?: Array<{ name: string; slug: string }>;
+  sizeGuideUrl?: string | null;
 } | null = null;
 
 try {
@@ -135,6 +136,7 @@ try {
       urduVerse: p.urduVerse ?? null,
       urduVerseTransliteration: p.urduVerseTransliteration ?? null,
       categories: p.categories ?? [],
+      sizeGuideUrl: (p.sizeGuideUrl as string | null | undefined) ?? null,
     };
   }
 } catch (err) {
@@ -301,6 +303,7 @@ const productJsonLd = {
       thumbnails={product.thumbnails}
       variants={product.variants}
       inStock={product.inStock}
+      sizeGuideUrl={product.sizeGuideUrl}
     >
       {product.categories?.length ? (
         <p class="font-sans text-label-caps text-on-surface-variant uppercase tracking-widest mb-2">

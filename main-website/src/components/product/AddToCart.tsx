@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { favoritesApi } from '../../lib/api';
 import { ONE_SIZE_LABEL } from './constants';
 import ColorSwatch from './ColorSwatch';
+import SizeGuideModal from './SizeGuideModal';
 import { colorAriaLabel, colorUiLabel, formatColorLabel, isHexColorString } from '../../lib/colorDisplay';
 import Tooltip from '../Tooltip';
 
@@ -51,6 +52,8 @@ interface Props {
   /** Optional editorial copy for the composition accordion. */
   composition?: string;
   shippingNote?: string;
+  /** Resolved size guide image URL (product override → primary category). */
+  sizeGuideUrl?: string | null;
 }
 
 export default function AddToCart({
@@ -65,9 +68,11 @@ export default function AddToCart({
   onVariantChange,
   composition,
   shippingNote,
+  sizeGuideUrl = null,
 }: Props) {
   const { addItem, openCart } = useCart();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   const activeVariants = useMemo(
     () => (variants ?? []).filter((variant) => variant.isActive),
@@ -214,12 +219,15 @@ export default function AddToCart({
         <div>
           <div className="flex justify-between items-center mb-4">
             <span className="font-sans text-label-caps uppercase">Select Size</span>
-            <button
-              type="button"
-              className="font-sans text-label-caps uppercase underline underline-offset-4 text-on-surface-variant hover:text-on-background"
-            >
-              Size Guide
-            </button>
+            {sizeGuideUrl ? (
+              <button
+                type="button"
+                onClick={() => setSizeGuideOpen(true)}
+                className="font-sans text-label-caps uppercase underline underline-offset-4 text-on-surface-variant hover:text-on-background"
+              >
+                Size Guide
+              </button>
+            ) : null}
           </div>
           <div className="grid grid-cols-4 gap-2">
             {allSizes.map((sizeOption) => {
@@ -314,6 +322,14 @@ export default function AddToCart({
           </div>
         </details>
       </div>
+
+      {sizeGuideUrl ? (
+        <SizeGuideModal
+          open={sizeGuideOpen}
+          imageUrl={sizeGuideUrl}
+          onClose={() => setSizeGuideOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -20,11 +20,24 @@ export const productFormSchema = z
     description: z.string().optional(),
     pricePkr: z.string().trim().min(1, 'Price is required'),
     categoryIds: z.array(z.string().uuid()).default([]),
+    primaryCategoryId: z.string().uuid().optional().nullable(),
+    sizeGuideMediaId: z.string().uuid().optional().nullable(),
     featured: z.boolean().default(false),
     variants: z.array(productVariantSchema).min(1, 'At least one variant is required'),
     mediaIds: z.array(z.string().uuid()).default([]),
   })
   .superRefine((value, ctx) => {
+    if (
+      value.primaryCategoryId &&
+      value.categoryIds.length > 0 &&
+      !value.categoryIds.includes(value.primaryCategoryId)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['primaryCategoryId'],
+        message: 'Primary category must be one of the selected categories',
+      });
+    }
     const price = Number.parseFloat(value.pricePkr);
     if (Number.isNaN(price) || price < 0) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePkr'], message: 'Price must be a non-negative number (PKR).' });

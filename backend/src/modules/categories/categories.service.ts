@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -24,18 +25,30 @@ export class CategoriesService {
     if (dto.parentId) {
       await this.validateParentId(dto.parentId);
     }
-    return this.prisma.category.create({
-      data: {
-        name: dto.name,
-        slug: dto.slug,
-        description: dto.description ?? null,
-        highlights: dto.highlights ?? [],
-        bannerImageUrl: dto.bannerImageUrl ?? null,
-        showOnLanding: dto.showOnLanding ?? false,
-        landingOrder: dto.landingOrder ?? null,
-        parentId: dto.parentId ?? null,
-      },
-    });
+    if (dto.sizeGuideMediaId) {
+      await this.validateMediaId(dto.sizeGuideMediaId);
+    }
+    return this.mapCategory(
+      await this.prisma.category.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description ?? null,
+          highlights: dto.highlights ?? [],
+          bannerImageUrl: dto.bannerImageUrl ?? null,
+          sizeGuideMediaId: dto.sizeGuideMediaId ?? null,
+          showOnLanding: dto.showOnLanding ?? false,
+          landingOrder: dto.landingOrder ?? null,
+          parentId: dto.parentId ?? null,
+        },
+        include: {
+          sizeGuideMedia: {
+            select: { id: true, path: true, deliveryUrl: true },
+          },
+          _count: { select: { productCategories: true } },
+        },
+      }),
+    );
   }
 
   async findAll(search?: string): Promise<
@@ -46,6 +59,8 @@ export class CategoriesService {
       description: string | null;
       highlights: string[];
       bannerImageUrl: string | null;
+      sizeGuideMediaId: string | null;
+      sizeGuideUrl: string | null;
       showOnLanding: boolean;
       landingOrder: number | null;
       parentId: string | null;
@@ -71,23 +86,13 @@ export class CategoriesService {
       where,
       orderBy: { name: 'asc' },
       include: {
+        sizeGuideMedia: {
+          select: { id: true, path: true, deliveryUrl: true },
+        },
         _count: { select: { productCategories: true } },
       },
     });
-    return categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      highlights: c.highlights,
-      bannerImageUrl: c.bannerImageUrl,
-      showOnLanding: c.showOnLanding,
-      landingOrder: c.landingOrder,
-      parentId: c.parentId,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-      productCount: c._count.productCategories,
-    }));
+    return categories.map((c) => this.mapCategory(c));
   }
 
   /** Public: categories to show on storefront landing, with banner and product count. */
@@ -124,6 +129,9 @@ export class CategoriesService {
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: {
+        sizeGuideMedia: {
+          select: { id: true, path: true, deliveryUrl: true },
+        },
         _count: { select: { productCategories: true } },
         parent: { select: { id: true, name: true, slug: true } },
       },
@@ -131,10 +139,9 @@ export class CategoriesService {
     if (!category) {
       throw new NotFoundException(`Category with id "${id}" not found`);
     }
-    const { parent, _count, ...rest } = category;
+    const { parent, ...rest } = category;
     return {
-      ...rest,
-      productCount: _count.productCategories,
+      ...this.mapCategory(rest),
       parent: parent
         ? { id: parent.id, name: parent.name, slug: parent.slug }
         : null,
@@ -159,6 +166,9 @@ export class CategoriesService {
     if (dto.parentId !== undefined && dto.parentId !== null) {
       await this.validateParentId(dto.parentId, id);
     }
+    if (dto.sizeGuideMediaId) {
+      await this.validateMediaId(dto.sizeGuideMediaId);
+    }
 
     const data = {
       ...(dto.name !== undefined && { name: dto.name }),
@@ -167,6 +177,9 @@ export class CategoriesService {
       ...(dto.highlights !== undefined && { highlights: dto.highlights }),
       ...(dto.bannerImageUrl !== undefined && {
         bannerImageUrl: dto.bannerImageUrl,
+      }),
+      ...(dto.sizeGuideMediaId !== undefined && {
+        sizeGuideMediaId: dto.sizeGuideMediaId,
       }),
       ...(dto.showOnLanding !== undefined && {
         showOnLanding: dto.showOnLanding,
@@ -215,10 +228,15 @@ export class CategoriesService {
       return this.findOne(id);
     }
 
-    return this.prisma.category.update({
+    if (!hasCategoryFields) {
+      return this.findOne(id);
+    }
+
+    await this.prisma.category.update({
       where: { id },
       data,
     });
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
@@ -303,5 +321,65 @@ export class CategoriesService {
         `Parent category with id "${parentId}" not found`,
       );
     }
+  }
+
+  private async validateMediaId(mediaId: string): Promise<void> {
+    const found = await this.prisma.media.findFirst({
+      where: {
+        id: mediaId,
+        uploadError: { equals: Prisma.DbNull },
+      },
+      select: { id: true },
+    });
+    if (!found) {
+      throw new BadRequestException(`Media not found: ${mediaId}`);
+    }
+  }
+
+  private mediaUrl(media: {
+    path: string;
+    deliveryUrl: string | null;
+  }): string {
+    if (media.deliveryUrl) return media.deliveryUrl;
+    if (media.path.startsWith('http')) return media.path;
+    return `/media/file/${media.path}`;
+  }
+
+  private mapCategory(c: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    highlights: string[];
+    bannerImageUrl: string | null;
+    sizeGuideMediaId?: string | null;
+    showOnLanding: boolean;
+    landingOrder: number | null;
+    parentId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    sizeGuideMedia?: {
+      id: string;
+      path: string;
+      deliveryUrl: string | null;
+    } | null;
+    _count?: { productCategories: number };
+  }) {
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      highlights: c.highlights,
+      bannerImageUrl: c.bannerImageUrl,
+      sizeGuideMediaId: c.sizeGuideMediaId ?? null,
+      sizeGuideUrl: c.sizeGuideMedia ? this.mediaUrl(c.sizeGuideMedia) : null,
+      showOnLanding: c.showOnLanding,
+      landingOrder: c.landingOrder,
+      parentId: c.parentId,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      productCount: c._count?.productCategories,
+    };
   }
 }

@@ -8,6 +8,8 @@ import {
   IsIn,
   ArrayMinSize,
   ValidateNested,
+  IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProductVariantInputDto } from './product-variant-input.dto';
@@ -31,6 +33,15 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   categoryIds?: string[];
+
+  /**
+   * Primary category for size-guide fallback. Must be one of categoryIds when set.
+   * Defaults to the first categoryId when omitted.
+   */
+  @IsOptional()
+  @ValidateIf((_, v) => v != null)
+  @IsUUID()
+  primaryCategoryId?: string | null;
 
   @IsInt()
   @Min(0)
@@ -64,4 +75,10 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   mediaIds?: string[];
+
+  /** Optional product-level size guide media (overrides primary category). */
+  @IsOptional()
+  @ValidateIf((_, v) => v != null)
+  @IsUUID()
+  sizeGuideMediaId?: string | null;
 }

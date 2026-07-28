@@ -302,6 +302,8 @@ const categoryFormSchema = z.object({
     .max(20, 'You can add up to 20 highlights')
     .default([]),
   bannerImageUrl: z.string().optional(),
+  sizeGuideMediaId: z.string().uuid().optional().nullable(),
+  sizeGuideUrl: z.string().optional(),
   showOnLanding: z.boolean().default(false),
   landingOrder: z.string().optional(),
   parentId: z.string().optional(),
@@ -319,6 +321,8 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
       description: category?.description ?? '',
       highlights: category?.highlights ?? [],
       bannerImageUrl: category?.bannerImageUrl ?? '',
+      sizeGuideMediaId: category?.sizeGuideMediaId ?? null,
+      sizeGuideUrl: category?.sizeGuideUrl ?? '',
       showOnLanding: category?.showOnLanding ?? false,
       landingOrder: category?.landingOrder != null ? String(category.landingOrder) : '',
       parentId: category?.parentId ?? '',
@@ -326,12 +330,16 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
   });
   const showOnLanding = form.watch('showOnLanding');
   const bannerImageUrl = form.watch('bannerImageUrl');
+  const sizeGuideUrl = form.watch('sizeGuideUrl');
   const highlights = form.watch('highlights') ?? [];
   const [activeTab, setActiveTab] = useState<CategoryTab>('basics');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [uploadingSizeGuide, setUploadingSizeGuide] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const [sizeGuideUploadError, setSizeGuideUploadError] = useState<string | null>(null);
   const [bannerPreviewOpen, setBannerPreviewOpen] = useState(false);
+  const [sizeGuidePreviewOpen, setSizeGuidePreviewOpen] = useState(false);
   const [bannerCropOpen, setBannerCropOpen] = useState(false);
   const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null);
   const [bannerCropSourceFile, setBannerCropSourceFile] = useState<File | null>(null);
@@ -339,8 +347,10 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
   const [bannerDragOver, setBannerDragOver] = useState(false);
   const bannerCropUrlRef = useRef<string | null>(null);
   const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const sizeGuideFileInputRef = useRef<HTMLInputElement | null>(null);
   const rootError = form.formState.errors.root?.serverError?.message;
   const bannerDisplayUrl = resolveAdminImageUrl(bannerImageUrl?.trim());
+  const sizeGuideDisplayUrl = resolveAdminImageUrl(sizeGuideUrl?.trim());
 
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -443,6 +453,23 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
     if (file) openBannerCrop(file);
   };
 
+  const handleSizeGuideFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setSizeGuideUploadError(null);
+    setUploadingSizeGuide(true);
+    try {
+      const uploaded = await uploadMedia(file, 'products');
+      form.setValue('sizeGuideMediaId', uploaded.id, { shouldValidate: true, shouldDirty: true });
+      form.setValue('sizeGuideUrl', uploaded.deliveryUrl, { shouldDirty: true });
+    } catch (err) {
+      setSizeGuideUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingSizeGuide(false);
+    }
+  };
+
   const handleSubmit = form.handleSubmit(
     async (values) => {
       form.clearErrors('root.serverError');
@@ -458,6 +485,7 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
           description: values.description?.trim() || undefined,
           highlights: cleanedHighlights,
           bannerImageUrl: values.bannerImageUrl?.trim() || (category ? null : undefined),
+          sizeGuideMediaId: values.sizeGuideMediaId ?? (category ? null : undefined),
           showOnLanding: values.showOnLanding,
           landingOrder: landingOrder ? Number.parseInt(landingOrder, 10) : category ? null : undefined,
           parentId: values.parentId || null,
@@ -840,6 +868,84 @@ function CategoryFormModal({ category, onClose, onSuccess }: CategoryFormModalPr
               applying={bannerCropApplying}
             />
             </div>
+
+            <div>
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Size guide (optional)
+              </span>
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                Used as the fallback size guide for products whose primary category is this one.
+              </p>
+              <input
+                ref={sizeGuideFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                disabled={uploadingSizeGuide}
+                onChange={handleSizeGuideFileChange}
+              />
+              {sizeGuideDisplayUrl ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuidePreviewOpen(true)}
+                    className="block w-full overflow-hidden rounded-lg border border-slate-200 dark:border-slate-600"
+                  >
+                    <img
+                      src={sizeGuideDisplayUrl}
+                      alt="Size guide preview"
+                      className="max-h-48 w-full object-contain bg-slate-50 dark:bg-slate-800/50"
+                    />
+                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingSizeGuide}
+                      onClick={() => sizeGuideFileInputRef.current?.click()}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      {uploadingSizeGuide ? 'Uploading…' : 'Replace size guide'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        form.setValue('sizeGuideMediaId', null, { shouldDirty: true, shouldValidate: true });
+                        form.setValue('sizeGuideUrl', '', { shouldDirty: true });
+                      }}
+                      className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      Remove size guide
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={uploadingSizeGuide}
+                  onClick={() => sizeGuideFileInputRef.current?.click()}
+                  className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80 px-6 py-8 text-center hover:border-slate-400 hover:bg-slate-100/80 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-slate-500"
+                >
+                  {uploadingSizeGuide ? (
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Uploading…</span>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Upload size guide image</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">JPEG, PNG, WebP, or GIF</p>
+                    </>
+                  )}
+                </button>
+              )}
+              {sizeGuideUploadError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{sizeGuideUploadError}</p>
+              )}
+              <AdminImagePreviewModal
+                open={sizeGuidePreviewOpen}
+                onClose={() => setSizeGuidePreviewOpen(false)}
+                images={sizeGuideDisplayUrl ? [sizeGuideDisplayUrl] : []}
+                initialIndex={0}
+              />
+            </div>
+
             <div className="flex items-center gap-2 pt-2">
               <input
                 id="cat-show-landing"

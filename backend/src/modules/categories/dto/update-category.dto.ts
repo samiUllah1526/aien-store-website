@@ -44,6 +44,11 @@ export class UpdateCategoryDto {
   bannerImageUrl?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, v) => v != null)
+  @IsUUID()
+  sizeGuideMediaId?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   showOnLanding?: boolean;
 
