@@ -40,6 +40,8 @@ function buildFormDefaultValues(product: Product | null | undefined): Partial<Pr
     description: product?.description ?? '',
     pricePkr: product != null ? minorUnitsToMajorString(product.price) : '',
     categoryIds: product?.categories?.map((c) => c.id) ?? [],
+    primaryCategoryId: product?.primaryCategoryId ?? product?.categories?.[0]?.id ?? null,
+    sizeGuideMediaId: product?.sizeGuideMediaId ?? null,
     featured: product?.featured ?? false,
     variants: product?.variants?.length
       ? product.variants.map((v) => ({
@@ -65,6 +67,12 @@ function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): P
     slug: values.slug || slugFromName(values.name),
     description: values.description || undefined,
     categoryIds: values.categoryIds?.length ? values.categoryIds : undefined,
+    primaryCategoryId: values.categoryIds?.length
+      ? values.primaryCategoryId && values.categoryIds.includes(values.primaryCategoryId)
+        ? values.primaryCategoryId
+        : values.categoryIds[0]
+      : null,
+    sizeGuideMediaId: values.sizeGuideMediaId ?? null,
     priceCents,
     currency: FIXED_CURRENCY,
     featured: values.featured,
@@ -110,6 +118,40 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const error = form.formState.errors.root?.serverError?.message;
   const mediaIds = form.watch('mediaIds') ?? [];
+  const categoryIds = form.watch('categoryIds') ?? [];
+  const primaryCategoryId = form.watch('primaryCategoryId');
+  const sizeGuideMediaId = form.watch('sizeGuideMediaId');
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [sizeGuidePreview, setSizeGuidePreview] = useState<string | null>(
+    product?.sizeGuideMediaId && product?.sizeGuideUrl ? product.sizeGuideUrl : null,
+  );
+  const [sizeGuideUploading, setSizeGuideUploading] = useState(false);
+  const sizeGuideInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get<Array<{ id: string; name: string }>>('/categories');
+        if (!cancelled) setCategoryOptions(res.data ?? []);
+      } catch {
+        if (!cancelled) setCategoryOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!categoryIds.length) {
+      if (primaryCategoryId) form.setValue('primaryCategoryId', null);
+      return;
+    }
+    if (!primaryCategoryId || !categoryIds.includes(primaryCategoryId)) {
+      form.setValue('primaryCategoryId', categoryIds[0]);
+    }
+  }, [categoryIds, primaryCategoryId, form]);
 
   useEffect(() => {
     if (!product) return;
@@ -389,7 +431,104 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       />
       </div>
 
+      {categoryIds.length > 0 && (
+        <div>
+          <label htmlFor="primaryCategoryId" className={labelBase}>
+            Primary category (size guide fallback)
+          </label>
+          <select
+            id="primaryCategoryId"
+            {...form.register('primaryCategoryId')}
+            className={inputBase}
+          >
+            {categoryIds.map((id) => {
+              const name =
+                categoryOptions.find((c) => c.id === id)?.name ??
+                product?.categories?.find((c) => c.id === id)?.name ??
+                id;
+              return (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              );
+            })}
+          </select>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Used for size guide when this product has no product-level guide.
+          </p>
+        </div>
+      )}
 
+      <div>
+        <span className={labelBase}>Size guide (optional)</span>
+        <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+          Product guide overrides the primary category guide on the storefront.
+        </p>
+        <input
+          ref={sizeGuideInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="sr-only"
+          disabled={sizeGuideUploading}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            setSizeGuideUploading(true);
+            try {
+              const uploaded = await uploadMedia(file, 'products');
+              form.setValue('sizeGuideMediaId', uploaded.id, { shouldDirty: true, shouldValidate: true });
+              setSizeGuidePreview(uploaded.deliveryUrl);
+            } catch (err) {
+              form.setError('root.serverError', {
+                message: err instanceof Error ? err.message : 'Size guide upload failed',
+              });
+            } finally {
+              setSizeGuideUploading(false);
+            }
+          }}
+        />
+        {sizeGuidePreview || sizeGuideMediaId ? (
+          <div className="space-y-2">
+            {sizeGuidePreview && (
+              <img
+                src={sizeGuidePreview}
+                alt="Size guide preview"
+                className="max-h-48 w-full rounded-lg border border-slate-200 object-contain dark:border-slate-600"
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={sizeGuideUploading}
+                onClick={() => sizeGuideInputRef.current?.click()}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {sizeGuideUploading ? 'Uploading…' : 'Replace size guide'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  form.setValue('sizeGuideMediaId', null, { shouldDirty: true });
+                  setSizeGuidePreview(null);
+                }}
+                className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={sizeGuideUploading}
+            onClick={() => sizeGuideInputRef.current?.click()}
+            className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            {sizeGuideUploading ? 'Uploading…' : 'Upload size guide image'}
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <input

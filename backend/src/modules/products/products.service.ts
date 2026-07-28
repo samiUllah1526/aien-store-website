@@ -267,10 +267,22 @@ export class ProductsService {
       );
     }
     const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
+    const primaryCategoryId = this.resolvePrimaryCategoryId(
+      categoryIds,
+      dto.primaryCategoryId,
+    );
     const variants = normalizeVariantInputsForReplace(dto.variants, false);
     const variantMediaIds = this.collectVariantMediaIds(variants);
+    const sizeGuideIds =
+      dto.sizeGuideMediaId != null && dto.sizeGuideMediaId !== ''
+        ? [dto.sizeGuideMediaId]
+        : [];
     const allMediaIds = [
-      ...new Set([...(dto.mediaIds ?? []), ...variantMediaIds]),
+      ...new Set([
+        ...(dto.mediaIds ?? []),
+        ...variantMediaIds,
+        ...sizeGuideIds,
+      ]),
     ];
     if (allMediaIds.length) {
       await this.validateMediaIds(allMediaIds);
@@ -289,6 +301,8 @@ export class ProductsService {
         featured: dto.featured ?? false,
         urduVerse: dto.urduVerse ?? null,
         urduVerseTransliteration: dto.urduVerseTransliteration ?? null,
+        primaryCategoryId,
+        sizeGuideMediaId: dto.sizeGuideMediaId ?? null,
         variants: {
           create: variants.map((variant) => ({
             color: variant.color,
@@ -438,23 +452,63 @@ export class ProductsService {
     const variantMediaIds = normalizedVariantsForMedia
       ? this.collectVariantMediaIds(normalizedVariantsForMedia)
       : [];
-    const allMediaIds = [...(dto.mediaIds ?? []), ...variantMediaIds];
+    const sizeGuideIds =
+      dto.sizeGuideMediaId != null && dto.sizeGuideMediaId !== ''
+        ? [dto.sizeGuideMediaId]
+        : [];
+    const allMediaIds = [
+      ...(dto.mediaIds ?? []),
+      ...variantMediaIds,
+      ...sizeGuideIds,
+    ];
     if (allMediaIds.length) {
       await this.validateMediaIds([...new Set(allMediaIds)]);
     }
+
+    let nextCategoryIds: string[] | undefined;
     if (dto.categoryIds !== undefined) {
-      const categoryIds = await this.resolveCategoryIds(dto.categoryIds);
+      nextCategoryIds = await this.resolveCategoryIds(dto.categoryIds);
       await this.prisma.productCategory.deleteMany({
         where: { productId: id },
       });
-      if (categoryIds.length) {
+      if (nextCategoryIds.length) {
         await this.prisma.productCategory.createMany({
-          data: categoryIds.map((categoryId) => ({
+          data: nextCategoryIds.map((categoryId) => ({
             productId: id,
             categoryId,
           })),
         });
       }
+    }
+
+    // Resolve primary category after category membership is known.
+    let primaryCategoryIdUpdate: string | null | undefined;
+    if (
+      dto.primaryCategoryId !== undefined ||
+      nextCategoryIds !== undefined
+    ) {
+      const membership =
+        nextCategoryIds ??
+        (
+          await this.prisma.productCategory.findMany({
+            where: { productId: id },
+            orderBy: { createdAt: 'asc' },
+            select: { categoryId: true },
+          })
+        ).map((pc) => pc.categoryId);
+      const requestedPrimary =
+        dto.primaryCategoryId !== undefined
+          ? dto.primaryCategoryId
+          : (
+              await this.prisma.product.findUnique({
+                where: { id },
+                select: { primaryCategoryId: true },
+              })
+            )?.primaryCategoryId;
+      primaryCategoryIdUpdate = this.resolvePrimaryCategoryId(
+        membership,
+        requestedPrimary,
+      );
     }
 
     if (dto.variants !== undefined) {
@@ -541,6 +595,12 @@ export class ProductsService {
         ...(dto.urduVerseTransliteration !== undefined && {
           urduVerseTransliteration: dto.urduVerseTransliteration,
         }),
+        ...(primaryCategoryIdUpdate !== undefined && {
+          primaryCategoryId: primaryCategoryIdUpdate,
+        }),
+        ...(dto.sizeGuideMediaId !== undefined && {
+          sizeGuideMediaId: dto.sizeGuideMediaId,
+        }),
       },
       include: this.productInclude(),
     });
@@ -567,12 +627,26 @@ export class ProductsService {
   }
 
   private productInclude() {
+    const mediaSelect = {
+      id: true,
+      path: true,
+      deliveryUrl: true,
+    } as const;
     return {
-      productCategories: { include: { category: true } },
+      productCategories: {
+        include: { category: true },
+        orderBy: { createdAt: Prisma.SortOrder.asc },
+      },
+      primaryCategory: {
+        include: {
+          sizeGuideMedia: { select: mediaSelect },
+        },
+      },
+      sizeGuideMedia: { select: mediaSelect },
       productMedia: {
         where: { media: { uploadError: { equals: Prisma.DbNull } } },
         include: {
-          media: { select: { id: true, path: true, deliveryUrl: true } },
+          media: { select: mediaSelect },
         },
         orderBy: { sortOrder: Prisma.SortOrder.asc },
       },
@@ -581,7 +655,7 @@ export class ProductsService {
           variantMedia: {
             where: { media: { uploadError: { equals: Prisma.DbNull } } },
             include: {
-              media: { select: { id: true, path: true, deliveryUrl: true } },
+              media: { select: mediaSelect },
             },
             orderBy: { sortOrder: Prisma.SortOrder.asc },
           },
@@ -592,6 +666,18 @@ export class ProductsService {
         ],
       },
     };
+  }
+
+  /**
+   * Pick primary category: requested if it belongs to membership; else first membership; else null.
+   */
+  private resolvePrimaryCategoryId(
+    categoryIds: string[],
+    requested?: string | null,
+  ): string | null {
+    if (!categoryIds.length) return null;
+    if (requested && categoryIds.includes(requested)) return requested;
+    return categoryIds[0] ?? null;
   }
 
   private buildWhere(
@@ -736,6 +822,8 @@ export class ProductsService {
       featured: boolean;
       urduVerse: string | null;
       urduVerseTransliteration: string | null;
+      primaryCategoryId: string | null;
+      sizeGuideMediaId: string | null;
       createdAt: Date;
       updatedAt: Date;
       productCategories: Array<{
@@ -744,6 +832,19 @@ export class ProductsService {
       productMedia: Array<{
         media: { id: string; path: string; deliveryUrl: string | null };
       }>;
+      sizeGuideMedia?: {
+        id: string;
+        path: string;
+        deliveryUrl: string | null;
+      } | null;
+      primaryCategory?: {
+        id: string;
+        sizeGuideMedia?: {
+          id: string;
+          path: string;
+          deliveryUrl: string | null;
+        } | null;
+      } | null;
       variants: Array<{
         id: string;
         color: string;
@@ -781,6 +882,11 @@ export class ProductsService {
     const image = images[0] ?? '';
     const categories = p.productCategories.map((pc) => pc.category);
     const first = categories[0];
+    const sizeGuideUrl = p.sizeGuideMedia
+      ? this.imageUrl(p.sizeGuideMedia)
+      : p.primaryCategory?.sizeGuideMedia
+        ? this.imageUrl(p.primaryCategory.sizeGuideMedia)
+        : null;
     return {
       id: p.id,
       slug: p.slug,
@@ -797,6 +903,9 @@ export class ProductsService {
       categories,
       category: first?.name ?? null,
       categoryId: first?.id ?? null,
+      primaryCategoryId: p.primaryCategoryId,
+      sizeGuideMediaId: p.sizeGuideMediaId,
+      sizeGuideUrl,
       featured: p.featured,
       urduVerse: p.urduVerse,
       urduVerseTransliteration: p.urduVerseTransliteration,

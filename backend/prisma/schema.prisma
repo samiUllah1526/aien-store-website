@@ -238,6 +238,8 @@ model Media {
   productVariantMedia ProductVariantMedia[]
   reviewMedia      ProductReviewMedia[]
   customerSpotlights CustomerSpotlightItem[]
+  productSizeGuides  Product[]  @relation("ProductSizeGuide")
+  categorySizeGuides Category[] @relation("CategorySizeGuide")
   orderPaymentProof Order[]      @relation("OrderPaymentProof")
 
   @@index([source])
@@ -264,6 +266,8 @@ model Category {
   showOnLanding  Boolean  @default(false) @map("show_on_landing")
   /** Order on landing page (lower = first). Null = last. */
   landingOrder   Int?     @map("landing_order")
+  /** Optional size guide image for all products in this category (unless product overrides). */
+  sizeGuideMediaId String? @map("size_guide_media_id") @db.Uuid
   parentId    String?   @map("parent_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -272,6 +276,8 @@ model Category {
   children         Category[]       @relation("CategoryHierarchy")
   productCategories ProductCategory[]
   salesCampaignCategories SalesCampaignCategory[]
+  sizeGuideMedia   Media?  @relation("CategorySizeGuide", fields: [sizeGuideMediaId], references: [id], onDelete: SetNull)
+  primaryForProducts Product[] @relation("ProductPrimaryCategory")
 
   @@map("categories")
 }
@@ -290,6 +296,10 @@ model Product {
   stockQuantity         Int       @default(0) @map("stock_quantity")
   urduVerse             String?   @map("urdu_verse")
   urduVerseTransliteration String? @map("urdu_verse_transliteration")
+  /** Category used for size-guide fallback when product has no size guide. */
+  primaryCategoryId     String?   @map("primary_category_id") @db.Uuid
+  /** Optional product-level size guide (overrides primary category). */
+  sizeGuideMediaId      String?   @map("size_guide_media_id") @db.Uuid
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -301,7 +311,10 @@ model Product {
   inventoryMovements   InventoryMovement[]
   salesCampaignProducts SalesCampaignProduct[]
   reviews              ProductReview[]
+  primaryCategory      Category? @relation("ProductPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  sizeGuideMedia       Media?    @relation("ProductSizeGuide", fields: [sizeGuideMediaId], references: [id], onDelete: SetNull)
 
+  @@index([primaryCategoryId])
   @@map("products")
 }
 

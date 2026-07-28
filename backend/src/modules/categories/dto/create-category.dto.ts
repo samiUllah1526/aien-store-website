@@ -8,6 +8,8 @@ import {
   IsInt,
   IsArray,
   ArrayMaxSize,
+  IsUUID,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateCategoryDto {
@@ -37,6 +39,11 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsString()
   bannerImageUrl?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v != null)
+  @IsUUID()
+  sizeGuideMediaId?: string | null;
 
   @IsOptional()
   @IsBoolean()

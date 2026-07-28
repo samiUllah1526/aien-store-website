@@ -27,6 +27,8 @@ export interface ProductDetailSectionProps {
   variants: ProductVariant[];
   inStock?: boolean;
   children?: ReactNode;
+  /** Resolved size guide image URL (product → primary category). */
+  sizeGuideUrl?: string | null;
 }
 
 /**
@@ -89,6 +91,7 @@ export default function ProductDetailSection({
   variants,
   inStock = true,
   children,
+  sizeGuideUrl = null,
 }: ProductDetailSectionProps) {
   const defaultVariant = useMemo(
     () =>
@@ -156,6 +159,7 @@ export default function ProductDetailSection({
             variants={variants}
             inStock={inStock}
             onVariantChange={setSelectedVariant}
+            sizeGuideUrl={sizeGuideUrl}
           />
         </div>
       </div>

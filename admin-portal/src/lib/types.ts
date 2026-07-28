@@ -48,6 +48,9 @@ export interface Product {
   categories: Array<{ id: string; name: string; slug: string }>;
   category: string | null;
   categoryId: string | null;
+  primaryCategoryId?: string | null;
+  sizeGuideMediaId?: string | null;
+  sizeGuideUrl?: string | null;
   featured: boolean;
   /** Current stock level. */
   stockQuantity: number;
@@ -65,6 +68,8 @@ export interface ProductFormData {
   slug: string;
   description?: string;
   categoryIds?: string[];
+  primaryCategoryId?: string | null;
+  sizeGuideMediaId?: string | null;
   priceCents: number;
   currency?: string;
   variants: Array<{
@@ -218,6 +223,8 @@ export interface Category {
   /** Bullet list shown on storefront category page (max 20 items, ≤120 chars each). */
   highlights: string[];
   bannerImageUrl: string | null;
+  sizeGuideMediaId?: string | null;
+  sizeGuideUrl?: string | null;
   showOnLanding: boolean;
   landingOrder: number | null;
   parentId: string | null;
