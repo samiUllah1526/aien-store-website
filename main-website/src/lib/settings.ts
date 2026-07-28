@@ -72,6 +72,13 @@ export interface PublicHero {
   slides: PublicHeroSlide[];
 }
 
+export interface PublicSocialProof {
+  reviewsEyebrow: string;
+  reviewsTitle: string;
+  spotlightEyebrow: string;
+  spotlightTitle: string;
+}
+
 export interface PublicAbout {
   title?: string;
   subtitle?: string;
@@ -89,6 +96,7 @@ export interface PublicSettings {
   social: PublicSocial;
   announcement: PublicAnnouncement;
   hero: PublicHero;
+  socialProof: PublicSocialProof;
   seo: PublicSeo;
   business: PublicBusiness;
   marketing: PublicMarketing;
@@ -132,6 +140,9 @@ export async function getPublicSettings(): Promise<PublicSettings> {
       const announcementItems = Array.isArray(rawAnnouncement.items)
         ? rawAnnouncement.items.map((item) => ({ text: (item?.text ?? '').trim() })).filter((item) => item.text !== '')
         : [];
+      const rawSocialProof = (data.socialProof as Record<string, unknown>) ?? {};
+      const pickTitle = (v: unknown, fallback: string) =>
+        typeof v === 'string' && v.trim() ? v.trim() : fallback;
       const next: PublicSettings = {
         logoPath,
         faviconPath,
@@ -171,6 +182,12 @@ export async function getPublicSettings(): Promise<PublicSettings> {
                   .map((s) => ({ src: String(s.src).trim(), alt: typeof s.alt === 'string' ? String(s.alt).trim() || undefined : undefined }))
               : [];
           })(),
+        },
+        socialProof: {
+          reviewsEyebrow: pickTitle(rawSocialProof.reviewsEyebrow, 'CUSTOMER LOVE'),
+          reviewsTitle: pickTitle(rawSocialProof.reviewsTitle, 'What they say'),
+          spotlightEyebrow: pickTitle(rawSocialProof.spotlightEyebrow, 'IN THE WILD'),
+          spotlightTitle: pickTitle(rawSocialProof.spotlightTitle, 'Customer Spotlight'),
         },
         seo: {
           siteTitle: (seo.siteTitle as string)?.trim() || brandName,
@@ -215,6 +232,12 @@ export async function getPublicSettings(): Promise<PublicSettings> {
     social: {},
     announcement: { items: [] },
     hero: { slides: [] },
+    socialProof: {
+      reviewsEyebrow: 'CUSTOMER LOVE',
+      reviewsTitle: 'What they say',
+      spotlightEyebrow: 'IN THE WILD',
+      spotlightTitle: 'Customer Spotlight',
+    },
     seo: {
       siteTitle: brandName,
       defaultDescription: defaultMetaDescription,

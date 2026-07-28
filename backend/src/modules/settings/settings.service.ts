@@ -93,6 +93,21 @@ export interface HeroValue {
   slides?: HeroSlideValue[];
 }
 
+/** Homepage Reviews + Customer Spotlight section titles (editable from Admin → Reviews). */
+export interface SocialProofValue {
+  reviewsEyebrow?: string;
+  reviewsTitle?: string;
+  spotlightEyebrow?: string;
+  spotlightTitle?: string;
+}
+
+export const SOCIAL_PROOF_DEFAULTS: Required<SocialProofValue> = {
+  reviewsEyebrow: 'CUSTOMER LOVE',
+  reviewsTitle: 'What they say',
+  spotlightEyebrow: 'IN THE WILD',
+  spotlightTitle: 'Customer Spotlight',
+};
+
 export interface PublicSettingsDto {
   logoPath: string | null;
   /** Resolved favicon URL when set in general settings; storefront falls back to env/static default when null. */
@@ -104,6 +119,8 @@ export interface PublicSettingsDto {
   announcement: AnnouncementValue;
   /** Hero carousel image slides (home page). */
   hero: HeroValue;
+  /** Homepage reviews + spotlight section titles. */
+  socialProof: Required<SocialProofValue>;
   /** Delivery charges in cents. 0 = free delivery. */
   deliveryChargesCents: number;
   /** Bank account details shown at checkout for Bank Deposit. */
@@ -177,6 +194,7 @@ export class SettingsService {
       marketing,
       announcement,
       hero,
+      socialProof,
     ] = await Promise.all([
       this.getByKey('general'),
       this.getByKey('about'),
@@ -189,6 +207,7 @@ export class SettingsService {
       this.getByKey('marketing'),
       this.getByKey('announcement'),
       this.getByKey('hero'),
+      this.getByKey('socialProof'),
     ]);
 
     const generalVal = general as GeneralValue | null;
@@ -238,6 +257,29 @@ export class SettingsService {
               }))
           : [];
         return { slides };
+      })(),
+      socialProof: (() => {
+        const raw = (socialProof as SocialProofValue) ?? {};
+        const pick = (v: string | undefined, fallback: string) =>
+          typeof v === 'string' && v.trim() ? v.trim() : fallback;
+        return {
+          reviewsEyebrow: pick(
+            raw.reviewsEyebrow,
+            SOCIAL_PROOF_DEFAULTS.reviewsEyebrow,
+          ),
+          reviewsTitle: pick(
+            raw.reviewsTitle,
+            SOCIAL_PROOF_DEFAULTS.reviewsTitle,
+          ),
+          spotlightEyebrow: pick(
+            raw.spotlightEyebrow,
+            SOCIAL_PROOF_DEFAULTS.spotlightEyebrow,
+          ),
+          spotlightTitle: pick(
+            raw.spotlightTitle,
+            SOCIAL_PROOF_DEFAULTS.spotlightTitle,
+          ),
+        };
       })(),
       deliveryChargesCents,
       banking: bankingVal

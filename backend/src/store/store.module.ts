@@ -10,6 +10,7 @@ import { MediaModule } from '../modules/media/media.module';
 import { VouchersModule } from '../modules/vouchers/vouchers.module';
 import { ProfileModule } from '../modules/profile/profile.module';
 import { ReviewsModule } from '../modules/reviews/reviews.module';
+import { SpotlightModule } from '../modules/spotlight/spotlight.module';
 import { StoreAuthController } from './auth/store-auth.controller';
 import { StoreProductsController } from './products/store-products.controller';
 import { StoreOrdersController } from './orders/store-orders.controller';
@@ -21,6 +22,8 @@ import { StoreMediaController } from './media/store-media.controller';
 import { StoreVouchersController } from './vouchers/store-vouchers.controller';
 import { StoreProfileShippingController } from './profile/store-profile-shipping.controller';
 import { StoreReviewsController } from './reviews/store-reviews.controller';
+import { StoreFeaturedReviewsController } from './reviews/store-featured-reviews.controller';
+import { StoreSpotlightController } from './spotlight/store-spotlight.controller';
 
 @Module({
   imports: [
@@ -35,6 +38,7 @@ import { StoreReviewsController } from './reviews/store-reviews.controller';
     VouchersModule,
     ProfileModule,
     ReviewsModule,
+    SpotlightModule,
   ],
   controllers: [
     StoreAuthController,
@@ -47,7 +51,9 @@ import { StoreReviewsController } from './reviews/store-reviews.controller';
     StoreMediaController,
     StoreVouchersController,
     StoreProfileShippingController,
+    StoreFeaturedReviewsController,
     StoreReviewsController,
+    StoreSpotlightController,
   ],
 })
 export class StoreModule {}

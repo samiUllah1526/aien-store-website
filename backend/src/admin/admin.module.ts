@@ -15,6 +15,7 @@ import { EmailLogsModule } from '../modules/email-logs/email-logs.module';
 import { JobsModule } from '../modules/jobs/jobs.module';
 import { GithubModule } from '../modules/github/github.module';
 import { ReviewsModule } from '../modules/reviews/reviews.module';
+import { SpotlightModule } from '../modules/spotlight/spotlight.module';
 import { AdminAuthController } from './auth/admin-auth.controller';
 import { AdminDashboardController } from './dashboard/admin-dashboard.controller';
 import { AdminUsersController } from './users/admin-users.controller';
@@ -32,6 +33,8 @@ import { AdminPermissionsController } from './permissions/admin-permissions.cont
 import { AdminDeployController } from './deploy/admin-deploy.controller';
 import { AdminSalesCampaignsController } from './sales-campaigns/admin-sales-campaigns.controller';
 import { AdminReviewsController } from './reviews/admin-reviews.controller';
+import { AdminReviewMediaController } from './reviews/admin-review-media.controller';
+import { AdminSpotlightController } from './spotlight/admin-spotlight.controller';
 
 @Module({
   imports: [
@@ -51,6 +54,7 @@ import { AdminReviewsController } from './reviews/admin-reviews.controller';
     EmailLogsModule,
     JobsModule,
     ReviewsModule,
+    SpotlightModule,
   ],
   controllers: [
     AdminAuthController,
@@ -70,6 +74,8 @@ import { AdminReviewsController } from './reviews/admin-reviews.controller';
     AdminDeployController,
     AdminSalesCampaignsController,
     AdminReviewsController,
+    AdminReviewMediaController,
+    AdminSpotlightController,
   ],
 })
 export class AdminModule {}

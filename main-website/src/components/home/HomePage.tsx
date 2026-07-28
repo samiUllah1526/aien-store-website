@@ -5,18 +5,20 @@
  *   2. Featured products (admin "featured" flag) in "Featured Selection"
  *   3. Featured bento grid (top categories)
  *   4. One curated selection per remaining landing category
- *   5. Newsletter "Join the Circle"
- *
- * Data props are unchanged from the previous shape so the Astro entry in
- * `src/pages/index.astro` continues to work without modification.
+ *   5. Featured customer reviews carousel
+ *   6. Customer Spotlight (admin-uploaded images/reels)
+ *   7. Newsletter "Join the Circle"
  */
 
 import type { HeroSlide } from '../../config';
 import { heroHeadline as configHeroHeadline } from '../../config';
 import { stripHtml } from '../../lib/stripHtml';
+import type { PublicSocialProof } from '../../lib/settings';
 import HeroImageCarousel from './HeroImageCarousel';
 import FeaturedBento from './FeaturedBento';
 import CuratedSelection from './CuratedSelection';
+import FeaturedReviewsCarousel, { type FeaturedReview } from './FeaturedReviewsCarousel';
+import CustomerSpotlightCarousel, { type SpotlightItem } from './CustomerSpotlightCarousel';
 import NewsletterSection from './NewsletterSection';
 
 interface HomePageProps {
@@ -30,6 +32,12 @@ interface HomePageProps {
   landingCategories?: LandingCategory[];
   /** Build-time fetched products grouped by category slug. */
   productsBySlug?: Record<string, Product[]>;
+  /** Build-time fetched admin-featured reviews for homepage. */
+  featuredReviews?: FeaturedReview[];
+  /** Build-time fetched Customer Spotlight items. */
+  spotlightItems?: SpotlightItem[];
+  /** Editable section titles for reviews + spotlight. */
+  socialProof?: PublicSocialProof;
 }
 
 export interface ProductVariantSummary {
@@ -78,6 +86,14 @@ export default function HomePage({
   shopAll = [],
   landingCategories = [],
   productsBySlug = {},
+  featuredReviews = [],
+  spotlightItems = [],
+  socialProof = {
+    reviewsEyebrow: 'CUSTOMER LOVE',
+    reviewsTitle: 'What they say',
+    spotlightEyebrow: 'IN THE WILD',
+    spotlightTitle: 'Customer Spotlight',
+  },
 }: HomePageProps) {
   const populatedCategories = landingCategories.filter((c) => c.productCount > 0);
   const remainingCategories = populatedCategories.slice(2);
@@ -118,6 +134,22 @@ export default function HomePage({
           viewAllLabel="View Collection"
         />
       ))}
+
+      {(featuredReviews.length > 0 || spotlightItems.length > 0) && (
+        <div className="pb-20 md:pb-24">
+          <FeaturedReviewsCarousel
+            reviews={featuredReviews}
+            eyebrow={socialProof.reviewsEyebrow}
+            title={socialProof.reviewsTitle}
+          />
+
+          <CustomerSpotlightCarousel
+            items={spotlightItems}
+            eyebrow={socialProof.spotlightEyebrow}
+            title={socialProof.spotlightTitle}
+          />
+        </div>
+      )}
 
       <NewsletterSection />
     </div>

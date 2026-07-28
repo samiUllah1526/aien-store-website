@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ModerateReviewDto {
   @IsIn(['APPROVED', 'REJECTED', 'PENDING'])
@@ -10,4 +10,9 @@ export class ReplyReviewDto {
   @IsString()
   @MaxLength(4000)
   reply?: string;
+}
+
+export class FeatureReviewDto {
+  @IsBoolean()
+  featuredOnHomepage: boolean;
 }

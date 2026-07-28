@@ -12,13 +12,14 @@ export const SETTINGS_KEYS = [
   'marketing',
   'announcement',
   'hero',
+  'socialProof',
 ] as const;
 export type SettingsKey = (typeof SETTINGS_KEYS)[number];
 
 export class UpdateSettingDto {
   @IsIn(SETTINGS_KEYS, {
     message:
-      'key must be one of: general, about, footer, social, delivery, banking, seo, business, marketing, announcement, hero',
+      'key must be one of: general, about, footer, social, delivery, banking, seo, business, marketing, announcement, hero, socialProof',
   })
   key: SettingsKey;
 

@@ -161,6 +161,7 @@ interface BuildReview {
   adminReply: string | null;
   adminReplyAt: string | null;
   createdAt: string;
+  media?: Array<{ id: string; url: string; mimeType: string; kind: 'image' | 'video' }>;
 }
 let initialReviews: BuildReview[] = [];
 let reviewTotal = 0;

@@ -236,6 +236,8 @@ model Media {
 
   productMedia     ProductMedia[]
   productVariantMedia ProductVariantMedia[]
+  reviewMedia      ProductReviewMedia[]
+  customerSpotlights CustomerSpotlightItem[]
   orderPaymentProof Order[]      @relation("OrderPaymentProof")
 
   @@index([source])
@@ -420,6 +422,8 @@ model ProductReview {
   /** Displays the "Verified Purchase" badge. True for customer verified reviews;
    * admin-set for off-platform purchases they attest are genuine. */
   isVerified   Boolean      @default(true) @map("is_verified")
+  /** When true and status=APPROVED, shown in the homepage testimonials carousel. */
+  featuredOnHomepage Boolean @default(false) @map("featured_on_homepage")
   adminReply   String?      @map("admin_reply")
   adminReplyAt DateTime?    @map("admin_reply_at") @db.Timestamptz(6)
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -429,11 +433,47 @@ model ProductReview {
   user      User?   @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
   createdBy User?   @relation("ReviewsCreatedByAdmin", fields: [createdByUserId], references: [id], onDelete: SetNull)
   order     Order?  @relation("OrderReviews", fields: [orderId], references: [id], onDelete: SetNull)
+  reviewMedia ProductReviewMedia[]
 
   @@unique([productId, userId])
   @@index([productId, status])
   @@index([status])
+  @@index([featuredOnHomepage, status])
   @@map("product_reviews")
+}
+
+model ProductReviewMedia {
+  reviewId  String   @map("review_id") @db.Uuid
+  mediaId   String   @map("media_id") @db.Uuid
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  media  Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, mediaId])
+  @@index([reviewId, sortOrder])
+  @@map("product_review_media")
+}
+
+/** Homepage Customer Spotlight carousel — admin-uploaded images/reels (not product reviews). */
+model CustomerSpotlightItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  mediaId   String   @map("media_id") @db.Uuid
+  /** Optional short caption under the card. */
+  caption   String?  @map("caption")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  /** Videos: play muted inline in the carousel (no play button / lightbox). Default on. */
+  autoplay  Boolean  @default(true) @map("autoplay")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, sortOrder])
+  @@map("customer_spotlight_items")
 }
 
 // -----------------------------------------------------------------------------

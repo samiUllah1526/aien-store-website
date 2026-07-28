@@ -22,6 +22,11 @@ export class ReviewQueryDto {
   @IsIn(['PENDING', 'APPROVED', 'REJECTED', ''])
   status?: string;
 
+  /** Filter reviews featured on the landing page carousel. */
+  @IsOptional()
+  @IsIn(['true', 'false', ''])
+  featuredOnHomepage?: string;
+
   @IsOptional()
   @IsIn(['createdAt', 'rating', 'status'])
   sortBy?: string = 'createdAt';

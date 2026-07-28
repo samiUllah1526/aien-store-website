@@ -22,8 +22,10 @@ export interface RegisterMediaInput {
   height?: number;
 }
 
+export type MediaSource = 'product' | 'payment_proof' | 'review';
+
 export interface CreateFailedUploadInput {
-  source: 'product' | 'payment_proof';
+  source: MediaSource;
   error: unknown;
   filename?: string;
   productId?: string;
@@ -60,7 +62,7 @@ export class MediaService {
    */
   async registerUpload(
     input: RegisterMediaInput,
-    source: 'product' | 'payment_proof',
+    source: MediaSource,
   ): Promise<{ id: string }> {
     let payload: RegisterUploadPayload;
     if (input.storageKey && input.deliveryUrl) {
@@ -165,6 +167,34 @@ export class MediaService {
         path: relativePath,
         storageProvider: 'local',
         source: 'payment_proof',
+      },
+    });
+    return { id: media.id };
+  }
+
+  /** Store review image/video. Path: review-photos/… or review-videos/… */
+  async createFromFileForReview(file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }): Promise<{ id: string }> {
+    const isVideo = file.mimetype.startsWith('video/');
+    const folder = isVideo ? 'review-videos' : 'review-photos';
+    const ext = file.originalname.split('.').pop() ?? 'bin';
+    const filename = `${randomUUID()}.${ext}`;
+    const relativePath = `${folder}/${filename}`;
+    const fullPath = join(this.uploadDir, relativePath);
+    await mkdir(join(this.uploadDir, folder), { recursive: true });
+    await writeFile(fullPath, file.buffer);
+    const media = await this.prisma.media.create({
+      data: {
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        path: relativePath,
+        storageProvider: 'local',
+        source: 'review',
       },
     });
     return { id: media.id };

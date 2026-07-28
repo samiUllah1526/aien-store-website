@@ -18,6 +18,7 @@ import { ReviewsService } from '../../modules/reviews/reviews.service';
 import { ReviewQueryDto } from '../../modules/reviews/dto/review-query.dto';
 import { CreateAdminReviewDto } from '../../modules/reviews/dto/create-admin-review.dto';
 import {
+  FeatureReviewDto,
   ModerateReviewDto,
   ReplyReviewDto,
 } from '../../modules/reviews/dto/moderate-review.dto';
@@ -73,6 +74,24 @@ export class AdminReviewsController {
       dto.status as ReviewStatus,
     );
     return ApiResponseDto.ok(data, `Review ${dto.status.toLowerCase()}`);
+  }
+
+  @Patch(':id/featured')
+  @RequirePermission('reviews:moderate')
+  async setFeatured(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: FeatureReviewDto,
+  ) {
+    const data = await this.reviewsService.setFeaturedOnHomepage(
+      id,
+      dto.featuredOnHomepage,
+    );
+    return ApiResponseDto.ok(
+      data,
+      dto.featuredOnHomepage
+        ? 'Review featured on homepage'
+        : 'Review removed from homepage',
+    );
   }
 
   @Post(':id/reply')

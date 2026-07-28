@@ -147,6 +147,13 @@ export async function uploadPaymentProof(file: File): Promise<string> {
 }
 
 /** Product reviews (public read; verified-buyer write). */
+export interface ReviewMediaDto {
+  id: string;
+  url: string;
+  mimeType: string;
+  kind: 'image' | 'video';
+}
+
 export interface ReviewDto {
   id: string;
   productId: string;
@@ -158,6 +165,7 @@ export interface ReviewDto {
   adminReply: string | null;
   adminReplyAt: string | null;
   createdAt: string;
+  media?: ReviewMediaDto[];
 }
 
 export interface ReviewSummary {
@@ -197,8 +205,10 @@ export const reviewsApi = {
     api
       .get<ReviewEligibility>(`/products/${productId}/reviews/eligibility`)
       .then((r) => r.data ?? null),
-  create: (productId: string, body: { rating: number; title?: string; body: string }) =>
-    api.post<ReviewDto>(`/products/${productId}/reviews`, body).then((r) => r.data),
+  create: (
+    productId: string,
+    body: { rating: number; title?: string; body: string; mediaIds?: string[] },
+  ) => api.post<ReviewDto>(`/products/${productId}/reviews`, body).then((r) => r.data),
 };
 
 /** Customer order history (requires auth). */
