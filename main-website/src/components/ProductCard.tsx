@@ -16,9 +16,10 @@ import { useEffect, useState } from 'react';
 import { useCart } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { favoritesApi } from '../lib/api';
-import { formatMoney } from '../lib/formatMoney';
 import { formatColorLabel, isHexColorString } from '../lib/colorDisplay';
 import { ONE_SIZE_LABEL } from './product/constants';
+import ProductPrice from './ProductPrice';
+import { resolveUnitSaleDisplay } from '../lib/computeStoreSalePrice';
 
 export interface ProductCardVariant {
   id: string;
@@ -43,11 +44,16 @@ export interface ProductCardProduct {
   inStock?: boolean;
   compareAtPrice?: number | null;
   saleBadgeText?: string | null;
+  saleType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue?: number | null;
 }
 
 interface ProductCardProps {
   product: ProductCardProduct;
-  /** Show the price in the editorial teal accent. Default true. */
+  /**
+   * @deprecated Accent is applied automatically on sale prices.
+   * Kept for call-site compatibility; ignored.
+   */
   emphasizePrice?: boolean;
 }
 
@@ -56,7 +62,7 @@ const HEART_PATH =
 const SEARCH_PATH = 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z';
 const BAG_PATH = 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z';
 
-export default function ProductCard({ product, emphasizePrice = true }: ProductCardProps) {
+export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, openCart } = useCart();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
   const [wishlisted, setWishlisted] = useState(false);
@@ -104,13 +110,21 @@ export default function ProductCard({ product, emphasizePrice = true }: ProductC
     e?.preventDefault();
     e?.stopPropagation();
     if (!inStock || !quickAddVariant) return;
+    const catalogBase = product.compareAtPrice ?? product.price;
+    const listUnit = quickAddVariant.priceOverrideCents ?? catalogBase;
+    const sale =
+      product.saleType && product.saleDiscountValue != null
+        ? { type: product.saleType, discountValue: product.saleDiscountValue }
+        : null;
+    const resolved = resolveUnitSaleDisplay(listUnit, sale);
     addItem({
       productId: product.id,
       variantId: quickAddVariant.id,
       color: quickAddVariant.color,
       name: product.name,
       slug: product.slug,
-      price: quickAddVariant.priceOverrideCents ?? product.price,
+      price: resolved.price,
+      compareAtPrice: resolved.compareAtPrice,
       currency: product.currency,
       image: quickAddVariant.image || quickAddVariant.images?.[0] || product.image,
       size: defaultSize,
@@ -270,18 +284,13 @@ export default function ProductCard({ product, emphasizePrice = true }: ProductC
                 })()}
             </div>
             <div className="text-right shrink-0">
-              <span
-                className={`font-sans text-body-md ${
-                  emphasizePrice ? 'text-secondary' : 'text-on-surface'
-                }`}
-              >
-                {formatMoney(product.price, product.currency)}
-              </span>
-              {onSale && (
-                <span className="block font-sans text-label-caps text-on-surface-variant line-through mt-1">
-                  {formatMoney(product.compareAtPrice ?? 0, product.currency)}
-                </span>
-              )}
+              <ProductPrice
+                amountCents={product.price}
+                currency={product.currency}
+                compareAtCents={product.compareAtPrice}
+                size="card"
+                layout="stack"
+              />
             </div>
           </div>
         </a>
@@ -419,14 +428,13 @@ function QuickViewModal({
               })()}
 
             <div className="flex items-baseline gap-3 mb-2">
-              <span className="font-sans text-body-lg text-secondary">
-                {formatMoney(product.price, product.currency)}
-              </span>
-              {onSale && (
-                <span className="font-sans text-label-caps text-on-surface-variant line-through">
-                  {formatMoney(product.compareAtPrice ?? 0, product.currency)}
-                </span>
-              )}
+              <ProductPrice
+                amountCents={product.price}
+                currency={product.currency}
+                compareAtCents={product.compareAtPrice}
+                size="detail"
+                layout="inline"
+              />
             </div>
 
             <p className="font-sans text-label-caps text-on-surface-variant mb-10">

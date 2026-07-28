@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { ordersApi, type OrderDto } from '../../lib/api';
-import { formatMoney } from '../../lib/formatMoney';
+import ProductPrice from '../ProductPrice';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
@@ -111,8 +111,13 @@ export default function OrdersListPage() {
                     <span className="font-mono text-sm text-charcoal/70 dark:text-cream/70">
                       {order.id.slice(0, 8)}…
                     </span>
-                    <span className="ml-2 text-charcoal dark:text-cream font-medium">
-                      {formatMoney(order.totalCents, order.currency)}
+                    <span className="ml-2 inline-block">
+                      <ProductPrice
+                        amountCents={order.totalCents}
+                        currency={order.currency}
+                        size="line"
+                        accentOnSale={false}
+                      />
                     </span>
                   </div>
                   <span

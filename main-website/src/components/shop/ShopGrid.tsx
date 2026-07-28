@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import ProductCard, { type ProductCardProduct } from '../ProductCard';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
+import { resolveStorePrice } from '../../lib/resolveStorePrice';
 
 export interface Product extends ProductCardProduct {
   category: string;
@@ -41,8 +42,13 @@ export function mapApiProductToProduct(p: {
   }>;
   sizes?: string[];
   inStock?: boolean;
+  salePrice?: number | null;
+  originalPrice?: number | null;
   compareAtPrice?: number | null;
   saleBadgeText?: string | null;
+  onSale?: boolean;
+  saleType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue?: number | null;
 }): Product {
   const firstCategory = p.categories?.[0] ?? p.category ?? '';
   const variants = (p.variants ?? []).map((v) => ({
@@ -52,19 +58,25 @@ export function mapApiProductToProduct(p: {
       .map((img) => buildImageUrl(img, IMAGE_PRESETS.productCard))
       .filter(Boolean),
   }));
+  const resolved = resolveStorePrice(p);
   return {
     id: p.id,
     slug: p.slug,
     name: p.name,
     category: (firstCategory || '').toLowerCase(),
-    price: p.price,
+    price: resolved.price,
     currency: p.currency,
     image: buildImageUrl(p.image, IMAGE_PRESETS.productCard),
     variants,
     sizes: p.sizes,
     inStock: p.inStock,
-    compareAtPrice: p.compareAtPrice ?? null,
-    saleBadgeText: p.saleBadgeText ?? null,
+    compareAtPrice: resolved.compareAtPrice,
+    saleBadgeText: resolved.saleBadgeText,
+    saleType: p.saleType === 'PERCENTAGE' || p.saleType === 'FIXED_AMOUNT' ? p.saleType : null,
+    saleDiscountValue:
+      p.saleDiscountValue != null && Number.isFinite(Number(p.saleDiscountValue))
+        ? Number(p.saleDiscountValue)
+        : null,
   };
 }
 

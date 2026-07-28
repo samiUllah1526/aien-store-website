@@ -10,11 +10,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { brandName } from '../../config';
 import { getApiBaseUrl, api } from '../../lib/api';
-import { formatMoney } from '../../lib/formatMoney';
 import CartIcon from '../cart/CartIcon';
 // import ThemeToggle from '../ThemeToggle'; // temporarily hidden in header
 import ProfileMenu from './ProfileMenu';
+import ProductPrice from '../ProductPrice';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { resolveStorePrice } from '../../lib/resolveStorePrice';
 
 interface LandingCategory {
   id: string;
@@ -55,6 +56,7 @@ interface SearchProduct {
   price: number;
   currency: string;
   image: string;
+  compareAtPrice?: number | null;
 }
 
 const SEARCH_DEBOUNCE_MS = 280;
@@ -109,12 +111,21 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
         }
         const list = res.data.map((p) => {
           const img = p.image as string;
+          const resolved = resolveStorePrice({
+            price: Number(p.price),
+            salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+            originalPrice: p.originalPrice != null ? Number(p.originalPrice) : null,
+            compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
+            saleBadgeText: typeof p.saleBadgeText === 'string' ? p.saleBadgeText : null,
+            onSale: Boolean(p.onSale),
+          });
           return {
             id: String(p.id),
             slug: String(p.slug),
             name: String(p.name),
-            price: Number(p.price),
+            price: resolved.price,
             currency: String(p.currency ?? 'PKR'),
+            compareAtPrice: resolved.compareAtPrice,
             image: img
               ? img.startsWith('http')
                 ? img
@@ -315,8 +326,14 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
                             <span className="block font-body-md text-on-surface group-hover:text-secondary transition-colors">
                               {product.name}
                             </span>
-                            <span className="block text-label-caps text-on-surface-variant mt-1">
-                              {formatMoney(product.price, product.currency)}
+                            <span className="block mt-1">
+                              <ProductPrice
+                                amountCents={product.price}
+                                currency={product.currency}
+                                compareAtCents={product.compareAtPrice}
+                                size="compact"
+                                layout="inline"
+                              />
                             </span>
                           </span>
                         </a>

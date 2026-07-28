@@ -6,7 +6,7 @@
 import { useEffect } from 'react';
 import { useCart } from '../../store/cartStore';
 import { MAX_CART_QUANTITY } from '../../store/cartStore';
-import { formatMoney } from '../../lib/formatMoney';
+import ProductPrice from '../ProductPrice';
 import ColorSwatch from '../product/ColorSwatch';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { colorAriaLabel } from '../../lib/colorDisplay';
@@ -76,9 +76,18 @@ export default function CartSidebar() {
                       <ColorSwatch color={item.color} size="sm" aria-label={colorAriaLabel(item.color)} />
                       {' / '}{item.size} × {item.quantity}
                     </p>
-                    <p className="text-sm text-soft-charcoal dark:text-off-white font-medium mt-1">
-                      {formatMoney(item.price * item.quantity, item.currency)}
-                    </p>
+                    <div className="mt-1">
+                      <ProductPrice
+                        amountCents={item.price * item.quantity}
+                        currency={item.currency}
+                        compareAtCents={
+                          item.compareAtPrice != null && item.compareAtPrice > item.price
+                            ? item.compareAtPrice * item.quantity
+                            : null
+                        }
+                        size="line"
+                      />
+                    </div>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <button
                         type="button"
@@ -121,10 +130,15 @@ export default function CartSidebar() {
                 Cart has multiple currencies. Please use one currency per order.
               </p>
             ) : (
-              <p className="flex justify-between text-soft-charcoal dark:text-off-white font-display">
-                <span>Subtotal</span>
-                <span>{formatMoney(totalAmount, cartCurrency ?? 'PKR')}</span>
-              </p>
+              <div className="flex justify-between items-baseline text-on-background">
+                <span className="font-serif text-lg">Subtotal</span>
+                <ProductPrice
+                  amountCents={totalAmount}
+                  currency={cartCurrency ?? 'PKR'}
+                  size="line"
+                  accentOnSale={false}
+                />
+              </div>
             )}
             <p className="text-xs text-ash">
               Tax included. Shipping calculated at checkout.

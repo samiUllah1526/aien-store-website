@@ -208,6 +208,7 @@ export class OrdersService {
         productName: variant.product.name,
         quantity,
         unitCents,
+        originalUnitCents,
         lineTotalCents,
         color,
         size,

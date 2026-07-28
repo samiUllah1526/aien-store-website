@@ -16,7 +16,13 @@ export type CartItem = {
   color: string;
   name: string;
   slug: string;
+  /** Payable unit price in cents (sale-aware when added). */
   price: number;
+  /**
+   * Pre-sale / compare-at unit price in cents when the line was added on sale.
+   * Null/undefined when not on sale.
+   */
+  compareAtPrice?: number | null;
   currency: string;
   image: string;
   size: string;
@@ -98,8 +104,8 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'adab-cart',
-      version: 2,
-      migrate: (persistedState) => {
+      version: 3,
+      migrate: (persistedState, version) => {
         const state = persistedState as { items?: Array<Partial<CartItem>> } | undefined;
         const items = (state?.items ?? []).filter(
           (item): item is CartItem =>
@@ -113,7 +119,13 @@ export const useCartStore = create<CartState>()(
             typeof item.image === 'string' &&
             typeof item.price === 'number' &&
             typeof item.quantity === 'number',
-        );
+        ).map((item) => ({
+          ...item,
+          compareAtPrice:
+            version >= 3 && typeof item.compareAtPrice === 'number'
+              ? item.compareAtPrice
+              : item.compareAtPrice ?? null,
+        }));
         return { items, isOpen: false };
       },
       partialize: (state) => ({ items: state.items }),
