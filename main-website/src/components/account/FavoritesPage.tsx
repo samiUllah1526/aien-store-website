@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { favoritesApi } from '../../lib/api';
-import { formatMoney } from '../../lib/formatMoney';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import ProductPrice from '../ProductPrice';
+import { resolveStorePrice } from '../../lib/resolveStorePrice';
 
 interface ProductLike {
   id: string;
@@ -12,6 +13,7 @@ interface ProductLike {
   currency: string;
   image: string;
   images?: string[];
+  compareAtPrice?: number | null;
 }
 
 export default function FavoritesPage() {
@@ -32,7 +34,29 @@ export default function FavoritesPage() {
     favoritesApi
       .list()
       .then((data) => {
-        if (!cancelled) setProducts(Array.isArray(data) ? (data as ProductLike[]) : []);
+        if (cancelled) return;
+        const rows = Array.isArray(data) ? data : [];
+        setProducts(
+          rows.map((raw) => {
+            const p = raw as ProductLike & {
+              salePrice?: number | null;
+              originalPrice?: number | null;
+              onSale?: boolean;
+              saleBadgeText?: string | null;
+            };
+            const resolved = resolveStorePrice(p);
+            return {
+              id: p.id,
+              slug: p.slug,
+              name: p.name,
+              currency: p.currency,
+              image: p.image,
+              images: p.images,
+              price: resolved.price,
+              compareAtPrice: resolved.compareAtPrice,
+            };
+          }),
+        );
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load favorites');
@@ -106,9 +130,15 @@ export default function FavoritesPage() {
             </div>
             <div className="p-4">
               <h2 className="font-medium text-ink dark:text-cream line-clamp-2">{product.name}</h2>
-              <p className="mt-1 text-emerald font-medium">
-                {formatMoney(product.price, product.currency)}
-              </p>
+              <div className="mt-2">
+                <ProductPrice
+                  amountCents={product.price}
+                  currency={product.currency}
+                  compareAtCents={product.compareAtPrice}
+                  size="card"
+                  layout="inline"
+                />
+              </div>
             </div>
           </a>
           <button

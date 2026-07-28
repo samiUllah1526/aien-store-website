@@ -68,6 +68,8 @@ export interface Product {
   sizes?: string[];
   compareAtPrice?: number | null;
   saleBadgeText?: string | null;
+  saleType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue?: number | null;
   featured?: boolean;
 }
 

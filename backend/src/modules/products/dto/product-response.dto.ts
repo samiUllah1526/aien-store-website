@@ -62,6 +62,9 @@ export class ProductResponseDto {
   saleBadgeText: string | null;
   saleEndsAt: string | null;
   saleCampaignId: string | null;
+  /** PERCENTAGE | FIXED_AMOUNT when on sale; used for variant price display. */
+  saleType: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue: number | null;
 }
 
 export class ProductListResponseDto {
@@ -88,4 +91,6 @@ export class ProductListResponseDto {
   saleBadgeText: string | null;
   saleEndsAt: string | null;
   saleCampaignId: string | null;
+  saleType: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue: number | null;
 }

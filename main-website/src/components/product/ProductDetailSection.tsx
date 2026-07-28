@@ -8,14 +8,26 @@ import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import type { ProductVariant } from './AddToCart';
 import AddToCart from './AddToCart';
 import ProductImageCarousel from './ProductImageCarousel';
+import ProductPrice from '../ProductPrice';
+import AnimatedUrduVerse from '../AnimatedUrduVerse';
 import { centsToValue, trackPixel } from '../../lib/pixel';
+import {
+  resolveUnitSaleDisplay,
+  type StoreSaleType,
+} from '../../lib/computeStoreSalePrice';
 
 export interface ProductDetailSectionProps {
   productId: string;
   name: string;
   slug: string;
+  /** Effective shelf price in cents for the base product (sale-aware). */
   price: number;
   currency: string;
+  /** Struck-through compare-at in cents when the base product is on sale. */
+  compareAtPrice?: number | null;
+  /** Active campaign type — used to price variant overrides correctly. */
+  saleType?: StoreSaleType | null;
+  saleDiscountValue?: number | null;
   image: string;
   images: string[];
   /**
@@ -26,7 +38,11 @@ export interface ProductDetailSectionProps {
   thumbnails?: string[];
   variants: ProductVariant[];
   inStock?: boolean;
+  /** Category eyebrow + product title (price renders after this). */
   children?: ReactNode;
+  description?: string | null;
+  urduVerse?: string | null;
+  urduVerseTransliteration?: string | null;
   /** Resolved size guide image URL (product → primary category). */
   sizeGuideUrl?: string | null;
 }
@@ -85,12 +101,18 @@ export default function ProductDetailSection({
   slug,
   price,
   currency,
+  compareAtPrice = null,
+  saleType = null,
+  saleDiscountValue = null,
   image,
   images,
   thumbnails,
   variants,
   inStock = true,
   children,
+  description,
+  urduVerse = null,
+  urduVerseTransliteration = null,
   sizeGuideUrl = null,
 }: ProductDetailSectionProps) {
   const defaultVariant = useMemo(
@@ -103,10 +125,24 @@ export default function ProductDetailSection({
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(defaultVariant);
   const viewContentFired = useRef(false);
 
+  const sale = useMemo(
+    () =>
+      saleType && saleDiscountValue != null
+        ? { type: saleType, discountValue: saleDiscountValue }
+        : null,
+    [saleType, saleDiscountValue],
+  );
+
+  const { displayPrice, displayCompareAt } = useMemo(() => {
+    const catalogBase = compareAtPrice ?? price;
+    const listUnit = selectedVariant?.priceOverrideCents ?? catalogBase;
+    const resolved = resolveUnitSaleDisplay(listUnit, sale);
+    return { displayPrice: resolved.price, displayCompareAt: resolved.compareAtPrice };
+  }, [selectedVariant?.priceOverrideCents, compareAtPrice, price, sale]);
+
   useEffect(() => {
     if (viewContentFired.current) return;
     viewContentFired.current = true;
-    const displayPrice = selectedVariant?.priceOverrideCents ?? price;
     trackPixel('ViewContent', {
       content_type: 'product',
       content_ids: [productId],
@@ -115,7 +151,7 @@ export default function ProductDetailSection({
       currency: currency || 'PKR',
       contents: [{ id: productId, quantity: 1, item_price: centsToValue(displayPrice) }],
     });
-  }, [productId, name, price, currency, selectedVariant?.priceOverrideCents]);
+  }, [productId, name, currency, displayPrice]);
 
   // Page passes `thumbnails` parallel to product `images`; the [0] entry also
   // doubles as the thumb for the lone product `image` when present (they're
@@ -148,17 +184,33 @@ export default function ProductDetailSection({
       </div>
       <div className="lg:col-span-5 lg:sticky lg:top-28 self-start h-fit">
         {children}
+        <div className="mb-8">
+          <ProductPrice
+            amountCents={displayPrice}
+            currency={currency}
+            compareAtCents={displayCompareAt}
+            size="detail"
+            layout="inline"
+          />
+        </div>
+        {urduVerse ? (
+          <AnimatedUrduVerse verse={urduVerse} transliteration={urduVerseTransliteration} />
+        ) : null}
         <div className="mt-12">
           <AddToCart
             productId={productId}
             name={name}
             slug={slug}
             price={price}
+            compareAtPrice={compareAtPrice}
+            saleType={saleType}
+            saleDiscountValue={saleDiscountValue}
             currency={currency}
             image={image}
             variants={variants}
             inStock={inStock}
             onVariantChange={setSelectedVariant}
+            description={description}
             sizeGuideUrl={sizeGuideUrl}
           />
         </div>

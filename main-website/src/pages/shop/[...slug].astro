@@ -6,11 +6,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductDetailSection from '../../components/product/ProductDetailSection';
 import ProductReviews from '../../components/product/ProductReviews';
-import AnimatedUrduVerse from '../../components/AnimatedUrduVerse';
-import { formatMoney } from '../../lib/formatMoney';
 import { storeApiBaseUrl, brandName, siteUrl } from '../../config';
 import { stripHtml } from '../../lib/stripHtml';
 import { buildImageUrl, toAbsoluteUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { resolveStorePrice } from '../../lib/resolveStorePrice';
 
 export async function getStaticPaths() {
   const limit = 100;
@@ -72,6 +71,9 @@ let product: {
   urduVerseTransliteration?: string | null;
   categories?: Array<{ name: string; slug: string }>;
   sizeGuideUrl?: string | null;
+  compareAtPrice?: number | null;
+  saleType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+  saleDiscountValue?: number | null;
 } | null = null;
 
 try {
@@ -116,12 +118,20 @@ try {
         };
       },
     );
+    const resolved = resolveStorePrice({
+      price: Number(p.price),
+      salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+      originalPrice: p.originalPrice != null ? Number(p.originalPrice) : null,
+      compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
+      saleBadgeText: (p.saleBadgeText as string | null | undefined) ?? null,
+      onSale: Boolean(p.onSale),
+    });
     product = {
       id: p.id,
       name: p.name,
       slug: p.slug,
       description: p.description ?? null,
-      price: p.price,
+      price: resolved.price,
       currency: p.currency,
       image,
       images: images.length > 0 ? images : image ? [image] : [],
@@ -137,6 +147,13 @@ try {
       urduVerseTransliteration: p.urduVerseTransliteration ?? null,
       categories: p.categories ?? [],
       sizeGuideUrl: (p.sizeGuideUrl as string | null | undefined) ?? null,
+      compareAtPrice: resolved.compareAtPrice,
+      saleType:
+        p.saleType === 'PERCENTAGE' || p.saleType === 'FIXED_AMOUNT' ? p.saleType : null,
+      saleDiscountValue:
+        p.saleDiscountValue != null && Number.isFinite(Number(p.saleDiscountValue))
+          ? Number(p.saleDiscountValue)
+          : null,
     };
   }
 } catch (err) {
@@ -298,11 +315,17 @@ const productJsonLd = {
       slug={product.slug}
       price={product.price}
       currency={product.currency}
+      compareAtPrice={product.compareAtPrice}
+      saleType={product.saleType}
+      saleDiscountValue={product.saleDiscountValue}
       image={product.image}
       images={product.images}
       thumbnails={product.thumbnails}
       variants={product.variants}
       inStock={product.inStock}
+      description={product.description}
+      urduVerse={product.urduVerse}
+      urduVerseTransliteration={product.urduVerseTransliteration}
       sizeGuideUrl={product.sizeGuideUrl}
     >
       {product.categories?.length ? (
@@ -314,38 +337,6 @@ const productJsonLd = {
       <h1 class="font-serif text-h2-editorial text-on-background mb-4">
         {product.name}
       </h1>
-
-      <p class="font-body-lg text-secondary mb-8">
-        {formatMoney(product.price, product.currency)}
-      </p>
-
-      {product.urduVerse && (
-        <div class="mb-8">
-          <AnimatedUrduVerse
-            client:load
-            verse={product.urduVerse}
-            transliteration={product.urduVerseTransliteration}
-          />
-        </div>
-      )}
-
-      {/*
-        NOTE: product description is currently plain text. When products migrate
-        to a TipTap rich-text editor (like categories), switch this to render
-        via `set:html` with the `aien-rich-text` class:
-
-          <div class="aien-rich-text font-body-md text-on-surface-variant"
-               set:html={product.description} />
-
-        Keep `productDescriptionPlain` (above) for meta description and JSON-LD.
-      */}
-      {product.description && (
-        <div class="border-t border-outline-variant pt-8 mb-2">
-          <p class="font-body-md text-on-surface-variant leading-relaxed">
-            {product.description}
-          </p>
-        </div>
-      )}
     </ProductDetailSection>
 
     <ProductReviews

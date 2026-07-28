@@ -20,6 +20,10 @@ import ColorSwatch from './ColorSwatch';
 import SizeGuideModal from './SizeGuideModal';
 import { colorAriaLabel, colorUiLabel, formatColorLabel, isHexColorString } from '../../lib/colorDisplay';
 import Tooltip from '../Tooltip';
+import {
+  resolveUnitSaleDisplay,
+  type StoreSaleType,
+} from '../../lib/computeStoreSalePrice';
 
 export type ProductVariant = {
   id: string;
@@ -42,7 +46,11 @@ interface Props {
   productId: string;
   name: string;
   slug: string;
+  /** Effective base product price (sale-aware). */
   price: number;
+  compareAtPrice?: number | null;
+  saleType?: StoreSaleType | null;
+  saleDiscountValue?: number | null;
   currency: string;
   image: string;
   variants: ProductVariant[];
@@ -52,6 +60,7 @@ interface Props {
   /** Optional editorial copy for the composition accordion. */
   composition?: string;
   shippingNote?: string;
+  description?: string | null;
   /** Resolved size guide image URL (product override → primary category). */
   sizeGuideUrl?: string | null;
 }
@@ -61,6 +70,9 @@ export default function AddToCart({
   name,
   slug,
   price,
+  compareAtPrice = null,
+  saleType = null,
+  saleDiscountValue = null,
   currency,
   image,
   variants,
@@ -68,6 +80,7 @@ export default function AddToCart({
   onVariantChange,
   composition,
   shippingNote,
+  description,
   sizeGuideUrl = null,
 }: Props) {
   const { addItem, openCart } = useCart();
@@ -111,8 +124,21 @@ export default function AddToCart({
     if (firstForColor) setSize(firstForColor.size || ONE_SIZE_LABEL);
   }, [selectedColor, selectedVariant, activeVariants]);
 
+  const sale = useMemo(
+    () =>
+      saleType && saleDiscountValue != null
+        ? { type: saleType, discountValue: saleDiscountValue }
+        : null,
+    [saleType, saleDiscountValue],
+  );
+
+  const { price: displayPrice, compareAtPrice: displayCompareAt } = useMemo(() => {
+    const catalogBase = compareAtPrice ?? price;
+    const listUnit = selectedVariant?.priceOverrideCents ?? catalogBase;
+    return resolveUnitSaleDisplay(listUnit, sale);
+  }, [selectedVariant?.priceOverrideCents, compareAtPrice, price, sale]);
+
   const isPurchasable = inStock && !!selectedVariant && selectedVariant.stockQuantity > 0;
-  const displayPrice = selectedVariant?.priceOverrideCents ?? price;
   const [added, setAdded] = useState(false);
 
   const handleAdd = () => {
@@ -124,6 +150,7 @@ export default function AddToCart({
       name,
       slug,
       price: displayPrice,
+      compareAtPrice: displayCompareAt,
       currency,
       image: selectedVariant.image || selectedVariant.images?.[0] || image,
       size: selectedVariant.size,
@@ -283,6 +310,22 @@ export default function AddToCart({
       </div>
 
       <div className="border-t border-outline-variant pt-6 space-y-2">
+        {description ? (
+          <details className="group">
+            <summary className="flex justify-between items-center cursor-pointer list-none py-2">
+              <span className="font-sans text-label-caps uppercase">Description</span>
+              <span
+                className="material-symbols-outlined group-open:rotate-180 transition-transform"
+                aria-hidden
+              >
+                expand_more
+              </span>
+            </summary>
+            <div className="pt-4 text-sm text-on-surface-variant leading-relaxed">
+              <p>{description}</p>
+            </div>
+          </details>
+        ) : null}
         <details className="group">
           <summary className="flex justify-between items-center cursor-pointer list-none py-2">
             <span className="font-sans text-label-caps uppercase">Composition &amp; Care</span>

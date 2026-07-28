@@ -17,6 +17,7 @@ import {
 } from '../config';
 import { getPublicSettings, type PublicSettings } from '../lib/settings';
 import { buildImageUrl, IMAGE_PRESETS } from '../lib/buildImageUrl';
+import { resolveStorePrice } from '../lib/resolveStorePrice';
 
 function absoluteMediaUrl(apiRoot: string, pathOrUrl: string | null | undefined): string | undefined {
   if (!pathOrUrl?.trim()) return undefined;
@@ -96,17 +97,19 @@ function mapProduct(p: Record<string, unknown>): Product {
   }));
   const variantImage = variants.find((v) => v.image)?.image ?? '';
   const img = (p.image as string) || variantImage;
-  const price = Number(p.price);
-  const salePrice = p.salePrice != null ? Number(p.salePrice) : null;
-  const originalPrice = p.originalPrice != null ? Number(p.originalPrice) : null;
-  const legacyCompareAt = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
-  const compareAt = originalPrice ?? (legacyCompareAt != null && !Number.isNaN(legacyCompareAt) ? legacyCompareAt : null);
-  const effectivePrice = salePrice ?? price;
+  const resolved = resolveStorePrice({
+    price: Number(p.price),
+    salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+    originalPrice: p.originalPrice != null ? Number(p.originalPrice) : null,
+    compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
+    saleBadgeText: (p.saleBadgeText as string | null) ?? null,
+    onSale: Boolean(p.onSale),
+  });
   return {
     id: String(p.id),
     slug: String(p.slug),
     name: String(p.name),
-    price: effectivePrice,
+    price: resolved.price,
     currency: String(p.currency ?? 'PKR'),
     image: buildImageUrl(img, IMAGE_PRESETS.productCard),
     variants,
@@ -115,8 +118,13 @@ function mapProduct(p: Record<string, unknown>): Product {
     urduVerseTransliteration: (p.urduVerseTransliteration as string | null) ?? null,
     description: (p.description as string | null) ?? null,
     sizes: (p.sizes as string[] | undefined) ?? undefined,
-    compareAtPrice: compareAt,
-    saleBadgeText: (p.saleBadgeText as string | null) ?? null,
+    compareAtPrice: resolved.compareAtPrice,
+    saleBadgeText: resolved.saleBadgeText,
+    saleType: p.saleType === 'PERCENTAGE' || p.saleType === 'FIXED_AMOUNT' ? p.saleType : null,
+    saleDiscountValue:
+      p.saleDiscountValue != null && Number.isFinite(Number(p.saleDiscountValue))
+        ? Number(p.saleDiscountValue)
+        : null,
     featured: !!p.featured,
   };
 }

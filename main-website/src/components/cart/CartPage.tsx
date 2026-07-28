@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCart, useCartStore, MAX_CART_QUANTITY } from '../../store/cartStore';
-import { formatMoney } from '../../lib/formatMoney';
+import ProductPrice from '../ProductPrice';
 import ColorSwatch from '../product/ColorSwatch';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
@@ -108,9 +108,17 @@ export default function CartPage() {
                       </span>
                     </p>
                   </div>
-                  <span className="font-body-lg text-on-background shrink-0">
-                    {formatMoney(item.price * item.quantity, item.currency)}
-                  </span>
+                  <ProductPrice
+                    amountCents={item.price * item.quantity}
+                    currency={item.currency}
+                    compareAtCents={
+                      item.compareAtPrice != null && item.compareAtPrice > item.price
+                        ? item.compareAtPrice * item.quantity
+                        : null
+                    }
+                    size="line"
+                    className="shrink-0"
+                  />
                 </div>
                 <div className="flex justify-between items-end gap-4 mt-6">
                   <div className="flex items-center gap-6 border border-outline-variant px-4 py-2">
@@ -166,9 +174,7 @@ export default function CartPage() {
           <div className="space-y-6 mb-12">
             <div className="flex justify-between items-center">
               <span className="font-sans text-label-caps text-on-surface-variant">SUBTOTAL</span>
-              <span className="font-body-md text-on-background">
-                {formatMoney(subtotal, currency)}
-              </span>
+              <ProductPrice amountCents={subtotal} currency={currency} size="line" accentOnSale={false} />
             </div>
             <div className="flex justify-between items-center">
               <span className="font-sans text-label-caps text-on-surface-variant">SHIPPING</span>
@@ -180,17 +186,18 @@ export default function CartPage() {
               <span className="font-sans text-label-caps text-on-surface-variant">
                 ESTIMATED TAX
               </span>
-              <span className="font-body-md text-on-background">
-                {formatMoney(estimatedTax, currency)}
-              </span>
+              <ProductPrice
+                amountCents={estimatedTax}
+                currency={currency}
+                size="line"
+                accentOnSale={false}
+              />
             </div>
           </div>
 
           <div className="border-t border-outline-variant pt-8 mb-12 flex justify-between items-baseline">
             <span className="font-sans text-label-caps text-on-background">TOTAL</span>
-            <span className="font-serif text-h2-editorial text-on-background tracking-tight leading-none">
-              {formatMoney(total, currency)}
-            </span>
+            <ProductPrice amountCents={total} currency={currency} size="total" accentOnSale={false} />
           </div>
 
           <a

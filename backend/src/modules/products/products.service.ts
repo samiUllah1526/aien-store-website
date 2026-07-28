@@ -788,6 +788,8 @@ export class ProductsService {
     saleBadgeText: string | null;
     saleEndsAt: string | null;
     saleCampaignId: string | null;
+    saleType: 'PERCENTAGE' | 'FIXED_AMOUNT' | null;
+    saleDiscountValue: number | null;
   } {
     if (!sale) {
       return {
@@ -797,6 +799,8 @@ export class ProductsService {
         saleBadgeText: null,
         saleEndsAt: null,
         saleCampaignId: null,
+        saleType: null,
+        saleDiscountValue: null,
       };
     }
     const salePriceCents = computeSalePrice(priceCents, sale);
@@ -808,6 +812,8 @@ export class ProductsService {
         sale.badgeText ?? `${sale.discountValue}% OFF`,
       saleEndsAt: sale.endsAt.toISOString(),
       saleCampaignId: sale.campaignId,
+      saleType: sale.type,
+      saleDiscountValue: sale.discountValue,
     };
   }
 

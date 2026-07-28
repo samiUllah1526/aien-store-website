@@ -19,6 +19,7 @@ import { useCart, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { api, profileApi, uploadPaymentProof } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import ProductPrice from '../ProductPrice';
 import { cartItemsToPixelFields, centsToValue, trackPixel } from '../../lib/pixel';
 import ColorSwatch from '../product/ColorSwatch';
 import { colorAriaLabel } from '../../lib/colorDisplay';
@@ -33,6 +34,8 @@ export interface QuoteLineItem {
   size?: string | null;
   quantity: number;
   unitCents: number;
+  /** Pre-sale unit price when a campaign applies. */
+  originalUnitCents?: number | null;
   lineTotalCents: number;
 }
 
@@ -833,9 +836,18 @@ export default function CheckoutForm() {
                               </span>
                             </p>
                           </div>
-                          <p className="font-sans text-body-md text-on-background shrink-0">
-                            {formatMoney(line.lineTotalCents, quote.currency)}
-                          </p>
+                          <ProductPrice
+                            amountCents={line.lineTotalCents}
+                            currency={quote.currency}
+                            compareAtCents={
+                              line.originalUnitCents != null &&
+                              line.originalUnitCents > line.unitCents
+                                ? line.originalUnitCents * line.quantity
+                                : null
+                            }
+                            size="line"
+                            className="shrink-0"
+                          />
                         </li>
                       );
                     })
@@ -870,9 +882,17 @@ export default function CheckoutForm() {
                             </span>
                           </p>
                         </div>
-                        <p className="font-sans text-body-md text-on-background shrink-0">
-                          {formatMoney(item.price * item.quantity, item.currency)}
-                        </p>
+                        <ProductPrice
+                          amountCents={item.price * item.quantity}
+                          currency={item.currency}
+                          compareAtCents={
+                            item.compareAtPrice != null && item.compareAtPrice > item.price
+                              ? item.compareAtPrice * item.quantity
+                              : null
+                          }
+                          size="line"
+                          className="shrink-0"
+                        />
                       </li>
                     ))}
               </ul>
@@ -944,9 +964,7 @@ export default function CheckoutForm() {
                   <span className="font-sans text-label-caps text-on-surface-variant">
                     SUBTOTAL
                   </span>
-                  <span className="font-sans text-body-md text-on-background">
-                    {formatMoney(subtotal, currency)}
-                  </span>
+                  <ProductPrice amountCents={subtotal} currency={currency} size="line" accentOnSale={false} />
                 </div>
 
                 {discountCents > 0 && (
@@ -954,7 +972,7 @@ export default function CheckoutForm() {
                     <span className="font-sans text-label-caps text-on-surface-variant">
                       DISCOUNT · {appliedVoucherCode}
                     </span>
-                    <span className="font-sans text-body-md text-secondary">
+                    <span className="font-sans text-base font-medium tabular-nums text-secondary">
                       −{formatMoney(discountCents, currency)}
                     </span>
                   </div>
@@ -969,9 +987,12 @@ export default function CheckoutForm() {
                       Free
                     </span>
                   ) : (
-                    <span className="font-sans text-body-md text-on-background">
-                      {formatMoney(shippingCents, currency)}
-                    </span>
+                    <ProductPrice
+                      amountCents={shippingCents}
+                      currency={currency}
+                      size="line"
+                      accentOnSale={false}
+                    />
                   )}
                 </div>
               </div>
@@ -980,9 +1001,7 @@ export default function CheckoutForm() {
                 <span className="font-sans text-label-caps text-on-background">
                   TOTAL
                 </span>
-                <span className="font-serif text-h2-editorial text-on-background tracking-tight leading-none">
-                  {formatMoney(total, currency)}
-                </span>
+                <ProductPrice amountCents={total} currency={currency} size="total" accentOnSale={false} />
               </div>
 
               {pricesUpdated && quote && (

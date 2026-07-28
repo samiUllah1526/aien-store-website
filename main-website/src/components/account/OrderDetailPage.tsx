@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { ordersApi, type OrderDto } from '../../lib/api';
 import { formatMoney } from '../../lib/formatMoney';
+import ProductPrice from '../ProductPrice';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -132,12 +133,22 @@ export default function OrderDetailPage({ orderId: propOrderId }: { orderId: str
                   {item.productName ?? 'Product'}
                 </p>
                 <p className="text-sm text-charcoal/70 dark:text-cream/70">
-                  Qty {item.quantity} × {formatMoney(item.unitCents, order.currency)}
+                  Qty {item.quantity} ×{' '}
+                  <ProductPrice
+                    amountCents={item.unitCents}
+                    currency={order.currency}
+                    size="compact"
+                    accentOnSale={false}
+                  />
                 </p>
               </div>
-              <p className="shrink-0 font-medium text-ink dark:text-cream">
-                {formatMoney(item.quantity * item.unitCents, order.currency)}
-              </p>
+              <ProductPrice
+                amountCents={item.quantity * item.unitCents}
+                currency={order.currency}
+                size="line"
+                className="shrink-0"
+                accentOnSale={false}
+              />
             </li>
           ))}
         </ul>
@@ -150,23 +161,23 @@ export default function OrderDetailPage({ orderId: propOrderId }: { orderId: str
               <>
                 <div className="flex justify-between text-charcoal dark:text-cream/90">
                   <span>Subtotal</span>
-                  <span>{formatMoney(subtotal, order.currency)}</span>
+                  <ProductPrice amountCents={subtotal} currency={order.currency} size="line" accentOnSale={false} />
                 </div>
                 {shipping > 0 && (
                   <div className="flex justify-between text-charcoal dark:text-cream/90">
                     <span>Shipping</span>
-                    <span>{formatMoney(shipping, order.currency)}</span>
+                    <ProductPrice amountCents={shipping} currency={order.currency} size="line" accentOnSale={false} />
                   </div>
                 )}
                 {discount > 0 && (
                   <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                     <span>Discount{order.voucherCode ? ` (${order.voucherCode})` : ''}</span>
-                    <span>-{formatMoney(discount, order.currency)}</span>
+                    <span className="font-medium tabular-nums">-{formatMoney(discount, order.currency)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-semibold text-ink dark:text-cream pt-1">
+                <div className="flex justify-between items-baseline font-semibold text-ink dark:text-cream pt-1">
                   <span>Total</span>
-                  <span>{formatMoney(order.totalCents, order.currency)}</span>
+                  <ProductPrice amountCents={order.totalCents} currency={order.currency} size="line" accentOnSale={false} />
                 </div>
               </>
             );
