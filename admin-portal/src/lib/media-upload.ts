@@ -22,11 +22,22 @@ export interface SignedUploadParams {
   };
 }
 
-const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+];
 
 export function validateFile(file: File, validation: SignedUploadParams['validation']): string | null {
-  if (!ALLOWED_MIMES.includes(file.type)) {
-    return 'Invalid file type. Use JPEG, PNG, WebP or GIF.';
+  const allowed = validation.allowedMimes?.length
+    ? (validation.allowedMimes as readonly string[])
+    : ALLOWED_MIMES;
+  if (!allowed.includes(file.type)) {
+    return 'Invalid file type. Use JPEG, PNG, WebP, GIF, MP4, WebM or MOV.';
   }
   if (file.size > validation.maxSizeBytes) {
     return `File must be under ${Math.round(validation.maxSizeBytes / 1024 / 1024)}MB.`;
@@ -34,10 +45,17 @@ export function validateFile(file: File, validation: SignedUploadParams['validat
   return null;
 }
 
-async function getSignedParams(folder: 'products' | 'payment-proofs'): Promise<SignedUploadParams> {
+async function getSignedParams(folder: 'products' | 'payment-proofs' | 'review-photos' | 'review-videos'): Promise<SignedUploadParams> {
   const base = getApiBaseUrl().replace(/\/$/, '');
-  const path = folder === 'payment-proofs' ? '/media/upload-params-payment-proof' : '/media/upload-params';
-  const url = `${base}${path}${folder === 'products' ? '?folder=products' : ''}`;
+  let url: string;
+  if (folder === 'payment-proofs') {
+    url = `${base}/media/upload-params-payment-proof`;
+  } else if (folder === 'review-photos' || folder === 'review-videos') {
+    const type = folder === 'review-videos' ? 'video' : 'image';
+    url = `${base}/review-media/upload-params?type=${type}`;
+  } else {
+    url = `${base}/media/upload-params?folder=products`;
+  }
   const token = getAuthToken();
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -49,11 +67,14 @@ async function getSignedParams(folder: 'products' | 'payment-proofs'): Promise<S
 }
 
 async function registerUpload(
-  folder: 'products' | 'payment-proofs',
+  folder: 'products' | 'payment-proofs' | 'review-photos' | 'review-videos',
   payload: { provider: string; providerResponse: Record<string, unknown>; filename?: string },
 ): Promise<{ id: string }> {
   const base = getApiBaseUrl().replace(/\/$/, '');
-  const path = folder === 'payment-proofs' ? '/media/register-payment-proof' : '/media/register';
+  let path: string;
+  if (folder === 'payment-proofs') path = '/media/register-payment-proof';
+  else if (folder === 'review-photos' || folder === 'review-videos') path = '/review-media/register';
+  else path = '/media/register';
   const url = `${base}${path}`;
   const token = getAuthToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -87,7 +108,7 @@ export interface UploadOptions {
  */
 export async function uploadMedia(
   file: File,
-  folder: 'products' | 'payment-proofs',
+  folder: 'products' | 'payment-proofs' | 'review-photos' | 'review-videos',
   options?: UploadOptions,
 ): Promise<UploadResult> {
   incrementLoading();
@@ -149,11 +170,45 @@ export async function uploadMedia(
 }
 
 /** Check if remote upload is available. */
-export async function isRemoteUploadAvailable(folder: 'products' | 'payment-proofs'): Promise<boolean> {
+export async function isRemoteUploadAvailable(
+  folder: 'products' | 'payment-proofs' | 'review-photos' | 'review-videos',
+): Promise<boolean> {
   try {
     await getSignedParams(folder);
     return true;
   } catch {
     return false;
+  }
+}
+
+export const MAX_REVIEW_MEDIA = 5;
+
+export async function uploadReviewMediaAdmin(file: File): Promise<UploadResult & { kind: 'image' | 'video'; mimeType: string }> {
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(file.name);
+  const folder = isVideo ? 'review-videos' : 'review-photos';
+  try {
+    const result = await uploadMedia(file, folder);
+    return { ...result, kind: isVideo ? 'video' : 'image', mimeType: file.type };
+  } catch {
+    // Legacy fallback
+    const base = getApiBaseUrl().replace(/\/$/, '');
+    const form = new FormData();
+    form.append('file', file);
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${base}/review-media/upload`, { method: 'POST', headers, body: form });
+    const json = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      data?: { id: string };
+      message?: string;
+    };
+    if (!res.ok || !json.data?.id) throw new Error(json.message || 'Upload failed');
+    return {
+      id: json.data.id,
+      deliveryUrl: URL.createObjectURL(file),
+      kind: isVideo ? 'video' : 'image',
+      mimeType: file.type,
+    };
   }
 }

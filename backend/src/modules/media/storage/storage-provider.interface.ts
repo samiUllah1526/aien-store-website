@@ -5,7 +5,13 @@
 
 export type StorageProviderType = 'local' | 'cloudinary' | 's3';
 
-export type UploadFolder = 'products' | 'payment-proofs';
+export type UploadFolder =
+  | 'products'
+  | 'payment-proofs'
+  | 'review-photos'
+  | 'review-videos';
+
+export type UploadResourceType = 'image' | 'video';
 
 export interface SignedUploadParams {
   /** Provider identifier so frontend can handle response accordingly. */
@@ -14,6 +20,8 @@ export interface SignedUploadParams {
   uploadUrl: string;
   /** Params to include in the upload request (provider-specific shape). */
   params: Record<string, string>;
+  /** image | video — tells the client which Cloudinary resource endpoint was signed. */
+  resourceType: UploadResourceType;
   /** Validation rules for client-side pre-check. */
   validation: {
     allowedMimes: readonly string[];
@@ -44,4 +52,25 @@ export interface IStorageProvider {
   getSignedUploadParams(folder: UploadFolder): SignedUploadParams;
   /** Parse provider response into normalized RegisterUploadPayload. */
   parseUploadResponse(response: unknown): RegisterUploadPayload | null;
+}
+
+export const REVIEW_IMAGE_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
+
+export const REVIEW_VIDEO_MIMES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+] as const;
+
+export const REVIEW_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const REVIEW_VIDEO_MAX_BYTES = 25 * 1024 * 1024;
+export const MAX_REVIEW_MEDIA = 5;
+
+export function isReviewVideoFolder(folder: UploadFolder): boolean {
+  return folder === 'review-videos';
 }

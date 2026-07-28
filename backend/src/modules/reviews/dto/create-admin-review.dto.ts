@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -11,6 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MAX_REVIEW_MEDIA } from '../../media/storage/storage-provider.interface';
 
 export class CreateAdminReviewDto {
   @IsUUID()
@@ -57,4 +60,11 @@ export class CreateAdminReviewDto {
   @IsOptional()
   @IsIn(['APPROVED', 'PENDING', 'REJECTED'])
   status?: 'APPROVED' | 'PENDING' | 'REJECTED';
+
+  /** Pre-uploaded review media IDs (images/videos), max 5. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_REVIEW_MEDIA)
+  @IsUUID('4', { each: true })
+  mediaIds?: string[];
 }

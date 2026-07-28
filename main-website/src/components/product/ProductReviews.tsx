@@ -1,25 +1,35 @@
 /**
- * Product reviews: public list + aggregate rating, with a verified-buyer-only
- * submission form. Reviews can only be written by customers who have a
- * fulfilled order containing this product (enforced server-side).
+ * Product reviews: public list + aggregate rating, verified-buyer form with
+ * optional photos/videos (Cloudinary upload → mediaIds on create).
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { reviewsApi, type ReviewDto, type ReviewEligibility, type ReviewSummary } from '../../lib/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  reviewsApi,
+  type ReviewDto,
+  type ReviewEligibility,
+  type ReviewMediaDto,
+  type ReviewSummary,
+} from '../../lib/api';
+import { MAX_REVIEW_MEDIA, uploadReviewMedia } from '../../lib/media-upload';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../store/toastStore';
+import MediaLightbox, { type LightboxMediaItem } from '../MediaLightbox';
 
 const DEFAULT_PAGE_SIZE = 10;
+const ACCEPT =
+  'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov';
 
 interface Props {
   productId: string;
   productName: string;
-  /** Reviews rendered at build time (first page). Present in crawlable HTML. */
   initialReviews?: ReviewDto[];
   initialSummary?: ReviewSummary;
   initialTotal?: number;
   pageSize?: number;
 }
+
+type PendingMedia = ReviewMediaDto & { uploading?: boolean };
 
 function Stars({ value, size = 'md' }: { value: number; size?: 'sm' | 'md' }) {
   const px = size === 'sm' ? 'text-base' : 'text-xl';
@@ -46,6 +56,40 @@ function formatDate(iso: string): string {
   }
 }
 
+function ReviewMediaThumbs({
+  media,
+  onOpen,
+}: {
+  media: ReviewMediaDto[];
+  onOpen: (index: number) => void;
+}) {
+  if (!media.length) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {media.map((m, i) => (
+        <button
+          key={m.id}
+          type="button"
+          onClick={() => onOpen(i)}
+          className="relative h-20 w-20 overflow-hidden border border-outline-variant bg-surface-container-low focus-ring"
+          aria-label={m.kind === 'video' ? 'Play video' : 'View photo'}
+        >
+          {m.kind === 'video' ? (
+            <>
+              <video src={m.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-white text-lg" aria-hidden>
+                ▶
+              </span>
+            </>
+          ) : (
+            <img src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ProductReviews({
   productId,
   productName,
@@ -70,10 +114,16 @@ export default function ProductReviews({
   const [hoverRating, setHoverRating] = useState(0);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxItems, setLightboxItems] = useState<LightboxMediaItem[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
-    // When the page provided a build-time list, hydrate over it — no refetch.
     if (hasInitial) return;
     let cancelled = false;
     setLoading(true);
@@ -124,6 +174,48 @@ export default function ProductReviews({
     }
   };
 
+  const openLightbox = (media: ReviewMediaDto[], index: number) => {
+    setLightboxItems(media.map((m) => ({ id: m.id, url: m.url, mimeType: m.mimeType, kind: m.kind })));
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const remaining = MAX_REVIEW_MEDIA - pendingMedia.length;
+    if (remaining <= 0) {
+      showToast(`You can attach up to ${MAX_REVIEW_MEDIA} photos/videos.`, 'error');
+      return;
+    }
+    const selected = Array.from(files).slice(0, remaining);
+    setUploading(true);
+    try {
+      for (const file of selected) {
+        const uploaded = await uploadReviewMedia(file);
+        setPendingMedia((prev) =>
+          prev.length >= MAX_REVIEW_MEDIA ? prev : [...prev, uploaded],
+        );
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removePending = (id: string) => {
+    setPendingMedia((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const resetForm = () => {
+    setShowForm(false);
+    setRating(0);
+    setTitle('');
+    setBody('');
+    setPendingMedia([]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating < 1) {
@@ -134,12 +226,17 @@ export default function ProductReviews({
       showToast('Please write a few words about the product.', 'error');
       return;
     }
+    if (uploading) {
+      showToast('Please wait for uploads to finish.', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const created = await reviewsApi.create(productId, {
         rating,
         title: title.trim() || undefined,
         body: body.trim(),
+        mediaIds: pendingMedia.map((m) => m.id),
       });
       if (created) setReviews((prev) => [created, ...prev]);
       setTotal((t) => t + 1);
@@ -151,10 +248,7 @@ export default function ProductReviews({
         return { count, average, distribution };
       });
       setEligibility((prev) => (prev ? { ...prev, canReview: false, alreadyReviewed: true } : prev));
-      setShowForm(false);
-      setRating(0);
-      setTitle('');
-      setBody('');
+      resetForm();
       showToast('Thanks! Your review has been published.', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not submit your review.', 'error');
@@ -181,7 +275,10 @@ export default function ProductReviews({
       return (
         <p className="font-body-md text-on-surface-variant">
           Only verified buyers can review this product.{' '}
-          <a href={`/login?returnTo=${returnTo}`} className="underline underline-offset-4 text-on-background hover:text-primary">
+          <a
+            href={`/login?returnTo=${returnTo}`}
+            className="underline underline-offset-4 text-on-background hover:text-primary"
+          >
             Log in
           </a>{' '}
           to leave a review.
@@ -265,17 +362,64 @@ export default function ProductReviews({
             className="w-full border border-outline-variant bg-transparent px-4 py-3 font-body-md text-on-background focus-ring resize-y"
           />
         </div>
+
+        <div>
+          <span className="font-sans text-label-caps uppercase block mb-2">
+            Photos &amp; videos{' '}
+            <span className="text-on-surface-variant normal-case">
+              (optional, up to {MAX_REVIEW_MEDIA})
+            </span>
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPT}
+            multiple
+            className="sr-only"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+          <button
+            type="button"
+            disabled={uploading || pendingMedia.length >= MAX_REVIEW_MEDIA}
+            onClick={() => fileInputRef.current?.click()}
+            className="border border-outline-variant px-4 py-3 font-sans text-button uppercase tracking-widest text-on-background hover:border-primary transition-colors focus-ring disabled:opacity-50"
+          >
+            {uploading ? 'Uploading…' : 'Add photo or video'}
+          </button>
+          {pendingMedia.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {pendingMedia.map((m) => (
+                <div key={m.id} className="relative h-20 w-20 border border-outline-variant">
+                  {m.kind === 'video' ? (
+                    <video src={m.url} muted className="h-full w-full object-cover" />
+                  ) : (
+                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePending(m.id)}
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-on-primary text-xs"
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || uploading}
             className="bg-primary text-on-primary font-sans text-button uppercase tracking-widest px-8 py-4 hover:bg-secondary transition-colors focus-ring disabled:opacity-50"
           >
             {submitting ? 'Submitting…' : 'Submit review'}
           </button>
           <button
             type="button"
-            onClick={() => setShowForm(false)}
+            onClick={resetForm}
             className="font-sans text-button uppercase tracking-widest px-6 py-4 text-on-surface-variant hover:text-on-background transition-colors focus-ring"
           >
             Cancel
@@ -334,9 +478,7 @@ export default function ProductReviews({
       {loading ? (
         <p className="font-body-md text-on-surface-variant">Loading reviews…</p>
       ) : reviews.length === 0 ? (
-        <p className="font-body-md text-on-surface-variant">
-          Be the first to review {productName}.
-        </p>
+        <p className="font-body-md text-on-surface-variant">Be the first to review {productName}.</p>
       ) : (
         <ul className="space-y-10">
           {reviews.map((r) => (
@@ -353,6 +495,10 @@ export default function ProductReviews({
               <p className="font-body-md text-on-surface-variant leading-relaxed whitespace-pre-line">
                 {r.body}
               </p>
+              <ReviewMediaThumbs
+                media={r.media ?? []}
+                onOpen={(i) => openLightbox(r.media ?? [], i)}
+              />
               <p className="mt-3 flex items-center gap-2 font-sans text-label-caps uppercase text-on-surface-variant">
                 <span>{r.authorName}</span>
                 {r.isVerified && (
@@ -385,6 +531,14 @@ export default function ProductReviews({
           Load more reviews
         </button>
       )}
+
+      <MediaLightbox
+        items={lightboxItems}
+        index={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        onIndexChange={setLightboxIndex}
+      />
     </section>
   );
 }

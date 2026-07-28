@@ -4,6 +4,8 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HomePage, { type LandingCategory, type Product } from '../components/home/HomePage';
+import type { FeaturedReview } from '../components/home/FeaturedReviewsCarousel';
+import type { SpotlightItem } from '../components/home/CustomerSpotlightCarousel';
 import {
   apiBaseUrl,
   brandName,
@@ -121,9 +123,11 @@ function mapProduct(p: Record<string, unknown>): Product {
 
 async function loadHomeCatalog() {
   try {
-    const [allRes, landingRes] = await Promise.all([
+    const [allRes, landingRes, featuredReviewsRes, spotlightRes] = await Promise.all([
       fetch(`${baseUrl}/products`),
       fetch(`${baseUrl}/categories/landing`),
+      fetch(`${baseUrl}/reviews/featured?limit=12`),
+      fetch(`${baseUrl}/spotlight?limit=24`),
     ]);
 
     const allJson = await allRes.json().catch(() => ({}));
@@ -134,6 +138,42 @@ async function loadHomeCatalog() {
     const landingCategories: LandingCategory[] = landingRes.ok && landingJson?.success && Array.isArray(landingJson.data)
       ? landingJson.data
       : [];
+
+    const featuredJson = await featuredReviewsRes.json().catch(() => ({}));
+    const featuredReviews: FeaturedReview[] =
+      featuredReviewsRes.ok && featuredJson?.success && Array.isArray(featuredJson.data)
+        ? featuredJson.data.map((r: Record<string, unknown>): FeaturedReview => ({
+            id: String(r.id ?? ''),
+            productId: String(r.productId ?? ''),
+            productName: (r.productName as string | null) ?? null,
+            productSlug: (r.productSlug as string | null) ?? null,
+            authorName: String(r.authorName ?? 'Customer'),
+            rating: Number(r.rating ?? 0),
+            title: (r.title as string | null) ?? null,
+            body: String(r.body ?? ''),
+            isVerified: !!r.isVerified,
+            createdAt: String(r.createdAt ?? ''),
+          }))
+        : [];
+
+    const spotlightJson = await spotlightRes.json().catch(() => ({}));
+    const spotlightItems: SpotlightItem[] =
+      spotlightRes.ok && spotlightJson?.success && Array.isArray(spotlightJson.data)
+        ? spotlightJson.data.map((row: Record<string, unknown>): SpotlightItem => {
+            const media = (row.media as Record<string, unknown>) ?? {};
+            return {
+              id: String(row.id ?? ''),
+              caption: (row.caption as string | null) ?? null,
+              autoplay: row.autoplay !== false,
+              media: {
+                id: String(media.id ?? ''),
+                url: String(media.url ?? ''),
+                mimeType: String(media.mimeType ?? 'image/jpeg'),
+                kind: media.kind === 'video' ? 'video' : 'image',
+              },
+            };
+          })
+        : [];
 
     const productsBySlug: Record<string, Product[]> = {};
     if (landingCategories.length > 0) {
@@ -150,12 +190,14 @@ async function loadHomeCatalog() {
       }
     }
 
-    return { shopAll, landingCategories, productsBySlug };
+    return { shopAll, landingCategories, productsBySlug, featuredReviews, spotlightItems };
   } catch {
     return {
       shopAll: [] as Product[],
       landingCategories: [] as LandingCategory[],
       productsBySlug: {} as Record<string, Product[]>,
+      featuredReviews: [] as FeaturedReview[],
+      spotlightItems: [] as SpotlightItem[],
     };
   }
 }
@@ -163,7 +205,7 @@ async function loadHomeCatalog() {
 const settings = await getPublicSettings();
 const heroSlidesFromApi = settings.hero?.slides?.length ? settings.hero.slides : [];
 const heroSlidesToUse = heroSlidesFromApi.length > 0 ? heroSlidesFromApi : heroSlides;
-const { shopAll, landingCategories, productsBySlug } = await loadHomeCatalog();
+const { shopAll, landingCategories, productsBySlug, featuredReviews, spotlightItems } = await loadHomeCatalog();
 
 const apiRoot = apiBaseUrl.replace(/\/$/, '');
 const clothingStoreJsonLd = buildHomepageStoreJsonLd(settings, apiRoot);
@@ -178,5 +220,8 @@ const clothingStoreJsonLd = buildHomepageStoreJsonLd(settings, apiRoot);
     shopAll={shopAll}
     landingCategories={landingCategories}
     productsBySlug={productsBySlug}
+    featuredReviews={featuredReviews}
+    spotlightItems={spotlightItems}
+    socialProof={settings.socialProof}
   />
 </BaseLayout>

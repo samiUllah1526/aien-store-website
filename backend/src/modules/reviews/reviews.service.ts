@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CreateAdminReviewDto } from './dto/create-admin-review.dto';
 import { ReviewQueryDto } from './dto/review-query.dto';
+import { MAX_REVIEW_MEDIA } from '../media/storage/storage-provider.interface';
 
 /** Order statuses that count as a completed (verified) purchase. */
 const FULFILLED_STATUSES: OrderStatus[] = [
@@ -23,8 +24,58 @@ export interface ReviewSummary {
   distribution: Record<1 | 2 | 3 | 4 | 5, number>;
 }
 
-type ReviewRow = Prisma.ProductReviewGetPayload<{
-  include: { user: { select: { name: true; firstName: true } } };
+export interface ReviewMediaDto {
+  id: string;
+  url: string;
+  mimeType: string;
+  kind: 'image' | 'video';
+}
+
+const reviewMediaInclude = {
+  reviewMedia: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: {
+      media: {
+        select: {
+          id: true,
+          path: true,
+          deliveryUrl: true,
+          mimeType: true,
+        },
+      },
+    },
+  },
+};
+
+type ReviewMediaRow = {
+  media: {
+    id: string;
+    path: string;
+    deliveryUrl: string | null;
+    mimeType: string;
+  };
+};
+
+type PublicReviewRow = Prisma.ProductReviewGetPayload<{
+  include: {
+    user: { select: { name: true; firstName: true } };
+    reviewMedia: typeof reviewMediaInclude.reviewMedia;
+  };
+}>;
+
+type FeaturedReviewRow = Prisma.ProductReviewGetPayload<{
+  include: {
+    product: { select: { name: true; slug: true } };
+    user: { select: { name: true; firstName: true } };
+    reviewMedia: typeof reviewMediaInclude.reviewMedia;
+  };
+}>;
+
+type AdminReviewRow = Prisma.ProductReviewGetPayload<{
+  include: {
+    product: { select: { name: true; slug: true } };
+    reviewMedia: typeof reviewMediaInclude.reviewMedia;
+  };
 }>;
 
 @Injectable()
@@ -35,7 +86,6 @@ export class ReviewsService {
   // Public storefront
   // ---------------------------------------------------------------------------
 
-  /** Approved reviews for a product (public), newest first, paginated. */
   async listForProduct(
     productId: string,
     page = 1,
@@ -53,7 +103,10 @@ export class ReviewsService {
     const [rows, total, summary] = await Promise.all([
       this.prisma.productReview.findMany({
         where,
-        include: { user: { select: { name: true, firstName: true } } },
+        include: {
+          user: { select: { name: true, firstName: true } },
+          ...reviewMediaInclude,
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -64,7 +117,27 @@ export class ReviewsService {
     return { data: rows.map((r) => this.toPublicDto(r)), total, summary };
   }
 
-  /** Aggregate rating for a product (approved reviews only). */
+  /** Approved reviews marked for the landing-page testimonials carousel. */
+  async listFeaturedForHomepage(
+    limit = 12,
+  ): Promise<ReturnType<ReviewsService['toFeaturedDto']>[]> {
+    const take = Math.min(20, Math.max(1, limit));
+    const rows = await this.prisma.productReview.findMany({
+      where: {
+        featuredOnHomepage: true,
+        status: ReviewStatus.APPROVED,
+      },
+      include: {
+        product: { select: { name: true, slug: true } },
+        user: { select: { name: true, firstName: true } },
+        ...reviewMediaInclude,
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+    return rows.map((r) => this.toFeaturedDto(r));
+  }
+
   async getSummary(productId: string): Promise<ReviewSummary> {
     const grouped = await this.prisma.productReview.groupBy({
       by: ['rating'],
@@ -91,11 +164,6 @@ export class ReviewsService {
     return { count, average, distribution };
   }
 
-  /**
-   * Whether the given authenticated user may review this product. Requires a
-   * fulfilled order (SHIPPED/DELIVERED) containing the product, matched by user
-   * id or the user's email, and that they have not already reviewed it.
-   */
   async getEligibility(
     productId: string,
     userId: string,
@@ -121,7 +189,6 @@ export class ReviewsService {
     };
   }
 
-  /** Create a verified review. Rejects non-purchasers and duplicate reviews. */
   async create(
     productId: string,
     author: { userId: string; email?: string; name?: string },
@@ -152,36 +219,42 @@ export class ReviewsService {
       );
     }
 
+    const mediaIds = this.normalizeMediaIds(dto.mediaIds);
+    await this.validateMediaIds(mediaIds);
+
     const authorName = this.resolveAuthorName(author.name, author.email);
-    const created = await this.prisma.productReview.create({
-      data: {
-        productId,
-        userId: author.userId,
-        orderId,
-        authorName,
-        authorEmail: author.email ?? null,
-        rating: dto.rating,
-        title: dto.title?.trim() || null,
-        body: dto.body.trim(),
-        status: ReviewStatus.APPROVED,
-        source: ReviewSource.CUSTOMER,
-        isVerified: true,
-      },
-      include: { user: { select: { name: true, firstName: true } } },
+    const created = await this.prisma.$transaction(async (tx) => {
+      const review = await tx.productReview.create({
+        data: {
+          productId,
+          userId: author.userId,
+          orderId,
+          authorName,
+          authorEmail: author.email ?? null,
+          rating: dto.rating,
+          title: dto.title?.trim() || null,
+          body: dto.body.trim(),
+          status: ReviewStatus.APPROVED,
+          source: ReviewSource.CUSTOMER,
+          isVerified: true,
+        },
+      });
+      await this.attachMedia(tx, review.id, mediaIds);
+      return tx.productReview.findUniqueOrThrow({
+        where: { id: review.id },
+        include: {
+          user: { select: { name: true, firstName: true } },
+          ...reviewMediaInclude,
+        },
+      });
     });
     return this.toPublicDto(created);
   }
 
   // ---------------------------------------------------------------------------
-  // Admin authoring (off-platform feedback) + moderation
+  // Admin authoring + moderation
   // ---------------------------------------------------------------------------
 
-  /**
-   * Create a review from the admin portal (e.g. genuine feedback collected over
-   * WhatsApp/Instagram/in person). `isVerified` is admin-controlled and should
-   * only be set when the purchase genuinely happened. Optionally link a real
-   * order for provenance.
-   */
   async adminCreate(
     dto: CreateAdminReviewDto,
     adminUserId: string,
@@ -194,10 +267,12 @@ export class ReviewsService {
       throw new NotFoundException(`Product ${dto.productId} not found`);
     }
 
-    // If an order is linked, validate it actually contains this product.
     if (dto.orderId) {
       const order = await this.prisma.order.findFirst({
-        where: { id: dto.orderId, items: { some: { productId: dto.productId } } },
+        where: {
+          id: dto.orderId,
+          items: { some: { productId: dto.productId } },
+        },
         select: { id: true },
       });
       if (!order) {
@@ -216,23 +291,35 @@ export class ReviewsService {
       createdAt = d;
     }
 
-    const row = await this.prisma.productReview.create({
-      data: {
-        productId: dto.productId,
-        userId: null,
-        orderId: dto.orderId ?? null,
-        authorName: dto.authorName.trim(),
-        authorEmail: dto.authorEmail?.trim() || null,
-        rating: dto.rating,
-        title: dto.title?.trim() || null,
-        body: dto.body.trim(),
-        status: (dto.status as ReviewStatus) ?? ReviewStatus.APPROVED,
-        source: ReviewSource.ADMIN,
-        createdByUserId: adminUserId,
-        isVerified: dto.isVerified ?? false,
-        ...(createdAt ? { createdAt } : {}),
-      },
-      include: { product: { select: { name: true, slug: true } } },
+    const mediaIds = this.normalizeMediaIds(dto.mediaIds);
+    await this.validateMediaIds(mediaIds);
+
+    const row = await this.prisma.$transaction(async (tx) => {
+      const review = await tx.productReview.create({
+        data: {
+          productId: dto.productId,
+          userId: null,
+          orderId: dto.orderId ?? null,
+          authorName: dto.authorName.trim(),
+          authorEmail: dto.authorEmail?.trim() || null,
+          rating: dto.rating,
+          title: dto.title?.trim() || null,
+          body: dto.body.trim(),
+          status: (dto.status as ReviewStatus) ?? ReviewStatus.APPROVED,
+          source: ReviewSource.ADMIN,
+          createdByUserId: adminUserId,
+          isVerified: dto.isVerified ?? false,
+          ...(createdAt ? { createdAt } : {}),
+        },
+      });
+      await this.attachMedia(tx, review.id, mediaIds);
+      return tx.productReview.findUniqueOrThrow({
+        where: { id: review.id },
+        include: {
+          product: { select: { name: true, slug: true } },
+          ...reviewMediaInclude,
+        },
+      });
     });
     return this.toAdminDto(row);
   }
@@ -246,6 +333,7 @@ export class ReviewsService {
       search,
       productId,
       status,
+      featuredOnHomepage,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -253,6 +341,8 @@ export class ReviewsService {
     const where: Prisma.ProductReviewWhereInput = {};
     if (productId) where.productId = productId;
     if (status) where.status = status as ReviewStatus;
+    if (featuredOnHomepage === 'true') where.featuredOnHomepage = true;
+    if (featuredOnHomepage === 'false') where.featuredOnHomepage = false;
     if (search?.trim()) {
       const s = search.trim();
       where.OR = [
@@ -265,7 +355,10 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       this.prisma.productReview.findMany({
         where,
-        include: { product: { select: { name: true, slug: true } } },
+        include: {
+          product: { select: { name: true, slug: true } },
+          ...reviewMediaInclude,
+        },
         orderBy: { [sortBy]: sortOrder },
         skip,
         take: limit,
@@ -278,7 +371,10 @@ export class ReviewsService {
   async findOne(id: string): Promise<AdminReviewDto> {
     const row = await this.prisma.productReview.findUnique({
       where: { id },
-      include: { product: { select: { name: true, slug: true } } },
+      include: {
+        product: { select: { name: true, slug: true } },
+        ...reviewMediaInclude,
+      },
     });
     if (!row) throw new NotFoundException(`Review ${id} not found`);
     return this.toAdminDto(row);
@@ -289,7 +385,26 @@ export class ReviewsService {
     const row = await this.prisma.productReview.update({
       where: { id },
       data: { status },
-      include: { product: { select: { name: true, slug: true } } },
+      include: {
+        product: { select: { name: true, slug: true } },
+        ...reviewMediaInclude,
+      },
+    });
+    return this.toAdminDto(row);
+  }
+
+  async setFeaturedOnHomepage(
+    id: string,
+    featuredOnHomepage: boolean,
+  ): Promise<AdminReviewDto> {
+    await this.ensureExists(id);
+    const row = await this.prisma.productReview.update({
+      where: { id },
+      data: { featuredOnHomepage },
+      include: {
+        product: { select: { name: true, slug: true } },
+        ...reviewMediaInclude,
+      },
     });
     return this.toAdminDto(row);
   }
@@ -303,7 +418,10 @@ export class ReviewsService {
         adminReply: trimmed || null,
         adminReplyAt: trimmed ? new Date() : null,
       },
-      include: { product: { select: { name: true, slug: true } } },
+      include: {
+        product: { select: { name: true, slug: true } },
+        ...reviewMediaInclude,
+      },
     });
     return this.toAdminDto(row);
   }
@@ -325,7 +443,52 @@ export class ReviewsService {
     if (!row) throw new NotFoundException(`Review ${id} not found`);
   }
 
-  /** Returns the id of a fulfilled order for this user containing the product, or null. */
+  private normalizeMediaIds(mediaIds?: string[]): string[] {
+    if (!mediaIds?.length) return [];
+    const unique = [...new Set(mediaIds)];
+    if (unique.length > MAX_REVIEW_MEDIA) {
+      throw new BadRequestException(
+        `A review can include at most ${MAX_REVIEW_MEDIA} photos/videos.`,
+      );
+    }
+    return unique;
+  }
+
+  private async validateMediaIds(mediaIds: string[]): Promise<void> {
+    if (!mediaIds.length) return;
+    const found = await this.prisma.media.findMany({
+      where: {
+        id: { in: mediaIds },
+        source: 'review',
+        uploadError: { equals: Prisma.DbNull },
+      },
+      select: { id: true },
+    });
+    const foundSet = new Set(found.map((m) => m.id));
+    const missing = mediaIds.filter((id) => !foundSet.has(id));
+    if (missing.length) {
+      throw new BadRequestException(
+        `Review media not found: ${missing.join(', ')}`,
+      );
+    }
+  }
+
+  private async attachMedia(
+    tx: Prisma.TransactionClient,
+    reviewId: string,
+    mediaIds: string[],
+  ): Promise<void> {
+    if (!mediaIds.length) return;
+    await tx.productReviewMedia.createMany({
+      data: mediaIds.map((mediaId, index) => ({
+        reviewId,
+        mediaId,
+        sortOrder: index,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
   private async findVerifiedOrderId(
     productId: string,
     userId: string,
@@ -356,7 +519,29 @@ export class ReviewsService {
     return local || 'Verified buyer';
   }
 
-  private toPublicDto(row: ReviewRow) {
+  private mediaUrl(media: {
+    path: string;
+    deliveryUrl: string | null;
+  }): string {
+    if (media.deliveryUrl) return media.deliveryUrl;
+    if (media.path.startsWith('http')) return media.path;
+    return `/media/file/${media.path}`;
+  }
+
+  private mediaKind(mimeType: string): 'image' | 'video' {
+    return mimeType.startsWith('video/') ? 'video' : 'image';
+  }
+
+  private mapMedia(rows: ReviewMediaRow[]): ReviewMediaDto[] {
+    return rows.map((rm) => ({
+      id: rm.media.id,
+      url: this.mediaUrl(rm.media),
+      mimeType: rm.media.mimeType,
+      kind: this.mediaKind(rm.media.mimeType),
+    }));
+  }
+
+  private toPublicDto(row: PublicReviewRow) {
     const displayName =
       row.user?.firstName?.trim() || row.authorName?.trim() || 'Verified buyer';
     return {
@@ -370,14 +555,29 @@ export class ReviewsService {
       adminReply: row.adminReply,
       adminReplyAt: row.adminReplyAt,
       createdAt: row.createdAt,
+      media: this.mapMedia(row.reviewMedia ?? []),
     };
   }
 
-  private toAdminDto(
-    row: Prisma.ProductReviewGetPayload<{
-      include: { product: { select: { name: true; slug: true } } };
-    }>,
-  ): AdminReviewDto {
+  private toFeaturedDto(row: FeaturedReviewRow) {
+    const displayName =
+      row.user?.firstName?.trim() || row.authorName?.trim() || 'Verified buyer';
+    return {
+      id: row.id,
+      productId: row.productId,
+      productName: row.product?.name ?? null,
+      productSlug: row.product?.slug ?? null,
+      authorName: displayName,
+      rating: row.rating,
+      title: row.title,
+      body: row.body,
+      isVerified: row.isVerified,
+      createdAt: row.createdAt,
+      media: this.mapMedia(row.reviewMedia ?? []),
+    };
+  }
+
+  private toAdminDto(row: AdminReviewRow): AdminReviewDto {
     return {
       id: row.id,
       productId: row.productId,
@@ -393,10 +593,12 @@ export class ReviewsService {
       status: row.status,
       source: row.source,
       isVerified: row.isVerified,
+      featuredOnHomepage: row.featuredOnHomepage,
       adminReply: row.adminReply,
       adminReplyAt: row.adminReplyAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      media: this.mapMedia(row.reviewMedia ?? []),
     };
   }
 }
@@ -416,8 +618,10 @@ export interface AdminReviewDto {
   status: ReviewStatus;
   source: ReviewSource;
   isVerified: boolean;
+  featuredOnHomepage: boolean;
   adminReply: string | null;
   adminReplyAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  media: ReviewMediaDto[];
 }

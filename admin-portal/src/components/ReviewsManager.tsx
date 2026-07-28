@@ -1,31 +1,46 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/auth';
 import { useDebounce } from '../hooks/useDebounce';
 import { toastSuccess } from '../lib/toast';
+import { MAX_REVIEW_MEDIA, uploadReviewMediaAdmin } from '../lib/media-upload';
+import { MediaLightbox, type LightboxMediaItem } from './MediaLightbox';
+import { SocialProofPanel } from './SocialProofPanel';
 
 const PAGE_SIZE = 15;
+const REVIEW_ACCEPT =
+  'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov';
 
 type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+interface ReviewMediaItem {
+  id: string;
+  url: string;
+  mimeType: string;
+  kind: 'image' | 'video';
+}
 
 interface AdminReview {
   id: string;
   productId: string;
   productName: string | null;
   productSlug: string | null;
-  userId: string;
+  userId: string | null;
   orderId: string | null;
   authorName: string;
-  authorEmail: string;
+  authorEmail: string | null;
   rating: number;
   title: string | null;
   body: string;
   status: ReviewStatus;
+  source?: string;
   isVerified: boolean;
+  featuredOnHomepage?: boolean;
   adminReply: string | null;
   adminReplyAt: string | null;
   createdAt: string;
   updatedAt: string;
+  media?: ReviewMediaItem[];
 }
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -69,6 +84,7 @@ export function ReviewsManager() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [featuredFilter, setFeaturedFilter] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +92,15 @@ export function ReviewsManager() {
   const [mounted, setMounted] = useState(false);
   const [replyTarget, setReplyTarget] = useState<AdminReview | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxItems, setLightboxItems] = useState<LightboxMediaItem[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const openLightbox = (media: ReviewMediaItem[], index: number) => {
+    setLightboxItems(media.map((m) => ({ id: m.id, url: m.url, mimeType: m.mimeType, kind: m.kind })));
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -102,6 +127,7 @@ export function ReviewsManager() {
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
+      if (featuredFilter) params.featuredOnHomepage = featuredFilter;
       const res = await api.getList<AdminReview>('/reviews', params);
       setItems(res.data ?? []);
       setTotal(res.meta?.total ?? 0);
@@ -112,11 +138,11 @@ export function ReviewsManager() {
     } finally {
       setLoading(false);
     }
-  }, [canRead, page, debouncedSearch, statusFilter, sortBy]);
+  }, [canRead, page, debouncedSearch, statusFilter, featuredFilter, sortBy]);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, featuredFilter]);
 
   useEffect(() => {
     fetchList();
@@ -133,6 +159,21 @@ export function ReviewsManager() {
       fetchList();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleFeatured = async (r: AdminReview) => {
+    const next = !r.featuredOnHomepage;
+    setBusyId(r.id);
+    setError(null);
+    try {
+      await api.patch(`/reviews/${r.id}/featured`, { featuredOnHomepage: next });
+      toastSuccess(next ? 'Showing on homepage' : 'Removed from homepage');
+      fetchList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update homepage feature');
     } finally {
       setBusyId(null);
     }
@@ -178,7 +219,7 @@ export function ReviewsManager() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Reviews</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Verified-purchase reviews publish automatically. Hide anything abusive, reply publicly, or delete.
+            Moderate product reviews, feature them on the homepage, and manage Customer Spotlight media below.
           </p>
         </div>
         {canModerate && (
@@ -191,6 +232,8 @@ export function ReviewsManager() {
           </button>
         )}
       </div>
+
+      <SocialProofPanel />
 
       {error && (
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300" role="alert">
@@ -232,6 +275,24 @@ export function ReviewsManager() {
             ))}
           </select>
         </div>
+        <div className="w-44">
+          <label htmlFor="review-featured" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Homepage
+          </label>
+          <select
+            id="review-featured"
+            value={featuredFilter}
+            onChange={(e) => {
+              setFeaturedFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="">All</option>
+            <option value="true">On homepage</option>
+            <option value="false">Not on homepage</option>
+          </select>
+        </div>
         <div className="w-36">
           <label htmlFor="review-sort" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Sort by
@@ -252,6 +313,7 @@ export function ReviewsManager() {
           onClick={() => {
             setSearchInput('');
             setStatusFilter('');
+            setFeaturedFilter('');
             setPage(1);
             setError(null);
           }}
@@ -307,6 +369,30 @@ export function ReviewsManager() {
                       <td className="max-w-md px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                         {r.title && <p className="font-medium text-slate-900 dark:text-slate-100">{r.title}</p>}
                         <p className="line-clamp-2 whitespace-pre-line">{r.body}</p>
+                        {!!r.media?.length && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {r.media.map((m, i) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => openLightbox(r.media!, i)}
+                                className="relative h-12 w-12 overflow-hidden rounded border border-slate-200 dark:border-slate-600"
+                                aria-label={m.kind === 'video' ? 'Play video' : 'View photo'}
+                              >
+                                {m.kind === 'video' ? (
+                                  <>
+                                    <video src={m.url} muted className="h-full w-full object-cover" />
+                                    <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs">
+                                      ▶
+                                    </span>
+                                  </>
+                                ) : (
+                                  <img src={m.url} alt="" className="h-full w-full object-cover" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                           <span>{r.authorName}</span>
                           <span aria-hidden>·</span>
@@ -314,6 +400,11 @@ export function ReviewsManager() {
                           {r.isVerified && (
                             <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                               ✓ Verified
+                            </span>
+                          )}
+                          {r.featuredOnHomepage && (
+                            <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                              Homepage
                             </span>
                           )}
                         </p>
@@ -351,6 +442,19 @@ export function ReviewsManager() {
                               Hide
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => toggleFeatured(r)}
+                            disabled={busyId === r.id}
+                            className="mr-2 font-medium text-sky-600 hover:text-sky-800 disabled:opacity-50 dark:text-sky-400 dark:hover:text-sky-300"
+                            title={
+                              r.featuredOnHomepage
+                                ? 'Remove from homepage carousel'
+                                : 'Show on homepage carousel'
+                            }
+                          >
+                            {r.featuredOnHomepage ? 'Unfeature' : 'Feature'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => setReplyTarget(r)}
@@ -425,6 +529,14 @@ export function ReviewsManager() {
           }}
         />
       )}
+
+      <MediaLightbox
+        items={lightboxItems}
+        index={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        onIndexChange={setLightboxIndex}
+      />
     </div>
   );
 }
@@ -436,6 +548,7 @@ interface ProductOption {
 
 function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const todayIso = new Date().toISOString().slice(0, 10);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productId, setProductId] = useState('');
   const [authorName, setAuthorName] = useState('');
@@ -448,6 +561,8 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   const [isVerified, setIsVerified] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [status, setStatus] = useState<'APPROVED' | 'PENDING'>('APPROVED');
+  const [pendingMedia, setPendingMedia] = useState<ReviewMediaItem[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -463,6 +578,40 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       cancelled = true;
     };
   }, []);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const remaining = MAX_REVIEW_MEDIA - pendingMedia.length;
+    if (remaining <= 0) {
+      setError(`You can attach up to ${MAX_REVIEW_MEDIA} photos/videos.`);
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      for (const file of Array.from(files).slice(0, remaining)) {
+        const uploaded = await uploadReviewMediaAdmin(file);
+        setPendingMedia((prev) =>
+          prev.length >= MAX_REVIEW_MEDIA
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: uploaded.id,
+                  url: uploaded.deliveryUrl,
+                  mimeType: uploaded.mimeType,
+                  kind: uploaded.kind,
+                },
+              ],
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const submit = async () => {
     if (!productId) {
@@ -481,6 +630,10 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       setError('Order ID must be a valid UUID, or leave it blank.');
       return;
     }
+    if (uploading) {
+      setError('Please wait for uploads to finish.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -495,6 +648,7 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         status,
         ...(orderId.trim() ? { orderId: orderId.trim() } : {}),
         ...(reviewDate ? { reviewDate: new Date(reviewDate).toISOString() } : {}),
+        ...(pendingMedia.length ? { mediaIds: pendingMedia.map((m) => m.id) } : {}),
       });
       toastSuccess('Review added');
       onSaved();
@@ -602,6 +756,49 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             <textarea id="ar-body" value={body} rows={4} maxLength={4000} onChange={(e) => setBody(e.target.value)} className={inputCls} placeholder="The customer's feedback…" />
           </div>
 
+          <div>
+            <span className={labelCls}>
+              Photos &amp; videos <span className="font-normal text-slate-400">(optional, up to {MAX_REVIEW_MEDIA})</span>
+            </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={REVIEW_ACCEPT}
+              multiple
+              className="sr-only"
+              onChange={(e) => handleFiles(e.target.files)}
+            />
+            <button
+              type="button"
+              disabled={uploading || pendingMedia.length >= MAX_REVIEW_MEDIA}
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              {uploading ? 'Uploading…' : 'Add photo or video'}
+            </button>
+            {pendingMedia.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {pendingMedia.map((m) => (
+                  <div key={m.id} className="relative h-16 w-16 overflow-hidden rounded border border-slate-200 dark:border-slate-600">
+                    {m.kind === 'video' ? (
+                      <video src={m.url} muted className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={m.url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPendingMedia((prev) => prev.filter((x) => x.id !== m.id))}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-xs text-white"
+                      aria-label="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="ar-date" className={labelCls}>
@@ -654,10 +851,10 @@ function AddReviewModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           >
             Cancel
           </button>
-          <button
+            <button
             type="button"
             onClick={submit}
-            disabled={saving}
+            disabled={saving || uploading}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
           >
             {saving ? 'Adding…' : 'Add review'}

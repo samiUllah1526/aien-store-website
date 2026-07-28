@@ -7,14 +7,20 @@ import type {
   RegisterUploadPayload,
   UploadFolder,
 } from './storage-provider.interface';
+import {
+  isReviewVideoFolder,
+  REVIEW_IMAGE_MAX_BYTES,
+  REVIEW_VIDEO_MAX_BYTES,
+  REVIEW_VIDEO_MIMES,
+} from './storage-provider.interface';
 
-const ALLOWED_MIMES = [
+const PRODUCT_IMAGE_MIMES = [
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/gif',
 ] as const;
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class CloudinaryStorageProvider implements IStorageProvider {
@@ -53,6 +59,8 @@ export class CloudinaryStorageProvider implements IStorageProvider {
       secure: true,
     } as ConfigOptions);
 
+    const isVideo = isReviewVideoFolder(folder);
+    const resourceType = isVideo ? 'video' : 'image';
     const timestamp = Math.floor(Date.now() / 1000);
     // Sign only the params we send to the client; Cloudinary verifies against what it receives
     const paramsToSign: Record<string, string | number> = {
@@ -64,11 +72,12 @@ export class CloudinaryStorageProvider implements IStorageProvider {
       paramsToSign,
       this.apiSecret,
     );
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`;
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/upload`;
 
     return {
       provider: 'cloudinary',
       uploadUrl,
+      resourceType,
       params: {
         api_key: this.apiKey,
         timestamp: String(timestamp),
@@ -76,8 +85,12 @@ export class CloudinaryStorageProvider implements IStorageProvider {
         folder,
       },
       validation: {
-        allowedMimes: ALLOWED_MIMES,
-        maxSizeBytes: MAX_SIZE_BYTES,
+        allowedMimes: isVideo ? REVIEW_VIDEO_MIMES : PRODUCT_IMAGE_MIMES,
+        maxSizeBytes: isVideo
+          ? REVIEW_VIDEO_MAX_BYTES
+          : folder === 'review-photos'
+            ? REVIEW_IMAGE_MAX_BYTES
+            : PRODUCT_IMAGE_MAX_BYTES,
       },
     };
   }
@@ -89,8 +102,11 @@ export class CloudinaryStorageProvider implements IStorageProvider {
       bytes?: number;
       width?: number;
       height?: number;
+      resource_type?: string;
+      format?: string;
     };
     if (!r?.public_id || !r?.secure_url) return null;
+    const mimeType = this.guessMime(r.resource_type, r.format);
     return {
       provider: 'cloudinary',
       storageKey: r.public_id,
@@ -98,6 +114,26 @@ export class CloudinaryStorageProvider implements IStorageProvider {
       bytes: r.bytes,
       width: r.width,
       height: r.height,
+      mimeType,
     };
+  }
+
+  private guessMime(
+    resourceType?: string,
+    format?: string,
+  ): string | undefined {
+    if (!format) return undefined;
+    const f = format.toLowerCase();
+    if (resourceType === 'video') {
+      if (f === 'mp4') return 'video/mp4';
+      if (f === 'webm') return 'video/webm';
+      if (f === 'mov' || f === 'qt') return 'video/quicktime';
+      return `video/${f}`;
+    }
+    if (f === 'jpg' || f === 'jpeg') return 'image/jpeg';
+    if (f === 'png') return 'image/png';
+    if (f === 'webp') return 'image/webp';
+    if (f === 'gif') return 'image/gif';
+    return `image/${f}`;
   }
 }
