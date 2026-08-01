@@ -14,7 +14,6 @@
   body {
     @apply font-sans bg-background text-on-background antialiased;
     font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
-    overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -38,21 +37,26 @@
 
   /* Primary CTA — black filled, transitions to teal on hover. */
   .btn-primary {
-    @apply inline-flex items-center justify-center bg-primary text-on-primary
+    @apply inline-flex items-center justify-center min-h-touch bg-primary text-on-primary
            font-sans text-button uppercase tracking-widest
-           px-12 py-5 transition-colors duration-300
+           px-6 py-3.5 sm:px-10 sm:py-5 transition-colors duration-300
            hover:bg-secondary focus:outline-none focus-visible:ring-2
            focus-visible:ring-secondary/40 focus-visible:ring-offset-2;
   }
 
   /* Outlined CTA — inverse of btn-primary. */
   .btn-outline {
-    @apply inline-flex items-center justify-center border border-primary
+    @apply inline-flex items-center justify-center min-h-touch border border-primary
            text-primary font-sans text-button uppercase tracking-widest
-           px-12 py-5 transition-all duration-300
+           px-6 py-3.5 sm:px-10 sm:py-5 transition-all duration-300
            hover:bg-primary hover:text-on-primary
            focus:outline-none focus-visible:ring-2
            focus-visible:ring-primary/40 focus-visible:ring-offset-2;
+  }
+
+  /* Icon / control hit target — 44×44 minimum for touch. */
+  .touch-target {
+    @apply inline-flex items-center justify-center min-w-touch min-h-touch;
   }
 
   /* Quiet underline link — used for "VIEW ALL" and similar editorial links. */
@@ -111,6 +115,18 @@
 }
 
 @layer utilities {
+  /* Safe areas for notched devices — sticky chrome / sheets / toasts. */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-secondary/40
            focus:ring-offset-2 focus:ring-offset-background;

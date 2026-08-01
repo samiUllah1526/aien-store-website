@@ -11,7 +11,7 @@ export default function CartIcon() {
     <button
       type="button"
       onClick={toggleCart}
-      className="relative p-2 text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 focus-ring rounded"
+      className="relative touch-target text-soft-charcoal dark:text-off-white hover:text-ash transition-colors duration-300 focus-ring rounded"
       aria-label={`Cart, ${totalItems} items`}
     >
       <svg

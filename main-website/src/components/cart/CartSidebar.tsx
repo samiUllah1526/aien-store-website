@@ -33,7 +33,7 @@ export default function CartSidebar() {
         onClick={closeCart}
       />
       <aside
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-[101] flex flex-col shadow-xl sm:rounded-l-xl"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-bone dark:bg-charcoal border-l border-ash/20 z-[101] flex flex-col shadow-xl sm:rounded-l-xl pt-safe pb-safe"
         role="dialog"
         aria-label="Shopping cart"
       >

@@ -75,7 +75,7 @@ export default function HeroImageCarousel({
   if (count === 0) {
     // Editorial fallback so the homepage never renders empty.
     return (
-      <section className="relative w-full h-[42vh] sm:h-[60vh] md:h-[70vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] bg-surface-container-low flex items-center justify-center">
+      <section className="relative w-full h-[52vh] sm:h-[60vh] md:h-[70vh] min-h-[380px] sm:min-h-[400px] md:min-h-[520px] bg-surface-container-low flex items-center justify-center">
         <div className="text-center px-6">
           <p className="eyebrow mb-6">{eyebrow}</p>
           <h1
@@ -98,10 +98,17 @@ export default function HeroImageCarousel({
     quality: 'auto',
     format: 'auto',
   });
+  const currentMobileSrc =
+    buildImageUrl(current.src, IMAGE_PRESETS.heroBannerMobile) || currentSrc;
+  const currentMobileSrcSet = buildImageSrcSet(
+    current.src,
+    [480, 640, 800],
+    IMAGE_PRESETS.heroBannerMobile,
+  );
 
   return (
     <section
-      className="relative w-full h-[42vh] sm:h-[60vh] md:h-[72vh] lg:h-[80vh] min-h-[300px] sm:min-h-[400px] md:min-h-[520px] max-h-[920px] overflow-hidden bg-surface-container-low"
+      className="relative w-full h-[52vh] sm:h-[60vh] md:h-[72vh] lg:h-[80vh] min-h-[380px] sm:min-h-[400px] md:min-h-[520px] max-h-[920px] overflow-hidden bg-surface-container-low"
       aria-label={`${brandName} hero`}
       aria-roledescription="carousel"
       onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
@@ -114,21 +121,32 @@ export default function HeroImageCarousel({
     >
       <div className="absolute inset-0">
         <AnimatePresence initial={false} mode="wait">
-          <motion.img
+          <motion.div
             key={index}
-            src={currentSrc}
-            srcSet={currentSrcSet || undefined}
-            sizes="100vw"
-            alt={current.alt ?? ''}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: FADE_DURATION, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="w-full h-full object-cover object-center"
-            loading={index === 0 ? 'eager' : 'lazy'}
-            fetchPriority={index === 0 ? 'high' : 'auto'}
-            draggable={false}
-          />
+            className="absolute inset-0"
+          >
+            <picture>
+              <source
+                media="(max-width: 640px)"
+                srcSet={currentMobileSrcSet || currentMobileSrc}
+                sizes="100vw"
+              />
+              <img
+                src={currentSrc}
+                srcSet={currentSrcSet || undefined}
+                sizes="100vw"
+                alt={current.alt ?? ''}
+                className="w-full h-full object-cover object-[center_28%] sm:object-center"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchPriority={index === 0 ? 'high' : 'auto'}
+                draggable={false}
+              />
+            </picture>
+          </motion.div>
         </AnimatePresence>
       </div>
 
@@ -145,7 +163,7 @@ export default function HeroImageCarousel({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
-          className="font-sans text-label-caps text-white mb-6"
+          className="font-sans text-label-caps text-white mb-3 sm:mb-6"
         >
           {eyebrow}
         </motion.span>
@@ -154,7 +172,7 @@ export default function HeroImageCarousel({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
-          className={`font-serif text-h1-display text-white max-w-3xl mb-12 ${
+          className={`font-serif text-h1-display text-white max-w-3xl mb-6 sm:mb-10 md:mb-12 ${
             isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
           }`}
         >
@@ -166,7 +184,7 @@ export default function HeroImageCarousel({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.6 }}
-          className="bg-white text-primary px-12 py-5 font-sans text-button uppercase tracking-widest hover:bg-secondary-container transition-colors duration-300"
+          className="inline-flex items-center justify-center min-h-touch bg-white text-primary px-6 py-3.5 sm:px-10 sm:py-5 font-sans text-button uppercase tracking-widest hover:bg-secondary-container transition-colors duration-300"
         >
           {ctaLabel}
         </motion.a>
@@ -174,7 +192,7 @@ export default function HeroImageCarousel({
 
       {count > 1 && (
         <div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10"
+          className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pb-safe"
           role="tablist"
           aria-label="Slide indicators"
         >
@@ -186,10 +204,14 @@ export default function HeroImageCarousel({
               aria-selected={i === index}
               aria-label={`Slide ${i + 1}`}
               onClick={() => setIndex(i)}
-              className={`h-px transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                i === index ? 'w-12 bg-white' : 'w-6 bg-white/40 hover:bg-white/70'
-              }`}
-            />
+              className="touch-target px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+            >
+              <span
+                className={`block h-1 rounded-full transition-all duration-500 ${
+                  i === index ? 'w-10 sm:w-12 bg-white' : 'w-5 sm:w-6 bg-white/40'
+                }`}
+              />
+            </button>
           ))}
         </div>
       )}

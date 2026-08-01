@@ -45,12 +45,12 @@ export default function NewsletterSection({
 
   return (
     <section
-      className="bg-primary text-on-primary py-24 md:py-28 text-center"
+      className="bg-primary text-on-primary py-16 sm:py-20 md:py-28 text-center"
       aria-label="Newsletter signup"
     >
-      <div className="max-w-2xl mx-auto px-6">
-        <h2 className="font-serif text-h2-editorial-sm mb-8">{title}</h2>
-        <p className="font-body-lg text-on-primary/70 mb-12">{body}</p>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6">
+        <h2 className="font-serif text-h2-editorial-sm mb-4 sm:mb-8">{title}</h2>
+        <p className="font-body-lg text-on-primary/70 mb-8 sm:mb-12 text-sm sm:text-base">{body}</p>
 
         <form
           onSubmit={handleSubmit}

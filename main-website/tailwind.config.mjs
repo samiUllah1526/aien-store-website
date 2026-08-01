@@ -98,16 +98,25 @@ export default {
       },
 
       fontSize: {
-        // Editorial AIEN type scale — direct from design spec.
-        'label-caps': ['12px', { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '600' }],
-        'body-md': ['16px', { lineHeight: '1.5', fontWeight: '400' }],
-        'body-lg': ['18px', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
-        button: ['14px', { lineHeight: '1', letterSpacing: '0.05em', fontWeight: '500' }],
-        'h3-section': ['32px', { lineHeight: '1.3', fontWeight: '400' }],
-        'h2-editorial-sm': ['36px', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' }],
-        'h2-editorial': ['48px', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' }],
+        // Mobile-first fluid type scale — phone → tablet → desktop.
+        'label-caps': ['0.75rem', { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '600' }],
+        'body-md': ['1rem', { lineHeight: '1.5', fontWeight: '400' }],
+        'body-lg': ['clamp(1rem, 1.5vw, 1.125rem)', { lineHeight: '1.6', letterSpacing: '0.01em', fontWeight: '400' }],
+        button: ['0.875rem', { lineHeight: '1', letterSpacing: '0.05em', fontWeight: '500' }],
+        'h3-section': [
+          'clamp(1.375rem, 2.5vw, 2rem)',
+          { lineHeight: '1.3', fontWeight: '400' },
+        ],
+        'h2-editorial-sm': [
+          'clamp(1.75rem, 3.5vw, 2.25rem)',
+          { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' },
+        ],
+        'h2-editorial': [
+          'clamp(2rem, 4vw, 3rem)',
+          { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '400' },
+        ],
         'h1-display': [
-          'clamp(48px, 8vw, 84px)',
+          'clamp(2.5rem, 8vw, 5.25rem)',
           { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '400' },
         ],
 
@@ -121,11 +130,14 @@ export default {
       },
 
       spacing: {
-        'section-gap': '128px',
+        // 64px phone → ~128px desktop
+        'section-gap': 'clamp(4rem, 10vw, 8rem)',
         'element-gap': '16px',
         gutter: '24px',
         unit: '8px',
-        'margin-page': '64px',
+        'margin-page': 'clamp(1rem, 4vw, 4rem)',
+        /** Minimum touch target (44px). */
+        touch: '2.75rem',
         18: '4.5rem',
         22: '5.5rem',
         30: '7.5rem',

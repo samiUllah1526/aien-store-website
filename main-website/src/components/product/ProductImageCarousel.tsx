@@ -79,12 +79,12 @@ export default function ProductImageCarousel({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       {/* Main image + arrows */}
-      <div className="relative aspect-[3/4] w-full max-h-[70vh] md:max-h-[720px] overflow-hidden rounded-xl bg-ash/10">
+      <div className="relative aspect-[3/4] w-full max-h-[65vh] sm:max-h-[70vh] md:max-h-[720px] overflow-hidden rounded-none sm:rounded-xl bg-ash/10">
         <img
           key={selectedIndex}
           src={mainSrc}
           alt={`${alt} — image ${selectedIndex + 1} of ${list.length}`}
-          className="absolute inset-0 h-full w-full object-cover animate-fade-in"
+          className="absolute inset-0 h-full w-full object-cover object-center animate-fade-in"
           loading={selectedIndex === 0 ? 'eager' : 'lazy'}
           fetchPriority={selectedIndex === 0 ? 'high' : 'auto'}
         />
@@ -93,7 +93,7 @@ export default function ProductImageCarousel({
             <button
               type="button"
               onClick={goPrev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
+              className="absolute left-2 top-1/2 -translate-y-1/2 touch-target rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
               aria-label="Previous image"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@ export default function ProductImageCarousel({
             <button
               type="button"
               onClick={goNext}
-              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
+              className="absolute right-2 top-1/2 -translate-y-1/2 touch-target rounded-full bg-bone/90 dark:bg-charcoal/90 text-soft-charcoal dark:text-off-white hover:opacity-90 focus-ring transition-opacity"
               aria-label="Next image"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export default function ProductImageCarousel({
 
       {/* Thumbnails — always show when we have images */}
       {list.length >= 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin" role="tablist" aria-label="Product images">
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 scrollbar-hide" role="tablist" aria-label="Product images">
           {list.map((src, i) => (
             <button
               key={`${src}-${i}`}
@@ -125,7 +125,7 @@ export default function ProductImageCarousel({
               role="tab"
               aria-selected={i === selectedIndex}
               aria-label={`View image ${i + 1}`}
-              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 focus-ring ${
+              className={`relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 focus-ring ${
                 i === selectedIndex
                   ? 'border-soft-charcoal dark:border-off-white'
                   : 'border-transparent hover:border-ash/40'

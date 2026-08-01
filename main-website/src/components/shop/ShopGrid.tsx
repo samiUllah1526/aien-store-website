@@ -178,7 +178,7 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
       <button
         type="button"
         onClick={() => setFiltersOpen((o) => !o)}
-        className="lg:hidden inline-flex items-center justify-between font-sans text-label-caps uppercase border border-outline-variant px-4 py-3"
+        className="lg:hidden inline-flex items-center justify-between min-h-touch w-full font-sans text-label-caps uppercase border border-outline-variant px-4 py-3"
         aria-expanded={filtersOpen}
         aria-controls="aien-filters"
       >
@@ -238,7 +238,7 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
                       key={size}
                       type="button"
                       onClick={() => toggle(selectedSizes, size, setSelectedSizes)}
-                      className={`h-10 border font-sans text-label-caps transition-colors ${
+                      className={`min-h-touch border font-sans text-label-caps transition-colors ${
                         active
                           ? 'border-primary bg-primary text-on-primary'
                           : 'border-outline-variant text-on-background hover:border-primary'
@@ -267,13 +267,18 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
                       title={colorUiLabel(color)}
                       aria-pressed={active}
                       aria-label={colorAriaLabel(color)}
-                      className={`w-7 h-7 rounded-full border transition-transform ${
+                      className={`touch-target w-touch h-touch rounded-full border transition-transform ${
                         active
-                          ? 'ring-1 ring-offset-2 ring-primary scale-110'
-                          : 'border-outline-variant hover:scale-110'
+                          ? 'ring-1 ring-offset-2 ring-primary scale-105'
+                          : 'border-outline-variant hover:scale-105'
                       }`}
-                      style={{ background: cssColor(color) }}
-                    />
+                    >
+                      <span
+                        className="block w-7 h-7 rounded-full border border-outline-variant/40"
+                        style={{ background: cssColor(color) }}
+                        aria-hidden
+                      />
+                    </button>
                   );
                 })}
               </div>
@@ -321,15 +326,15 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
       </aside>
 
       <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-8 pb-4 border-b border-outline-variant">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-8 pb-4 border-b border-outline-variant">
           <span className="font-sans text-label-caps text-on-surface-variant">
             SHOWING {visible.length} OF {filtered.length} ITEMS
           </span>
-          <div className="relative">
+          <div className="relative self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setSortMenuOpen((o) => !o)}
-              className="flex items-center gap-2 font-sans text-label-caps text-on-background hover:opacity-70 focus-ring rounded"
+              className="flex items-center gap-2 min-h-touch font-sans text-label-caps text-on-background hover:opacity-70 focus-ring rounded"
               aria-haspopup="listbox"
               aria-expanded={sortMenuOpen}
             >
@@ -371,7 +376,7 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
             No products match your selection.
           </p>
         ) : (
-          <ul className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-x-3 sm:gap-x-gutter gap-y-10 sm:gap-y-16">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 sm:gap-x-gutter gap-y-10 sm:gap-y-16">
             {visible.map((product) => (
               <li key={product.id}>
                 <ProductCard product={product} />

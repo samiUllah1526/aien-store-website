@@ -97,7 +97,7 @@ export default function CartPage() {
                 <div className="flex justify-between items-start gap-4">
                   <div className="min-w-0">
                     <a href={`/shop/${item.slug}`} className="block">
-                      <h3 className="font-serif text-h3-section text-on-background tracking-tight">
+                      <h3 className="font-serif text-xl sm:text-h3-section text-on-background tracking-tight">
                         {item.name}
                       </h3>
                     </a>
@@ -121,12 +121,12 @@ export default function CartPage() {
                   />
                 </div>
                 <div className="flex justify-between items-end gap-4 mt-6">
-                  <div className="flex items-center gap-6 border border-outline-variant px-4 py-2">
+                  <div className="flex items-center border border-outline-variant">
                     <button
                       type="button"
                       onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                       disabled={item.quantity <= 1}
-                      className="hover:text-secondary transition-colors disabled:opacity-40"
+                      className="touch-target hover:text-secondary transition-colors disabled:opacity-40"
                       aria-label="Decrease quantity"
                     >
                       <span className="material-symbols-outlined text-base" aria-hidden>remove</span>
@@ -140,7 +140,7 @@ export default function CartPage() {
                         updateQuantity(item.variantId, Math.min(item.quantity + 1, MAX_CART_QUANTITY))
                       }
                       disabled={item.quantity >= MAX_CART_QUANTITY}
-                      className="hover:text-secondary transition-colors disabled:opacity-40"
+                      className="touch-target hover:text-secondary transition-colors disabled:opacity-40"
                       aria-label="Increase quantity"
                     >
                       <span className="material-symbols-outlined text-base" aria-hidden>add</span>
@@ -160,8 +160,8 @@ export default function CartPage() {
         </ul>
 
         {/* Sticky summary */}
-        <aside className="w-full lg:w-1/3 bg-surface-container-low p-8 md:p-12 lg:sticky lg:top-28">
-          <h2 className="font-serif text-h3-section text-on-background uppercase mb-12">
+        <aside className="w-full lg:w-1/3 bg-surface-container-low p-5 sm:p-8 md:p-12 lg:sticky lg:top-28">
+          <h2 className="font-serif text-h3-section text-on-background uppercase mb-8 sm:mb-12">
             Summary
           </h2>
 

@@ -15,7 +15,7 @@
 
 import type { LandingCategory } from './HomePage';
 import { stripHtml } from '../../lib/stripHtml';
-import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
+import { buildImageUrl, buildImageSrcSet, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 
 const DEFAULT_PRIMARY_IMAGE =
   'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80&auto=format&fit=crop';
@@ -63,9 +63,15 @@ export default function FeaturedBento({
   const primaryImageSrc = primary
     ? buildImageUrl(primary.bannerImageUrl, IMAGE_PRESETS.bentoPrimary) || DEFAULT_PRIMARY_IMAGE
     : DEFAULT_PRIMARY_IMAGE;
+  const primaryImageSrcSet = primary?.bannerImageUrl
+    ? buildImageSrcSet(primary.bannerImageUrl, [640, 960, 1200], IMAGE_PRESETS.bentoPrimary)
+    : '';
   const secondaryImageSrc = secondary
     ? buildImageUrl(secondary.bannerImageUrl, IMAGE_PRESETS.bentoSecondary) || DEFAULT_SECONDARY_IMAGE
     : DEFAULT_SECONDARY_IMAGE;
+  const secondaryImageSrcSet = secondary?.bannerImageUrl
+    ? buildImageSrcSet(secondary.bannerImageUrl, [480, 800], IMAGE_PRESETS.bentoSecondary)
+    : '';
 
   return (
     <section
@@ -84,25 +90,27 @@ export default function FeaturedBento({
         </a>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 md:auto-rows-fr gap-gutter md:h-[560px] lg:h-[620px] xl:h-[680px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 md:auto-rows-fr gap-4 sm:gap-gutter md:h-[520px] lg:h-[620px] xl:h-[680px]">
         {primary && (
           <a
             href={categoryHref(primary.slug)}
-            className="md:col-span-8 relative overflow-hidden group h-[320px] sm:h-[400px] md:h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            className="md:col-span-8 relative overflow-hidden group h-[300px] sm:h-[380px] md:h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
           >
             <img
               src={primaryImageSrc}
+              srcSet={primaryImageSrcSet || undefined}
+              sizes="(max-width: 767px) 100vw, (max-width: 1023px) 100vw, 66vw"
               alt={primary.name}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
               loading="eager"
               fetchPriority="high"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
-            <div className="absolute bottom-8 md:bottom-12 left-8 md:left-12 right-8 md:right-12">
-              <p className="font-sans text-label-caps text-white/80 mb-3">SHOP THE SERIES</p>
-              <h3 className="font-serif text-h3-section text-white mb-4">{primary.name}</h3>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            <div className="absolute bottom-5 sm:bottom-8 md:bottom-12 left-5 sm:left-8 md:left-12 right-5 sm:right-8 md:right-12">
+              <p className="font-sans text-label-caps text-white/80 mb-2 sm:mb-3">SHOP THE SERIES</p>
+              <h3 className="font-serif text-h3-section text-white mb-2 sm:mb-4">{primary.name}</h3>
               {primaryDescription && (
-                <p className="font-body-md text-white/80 mb-6 max-w-md uppercase tracking-widest line-clamp-2">
+                <p className="hidden sm:block font-body-md text-white/80 mb-4 md:mb-6 max-w-md uppercase tracking-widest line-clamp-2">
                   {primaryDescription}
                 </p>
               )}
@@ -113,40 +121,42 @@ export default function FeaturedBento({
           </a>
         )}
 
-        <div className="md:col-span-4 flex flex-col gap-gutter md:h-full min-h-0">
+        <div className="md:col-span-4 flex flex-col gap-4 sm:gap-gutter md:h-full min-h-0">
           {secondary && (
             <a
               href={categoryHref(secondary.slug)}
-              className="flex-1 min-h-0 relative overflow-hidden group h-[260px] md:h-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+              className="flex-1 min-h-0 relative overflow-hidden group h-[220px] sm:h-[240px] md:h-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
             >
               <img
                 src={secondaryImageSrc}
+                srcSet={secondaryImageSrcSet || undefined}
+                sizes="(max-width: 767px) 100vw, (max-width: 1023px) 100vw, 33vw"
                 alt={secondary.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center flex-col p-8 text-center">
-                <h3 className="font-serif text-h3-section text-white mb-2">{secondary.name}</h3>
+              <div className="absolute inset-0 bg-black/35 flex items-center justify-center flex-col p-5 sm:p-8 text-center">
+                <h3 className="font-serif text-xl sm:text-h3-section text-white mb-2">{secondary.name}</h3>
                 <span className="link-underline text-white border-white uppercase">View All</span>
               </div>
             </a>
           )}
 
-          <div className="flex-1 min-h-0 bg-surface-container-high p-10 md:p-12 flex flex-col justify-center">
+          <div className="flex-1 min-h-0 bg-surface-container-high p-6 sm:p-8 md:p-12 flex flex-col justify-center">
             {editorial.eyebrow && (
-              <p className="eyebrow mb-4">{editorial.eyebrow}</p>
+              <p className="eyebrow mb-3 sm:mb-4">{editorial.eyebrow}</p>
             )}
             {editorial.title && (
-              <h3 className="font-serif text-h3-section text-on-background mb-6">
+              <h3 className="font-serif text-xl sm:text-h3-section text-on-background mb-4 sm:mb-6">
                 {editorial.title}
               </h3>
             )}
             {editorial.body && (
-              <p className="font-body-md text-on-surface-variant mb-8">
+              <p className="font-body-md text-on-surface-variant mb-6 sm:mb-8 text-sm sm:text-base">
                 {editorial.body}
               </p>
             )}
             {editorial.href && editorial.ctaLabel && (
-              <a href={editorial.href} className="btn-outline self-start">
+              <a href={editorial.href} className="btn-outline self-start w-full sm:w-auto">
                 {editorial.ctaLabel}
               </a>
             )}

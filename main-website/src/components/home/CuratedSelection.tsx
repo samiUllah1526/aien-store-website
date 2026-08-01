@@ -35,9 +35,9 @@ export default function CuratedSelection({
       className="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-section-gap"
       aria-label={title}
     >
-      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-16">
+      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 sm:gap-6 mb-8 sm:mb-12 md:mb-16">
         <div>
-          {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
+          {eyebrow && <p className="eyebrow mb-3 sm:mb-4">{eyebrow}</p>}
           <h2 className="font-serif text-h2-editorial-sm lg:text-h2-editorial text-on-background">
             {title}
           </h2>
@@ -47,7 +47,7 @@ export default function CuratedSelection({
         </a>
       </header>
 
-      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-gutter gap-y-16">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-gutter gap-y-10 sm:gap-y-16">
         {items.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
