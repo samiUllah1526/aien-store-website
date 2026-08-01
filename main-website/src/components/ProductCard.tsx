@@ -199,10 +199,9 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             )}
 
-            {/* Quick-action stack — slides in from the right on hover. */}
+            {/* Quick actions: always visible on touch (<md); hover-reveal on desktop. */}
             <div
-              className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ease-out"
-              aria-hidden={false}
+              className="absolute right-2 top-2 md:right-4 md:top-1/2 md:-translate-y-1/2 flex flex-col gap-2 md:gap-3 opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-focus-within:opacity-100 md:group-focus-within:translate-x-0 transition-all duration-300 ease-out"
             >
               <QuickActionButton
                 onClick={handleWishlist}
@@ -243,8 +242,17 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </svg>
               </QuickActionButton>
 
+              {/* Desktop: quick-add. Mobile: open PDP so size/color can be chosen. */}
               <QuickActionButton
-                onClick={handleQuickAdd}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+                    window.location.href = `/shop/${product.slug}`;
+                    return;
+                  }
+                  handleQuickAdd(e);
+                }}
                 disabled={!inStock}
                 ariaLabel={inStock ? 'Add to bag' : 'Out of stock'}
               >
@@ -268,7 +276,9 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           <div className="flex justify-between items-start gap-4">
             <div className="min-w-0">
-              <h4 className="font-sans text-body-md text-on-surface truncate">{product.name}</h4>
+              <h4 className="font-sans text-sm sm:text-body-md text-on-surface line-clamp-2 sm:truncate">
+                {product.name}
+              </h4>
               {quickAddVariant?.color &&
                 (() => {
                   const c = quickAddVariant.color;
@@ -334,7 +344,7 @@ function QuickActionButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active || undefined}
-      className={`w-10 h-10 rounded-full bg-background/95 backdrop-blur-md shadow-sm flex items-center justify-center transition-colors duration-200 hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`touch-target w-touch h-touch rounded-full bg-background/95 backdrop-blur-md shadow-sm transition-colors duration-200 hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed ${
         active ? 'text-secondary' : 'text-on-background hover:text-secondary'
       }`}
     >

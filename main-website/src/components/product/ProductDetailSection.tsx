@@ -173,7 +173,7 @@ export default function ProductDetailSection({
   const scrollToIndex = selectedVariant ? variantStartIndex[selectedVariant.id] ?? 0 : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10 lg:gap-16">
       <div className="lg:col-span-7">
         <ProductImageCarousel
           images={displayImages}
@@ -184,7 +184,7 @@ export default function ProductDetailSection({
       </div>
       <div className="lg:col-span-5 lg:sticky lg:top-28 self-start h-fit">
         {children}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <ProductPrice
             amountCents={displayPrice}
             currency={currency}
@@ -196,7 +196,7 @@ export default function ProductDetailSection({
         {urduVerse ? (
           <AnimatedUrduVerse verse={urduVerse} transliteration={urduVerseTransliteration} />
         ) : null}
-        <div className="mt-12">
+        <div className="mt-8 sm:mt-12">
           <AddToCart
             productId={productId}
             name={name}

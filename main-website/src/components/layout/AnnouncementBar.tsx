@@ -30,13 +30,13 @@ export default function AnnouncementBar({ items }: AnnouncementBarProps) {
     >
       <div className="flex min-h-[2.75rem] items-center py-2">
         {singleMessage ? (
-          <p className="w-full text-center text-[11px] font-medium uppercase tracking-[0.22em] text-off-white/90 sm:text-xs">
+          <p className="w-full text-center text-xs font-medium uppercase tracking-[0.18em] sm:tracking-[0.22em] text-off-white/90">
             {marqueeText}
           </p>
         ) : (
           <div className="w-full overflow-hidden">
             <div
-              className="announcement-marquee-track inline-flex flex-none items-center gap-8 whitespace-nowrap py-0.5 text-[11px] font-medium uppercase tracking-[0.22em] text-off-white/90 sm:text-xs"
+              className="announcement-marquee-track inline-flex flex-none items-center gap-8 whitespace-nowrap py-0.5 text-xs font-medium uppercase tracking-[0.18em] sm:tracking-[0.22em] text-off-white/90"
             >
               <span>{marqueeText}</span>
               <span>{marqueeText}</span>

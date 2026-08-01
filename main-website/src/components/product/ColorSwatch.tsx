@@ -31,8 +31,8 @@ export interface ColorSwatchProps {
 
 const sizeClasses = {
   sm: 'w-4 h-4 min-w-[1rem] min-h-[1rem]',
-  md: 'w-6 h-6 min-w-[1.5rem] min-h-[1.5rem]',
-  lg: 'w-8 h-8 min-w-[2rem] min-h-[2rem]',
+  md: 'w-7 h-7 min-w-[1.75rem] min-h-[1.75rem]',
+  lg: 'w-9 h-9 min-w-[2.25rem] min-h-[2.25rem]',
 };
 
 export default function ColorSwatch({

@@ -66,8 +66,8 @@ const {
 const isPrimary = prominence === 'primary';
 
 const sectionHeightClass = isPrimary
-  ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] min-h-[420px] sm:min-h-[440px] lg:min-h-[560px] max-h-[80vh]'
-  : 'aspect-[4/5] sm:aspect-[16/9] min-h-[400px] sm:min-h-[420px] lg:min-h-[480px] max-h-[64vh]';
+  ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] min-h-[360px] sm:min-h-[420px] md:min-h-[460px] lg:min-h-[560px] max-h-[75vh]'
+  : 'aspect-[4/5] sm:aspect-[16/9] min-h-[340px] sm:min-h-[400px] md:min-h-[440px] lg:min-h-[480px] max-h-[64vh]';
 
 const titleScaleClass = isPrimary
   ? 'text-h1-display lg:text-[clamp(3.5rem,7vw,6rem)]'
@@ -95,7 +95,7 @@ const hasBreadcrumbs = Array.isArray(breadcrumbs) && breadcrumbs.length > 0;
       srcset={bannerSrcSet || undefined}
       sizes="100vw"
       alt=""
-      class="absolute inset-0 w-full h-full object-cover object-center"
+      class="absolute inset-0 w-full h-full object-cover object-[center_30%] sm:object-center"
       fetchpriority="high"
       decoding="async"
     />
@@ -114,7 +114,7 @@ const hasBreadcrumbs = Array.isArray(breadcrumbs) && breadcrumbs.length > 0;
     aria-hidden="true"
   ></div>
 
-  <div class="relative h-full max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-end pb-14 md:pb-20 lg:pb-24">
+  <div class="relative h-full max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-end pb-10 sm:pb-14 md:pb-20 lg:pb-24">
     {hasBreadcrumbs && (
       <nav aria-label="Breadcrumb" class="aien-hero-reveal mb-4">
         <ol class="flex items-center flex-wrap gap-x-2 gap-y-1 font-sans text-label-caps text-white aien-hero-text">

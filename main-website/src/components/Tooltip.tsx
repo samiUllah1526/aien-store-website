@@ -35,7 +35,7 @@ export default function Tooltip({
       {showTooltip ? (
         <span
           role="tooltip"
-          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-soft-charcoal px-2 py-1 text-xs text-bone opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 dark:bg-off-white dark:text-charcoal ${bubblePositionClasses} ${bubbleClassName}`.trim()}
+          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-soft-charcoal px-2 py-1 text-xs text-bone opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-off-white dark:text-charcoal ${bubblePositionClasses} ${bubbleClassName}`.trim()}
         >
           <span
             className={`absolute h-2 w-2 rotate-45 bg-soft-charcoal dark:bg-off-white ${arrowPositionClasses}`.trim()}

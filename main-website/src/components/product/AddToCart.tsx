@@ -19,7 +19,6 @@ import { ONE_SIZE_LABEL } from './constants';
 import ColorSwatch from './ColorSwatch';
 import SizeGuideModal from './SizeGuideModal';
 import { colorAriaLabel, colorUiLabel, formatColorLabel, isHexColorString } from '../../lib/colorDisplay';
-import Tooltip from '../Tooltip';
 import {
   resolveUnitSaleDisplay,
   type StoreSaleType,
@@ -226,7 +225,7 @@ export default function AddToCart({
                     const firstForColor = activeVariants.find((v) => v.color === color);
                     if (firstForColor) setSize(firstForColor.size || ONE_SIZE_LABEL);
                   }}
-                  className={`inline-flex items-center justify-center p-1 transition-all focus-ring rounded-full ${
+                  className={`touch-target rounded-full transition-all focus-ring ${
                     active
                       ? 'ring-2 ring-offset-2 ring-primary'
                       : 'ring-0 hover:ring-1 hover:ring-offset-2 hover:ring-outline-variant'
@@ -235,7 +234,7 @@ export default function AddToCart({
                   aria-label={colorAriaLabel(color)}
                   title={colorUiLabel(color)}
                 >
-                  <ColorSwatch color={color} size="md" />
+                  <ColorSwatch color={color} size="lg" />
                 </button>
               );
             })}
@@ -261,42 +260,46 @@ export default function AddToCart({
             {allSizes.map((sizeOption) => {
               const variant = variantForSize(sizeOption);
               const outOfStock = !variant || variant.stockQuantity <= 0;
-              const sizeTooltip = outOfStock
+              const sizeStatus = outOfStock
                 ? !variant
-                  ? `${sizeOption}: Not available in this color`
-                  : `${sizeOption}: Out of stock`
+                  ? 'Unavailable'
+                  : 'Sold out'
                 : undefined;
               const active = size === sizeOption;
               return (
-                <Tooltip key={sizeOption} content={outOfStock ? sizeTooltip : undefined}>
-                  <button
-                    type="button"
-                    onClick={() => setSize(sizeOption)}
-                    disabled={outOfStock}
-                    aria-label={sizeTooltip ?? sizeOption}
-                    className={`w-full py-4 border font-sans text-label-caps transition-colors focus-ring ${
-                      active
-                        ? 'border-primary bg-primary text-on-primary'
-                        : outOfStock
-                          ? 'border-outline-variant text-on-surface-variant/50 line-through'
-                          : 'border-outline-variant text-on-background hover:border-primary'
-                    } disabled:cursor-not-allowed`}
-                  >
-                    {sizeOption}
-                  </button>
-                </Tooltip>
+                <button
+                  key={sizeOption}
+                  type="button"
+                  onClick={() => setSize(sizeOption)}
+                  disabled={outOfStock}
+                  aria-label={
+                    sizeStatus ? `${sizeOption}: ${sizeStatus}` : sizeOption
+                  }
+                  className={`relative w-full min-h-touch py-3 sm:py-4 border font-sans text-label-caps transition-colors focus-ring ${
+                    active
+                      ? 'border-primary bg-primary text-on-primary'
+                      : outOfStock
+                        ? 'border-outline-variant text-on-surface-variant/50 line-through'
+                        : 'border-outline-variant text-on-background hover:border-primary'
+                  } disabled:cursor-not-allowed`}
+                >
+                  {sizeOption}
+                  {sizeStatus ? (
+                    <span className="sr-only"> ({sizeStatus})</span>
+                  ) : null}
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24 lg:pb-0">
         <button
           type="button"
           onClick={handleAdd}
           disabled={!isPurchasable}
-          className="w-full bg-primary text-on-primary font-sans text-button uppercase tracking-widest py-6 hover:bg-secondary transition-colors duration-300 active:scale-[0.99] focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
+          className="w-full min-h-touch bg-primary text-on-primary font-sans text-button uppercase tracking-widest py-5 sm:py-6 hover:bg-secondary transition-colors duration-300 active:scale-[0.99] focus-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
         >
           {added ? 'Added — view bag' : isPurchasable ? 'Add to Bag' : 'Out of Stock'}
         </button>
@@ -304,16 +307,28 @@ export default function AddToCart({
           type="button"
           onClick={handleWishlist}
           disabled={wishlistLoading}
-          className="w-full border border-primary text-primary font-sans text-button uppercase tracking-widest py-6 hover:bg-surface-container-low transition-colors focus-ring disabled:opacity-50"
+          className="w-full min-h-touch border border-primary text-primary font-sans text-button uppercase tracking-widest py-5 sm:py-6 hover:bg-surface-container-low transition-colors focus-ring disabled:opacity-50"
         >
           {wishlisted ? 'Saved to Wishlist' : 'Add to Wishlist'}
         </button>
       </div>
 
-      <div className="border-t border-outline-variant pt-6 space-y-2">
+      {/* Sticky mobile Add to Bag — stays reachable below the fold. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-outline-variant bg-background/95 backdrop-blur-md px-4 py-3 pb-safe px-safe shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!isPurchasable}
+          className="w-full min-h-touch bg-primary text-on-primary font-sans text-button uppercase tracking-widest hover:bg-secondary transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {added ? 'Added — view bag' : isPurchasable ? 'Add to Bag' : 'Out of Stock'}
+        </button>
+      </div>
+
+      <div className="border-t border-outline-variant pt-6 space-y-1">
         {description && stripHtml(description) ? (
           <details className="group">
-            <summary className="flex justify-between items-center cursor-pointer list-none py-2">
+            <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
               <span className="font-sans text-label-caps uppercase">Description</span>
               <span
                 className="material-symbols-outlined group-open:rotate-180 transition-transform"
@@ -323,13 +338,13 @@ export default function AddToCart({
               </span>
             </summary>
             <div
-              className="aien-rich-text pt-4 text-sm text-on-surface-variant leading-relaxed"
+              className="aien-rich-text pt-2 pb-4 text-sm text-on-surface-variant leading-relaxed"
               dangerouslySetInnerHTML={{ __html: description }}
             />
           </details>
         ) : null}
         <details className="group">
-          <summary className="flex justify-between items-center cursor-pointer list-none py-2">
+          <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
             <span className="font-sans text-label-caps uppercase">Composition &amp; Care</span>
             <span
               className="material-symbols-outlined group-open:rotate-180 transition-transform"
@@ -338,7 +353,7 @@ export default function AddToCart({
               expand_more
             </span>
           </summary>
-          <div className="pt-4 text-sm text-on-surface-variant space-y-2 leading-relaxed">
+          <div className="pt-2 pb-4 text-sm text-on-surface-variant space-y-2 leading-relaxed">
             {composition ? (
               <p>{composition}</p>
             ) : (
@@ -350,7 +365,7 @@ export default function AddToCart({
           </div>
         </details>
         <details className="group">
-          <summary className="flex justify-between items-center cursor-pointer list-none py-2">
+          <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
             <span className="font-sans text-label-caps uppercase">Shipping &amp; Returns</span>
             <span
               className="material-symbols-outlined group-open:rotate-180 transition-transform"
@@ -359,7 +374,7 @@ export default function AddToCart({
               expand_more
             </span>
           </summary>
-          <div className="pt-4 text-sm text-on-surface-variant leading-relaxed">
+          <div className="pt-2 pb-4 text-sm text-on-surface-variant leading-relaxed">
             <p>
               {shippingNote ??
                 'Complimentary climate-neutral delivery on qualifying orders. Standard returns within 14 days of delivery.'}

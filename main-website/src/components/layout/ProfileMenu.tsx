@@ -31,7 +31,7 @@ export default function ProfileMenu() {
         <button
           type="button"
           onClick={() => setProfileOpen((o) => !o)}
-          className="flex items-center justify-center rounded-full w-9 h-9 sm:w-10 sm:h-10 border-2 border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white hover:border-mehndi/50 hover:bg-sand/50 dark:hover:bg-charcoal/50 focus:outline-none focus:ring-2 focus:ring-mehndi/50 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal transition-colors overflow-hidden font-medium text-sm sm:text-base"
+          className="touch-target flex items-center justify-center rounded-full w-touch h-touch border-2 border-ash/30 bg-bone dark:bg-charcoal-light text-soft-charcoal dark:text-off-white hover:border-mehndi/50 hover:bg-sand/50 dark:hover:bg-charcoal/50 focus:outline-none focus:ring-2 focus:ring-mehndi/50 focus:ring-offset-2 focus:ring-offset-bone dark:focus:ring-offset-charcoal transition-colors overflow-hidden font-medium text-sm sm:text-base"
           aria-expanded={profileOpen}
           aria-haspopup="true"
           aria-label="Account menu"

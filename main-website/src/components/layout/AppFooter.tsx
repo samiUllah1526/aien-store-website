@@ -34,7 +34,7 @@ const FOOTER_LINK =
   'font-serif text-xs tracking-widest uppercase text-on-surface-variant hover:text-on-background underline-offset-4 hover:underline transition-all duration-500 ease-in-out';
 
 const SOCIAL_BTN =
-  'w-9 h-9 inline-flex items-center justify-center border border-outline-variant text-on-surface-variant hover:border-primary hover:text-on-background transition-colors duration-300';
+  'touch-target w-touch h-touch border border-outline-variant text-on-surface-variant hover:border-primary hover:text-on-background transition-colors duration-300';
 
 export default function AppFooter({
   logoSrc,
@@ -55,9 +55,9 @@ export default function AppFooter({
   return (
     <footer className="bg-surface-container-low border-t border-outline-variant w-full mt-section-gap">
       <div className={`${SITE_CONTAINER_CLASS} py-20 md:py-24`}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 sm:gap-12">
           {/* Brand */}
-          <div className="md:col-span-1 flex flex-col items-start gap-6 text-left">
+          <div className="sm:col-span-2 lg:col-span-1 flex flex-col items-start gap-6 text-left">
             <a
               href="/"
               className="inline-flex items-center justify-start font-sans font-bold text-xl tracking-tighter text-on-background focus-ring rounded-full"
@@ -178,7 +178,7 @@ export default function AppFooter({
               />
               <button
                 type="submit"
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-background transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 touch-target text-on-surface-variant hover:text-on-background transition-colors"
                 aria-label="Subscribe"
               >
                 <span className="material-symbols-outlined" aria-hidden>arrow_forward</span>

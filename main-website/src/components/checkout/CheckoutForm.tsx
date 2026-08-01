@@ -783,7 +783,7 @@ export default function CheckoutForm() {
         {/* ---------------------------------------------------------------- */}
         {/* Right column: sticky order summary                                */}
         {/* ---------------------------------------------------------------- */}
-        <aside className="w-full lg:w-1/3 bg-surface-container-low p-8 md:p-12 lg:sticky lg:top-28">
+        <aside className="w-full lg:w-1/3 bg-surface-container-low p-5 sm:p-8 md:p-12 lg:sticky lg:top-28">
           <h2 className="font-serif text-h3-section text-on-background uppercase mb-12">
             Summary
           </h2>

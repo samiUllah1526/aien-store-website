@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { brandName } from '../../config';
 import { getApiBaseUrl, api } from '../../lib/api';
 import CartIcon from '../cart/CartIcon';
@@ -71,7 +72,7 @@ function NavLink({ href, label, isActive }: { href: string; label: string; isAct
   return (
     <a
       href={href}
-      className={`relative font-serif tracking-tight text-sm uppercase pb-1 transition-opacity duration-300 hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 ${
+      className={`relative whitespace-nowrap font-serif tracking-tight text-xs lg:text-sm uppercase pb-1 transition-opacity duration-300 hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 ${
         isActive
           ? 'text-on-background border-b border-on-background'
           : 'text-on-surface-variant hover:text-on-background'
@@ -79,6 +80,36 @@ function NavLink({ href, label, isActive }: { href: string; label: string; isAct
     >
       {label}
     </a>
+  );
+}
+
+/** Inline SVGs for chrome icons — no Material Symbols font flash on first paint. */
+function IconMenu({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function IconClose({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconSearch({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+      />
+    </svg>
   );
 }
 
@@ -93,6 +124,20 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [mobileNavOpen]);
 
   const runSearch = useCallback((q: string) => {
     const term = q.trim();
@@ -178,20 +223,18 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-outline-variant/60">
+    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-outline-variant/60 pt-safe">
       <nav aria-label="Main" className="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 h-16 sm:h-20 flex items-center justify-between gap-6">
         {/* Mobile menu trigger + logo */}
         <div className="flex items-center gap-4 md:gap-12">
           <button
             type="button"
             onClick={() => setMobileNavOpen((o) => !o)}
-            className="md:hidden inline-flex items-center justify-center w-10 h-10 -ml-2 text-on-background hover:opacity-70 focus-ring rounded"
+            className="md:hidden touch-target -ml-2 text-on-background hover:opacity-70 focus-ring rounded"
             aria-label="Toggle navigation"
             aria-expanded={mobileNavOpen}
           >
-            <span className="material-symbols-outlined" aria-hidden>
-              {mobileNavOpen ? 'close' : 'menu'}
-            </span>
+            {mobileNavOpen ? <IconClose /> : <IconMenu />}
           </button>
           <a
             href="/"
@@ -211,9 +254,9 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
               brandName.toUpperCase()
             )}
           </a>
-          <ul className="hidden md:flex items-center gap-8">
+          <ul className="hidden md:flex items-center flex-nowrap gap-4 lg:gap-8 shrink min-w-0">
             {navLinks.map((link) => (
-              <li key={link.href}>
+              <li key={link.href} className="shrink-0">
                 <NavLink href={link.href} label={link.label} isActive={link.match(pathname)} />
               </li>
             ))}
@@ -226,10 +269,10 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex items-center justify-center w-10 h-10 text-on-background hover:opacity-70 transition-opacity focus-ring rounded"
+              className="touch-target text-on-background hover:opacity-70 transition-opacity focus-ring rounded"
               aria-label="Search"
             >
-              <span className="material-symbols-outlined" aria-hidden>search</span>
+              <IconSearch />
             </button>
           </li>
           {/* <li className="hidden sm:flex items-center"><ThemeToggle /></li> */}
@@ -238,24 +281,55 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
         </ul>
       </nav>
 
-      {/* Mobile dropdown nav */}
-      {mobileNavOpen && (
-        <div className="md:hidden border-t border-outline-variant/60 bg-background">
-          <ul className="px-6 py-4 flex flex-col gap-4">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  className="font-serif tracking-tight text-sm uppercase text-on-background hover:opacity-70"
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/*
+        Portal out of the sticky/backdrop-blur header. `backdrop-filter` makes
+        the header a containing block for `position: fixed`, which clipped this
+        drawer to the header height so links were invisible.
+      */}
+      {mobileNavOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="md:hidden fixed inset-0 z-[200] flex flex-col bg-background pt-safe"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+          >
+            <div className="flex items-center justify-between h-16 px-4 border-b border-outline-variant/60">
+              <span className="font-sans text-label-caps uppercase text-on-surface-variant">
+                Menu
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="touch-target text-on-background focus-ring rounded"
+                aria-label="Close navigation"
+              >
+                <IconClose />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-4 py-6 pb-safe" aria-label="Mobile">
+              <ul className="flex flex-col">
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      className={`flex items-center min-h-touch px-2 font-serif text-lg tracking-tight uppercase transition-opacity hover:opacity-70 ${
+                        link.match(pathname)
+                          ? 'text-on-background'
+                          : 'text-on-surface-variant'
+                      }`}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>,
+          document.body,
+        )}
 
       {/* Search overlay */}
       {searchOpen && (
@@ -273,7 +347,7 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
           >
             <div className="max-w-site mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-6 sm:py-8">
               <div className="flex items-center gap-4 border-b border-outline pb-2 focus-within:border-primary transition-colors">
-                <span className="material-symbols-outlined text-on-surface-variant" aria-hidden>search</span>
+                <IconSearch className="w-6 h-6 shrink-0 text-on-surface-variant" />
                 <input
                   ref={searchInputRef}
                   type="search"
@@ -291,10 +365,10 @@ export default function AppHeader({ logoSrc, landingCategories = [] }: AppHeader
                 <button
                   type="button"
                   onClick={closeSearch}
-                  className="inline-flex items-center justify-center w-10 h-10 text-on-surface-variant hover:text-on-background"
+                  className="touch-target text-on-surface-variant hover:text-on-background"
                   aria-label="Close search"
                 >
-                  <span className="material-symbols-outlined" aria-hidden>close</span>
+                  <IconClose />
                 </button>
               </div>
               <div className="mt-6 min-h-[140px]">

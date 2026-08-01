@@ -29,17 +29,17 @@ const hasHighlights = highlights.length > 0;
 
 {
   hasDescription || hasHighlights ? (
-    <section class="mb-12 space-y-10">
+    <section class="mb-8 sm:mb-12 space-y-8 sm:space-y-10">
       {hasDescription && (
         <div>
-          <p class="font-sans text-label-caps text-on-surface-variant mb-4">About the collection</p>
-          <div class="aien-rich-text font-body-md text-on-surface-variant" set:html={description} />
+          <p class="font-sans text-label-caps text-on-surface-variant mb-3 sm:mb-4">About the collection</p>
+          <div class="aien-rich-text font-body-md text-on-surface-variant text-sm sm:text-base" set:html={description} />
         </div>
       )}
       {hasHighlights && (
         <div>
-          <p class="font-sans text-label-caps text-on-surface-variant mb-4">Feature highlights</p>
-          <ul class="grid gap-x-8 gap-y-3 md:grid-cols-2">
+          <p class="font-sans text-label-caps text-on-surface-variant mb-3 sm:mb-4">Feature highlights</p>
+          <ul class="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {highlights.map((h) => (
               <li class="flex items-start gap-3 font-body-md text-on-surface-variant">
                 <svg
