@@ -286,6 +286,7 @@ model Product {
   id                    String    @id @default(uuid()) @db.Uuid
   name                  String    @map("name")
   slug                  String    @unique @map("slug")
+  /** Rich-text HTML stored from the admin TipTap editor. Plain-text legacy values render identically. */
   description           String?   @map("description")
   priceCents            Int       @map("price_cents")
   currency              String    @default("PKR") @map("currency")
