@@ -15,6 +15,7 @@ import ProductCard, { type ProductCardProduct } from '../ProductCard';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
 import { resolveStorePrice } from '../../lib/resolveStorePrice';
+import { IconClose, IconExpandLess, IconExpandMore, IconTune } from '../icons';
 
 export interface Product extends ProductCardProduct {
   category: string;
@@ -183,9 +184,11 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
         aria-controls="aien-filters"
       >
         <span>{filtersOpen ? 'Hide filters' : 'Refine selection'}</span>
-        <span className="material-symbols-outlined text-base" aria-hidden>
-          {filtersOpen ? 'close' : 'tune'}
-        </span>
+        {filtersOpen ? (
+          <IconClose className="w-5 h-5" />
+        ) : (
+          <IconTune className="w-5 h-5" />
+        )}
       </button>
 
       <aside
@@ -339,9 +342,11 @@ export default function ShopGrid({ products, pageSize = 12 }: ShopGridProps) {
               aria-expanded={sortMenuOpen}
             >
               <span>SORT BY: {SORTS.find((s) => s.id === sort)?.label ?? 'NEWEST'}</span>
-              <span className="material-symbols-outlined text-base transition-transform" aria-hidden>
-                {sortMenuOpen ? 'expand_less' : 'expand_more'}
-              </span>
+              {sortMenuOpen ? (
+                <IconExpandLess className="w-5 h-5" />
+              ) : (
+                <IconExpandMore className="w-5 h-5" />
+              )}
             </button>
             {sortMenuOpen && (
               <ul

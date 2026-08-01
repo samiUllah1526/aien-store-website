@@ -24,6 +24,7 @@ import {
   type StoreSaleType,
 } from '../../lib/computeStoreSalePrice';
 import { stripHtml } from '../../lib/stripHtml';
+import { IconExpandMore } from '../icons';
 
 export type ProductVariant = {
   id: string;
@@ -330,12 +331,7 @@ export default function AddToCart({
           <details className="group">
             <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
               <span className="font-sans text-label-caps uppercase">Description</span>
-              <span
-                className="material-symbols-outlined group-open:rotate-180 transition-transform"
-                aria-hidden
-              >
-                expand_more
-              </span>
+              <IconExpandMore className="w-5 h-5 group-open:rotate-180 transition-transform" />
             </summary>
             <div
               className="aien-rich-text pt-2 pb-4 text-sm text-on-surface-variant leading-relaxed"
@@ -346,12 +342,7 @@ export default function AddToCart({
         <details className="group">
           <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
             <span className="font-sans text-label-caps uppercase">Composition &amp; Care</span>
-            <span
-              className="material-symbols-outlined group-open:rotate-180 transition-transform"
-              aria-hidden
-            >
-              expand_more
-            </span>
+            <IconExpandMore className="w-5 h-5 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="pt-2 pb-4 text-sm text-on-surface-variant space-y-2 leading-relaxed">
             {composition ? (
@@ -367,12 +358,7 @@ export default function AddToCart({
         <details className="group">
           <summary className="flex justify-between items-center cursor-pointer list-none min-h-touch py-3">
             <span className="font-sans text-label-caps uppercase">Shipping &amp; Returns</span>
-            <span
-              className="material-symbols-outlined group-open:rotate-180 transition-transform"
-              aria-hidden
-            >
-              expand_more
-            </span>
+            <IconExpandMore className="w-5 h-5 group-open:rotate-180 transition-transform" />
           </summary>
           <div className="pt-2 pb-4 text-sm text-on-surface-variant leading-relaxed">
             <p>

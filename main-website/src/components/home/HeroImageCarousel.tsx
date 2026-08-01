@@ -79,7 +79,7 @@ export default function HeroImageCarousel({
         <div className="text-center px-6">
           <p className="eyebrow mb-6">{eyebrow}</p>
           <h1
-            className={`font-serif text-h1-display text-on-background max-w-2xl mx-auto mb-10 ${
+            className={`font-serif text-[1.75rem] sm:text-[2.25rem] md:text-h1-display leading-[1.15] text-on-background max-w-2xl mx-auto mb-10 ${
               isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
             }`}
           >
@@ -172,7 +172,7 @@ export default function HeroImageCarousel({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
-          className={`font-serif text-h1-display text-white max-w-3xl mb-6 sm:mb-10 md:mb-12 ${
+          className={`font-serif text-[1.75rem] sm:text-[2.25rem] md:text-h1-display leading-[1.15] text-white max-w-3xl mb-6 sm:mb-10 md:mb-12 ${
             isUrduOrArabicScript(headline) ? 'urdu-text font-urdu text-right leading-[1.35]' : ''
           }`}
         >

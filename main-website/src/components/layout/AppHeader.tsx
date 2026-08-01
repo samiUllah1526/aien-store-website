@@ -17,6 +17,7 @@ import ProfileMenu from './ProfileMenu';
 import ProductPrice from '../ProductPrice';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { resolveStorePrice } from '../../lib/resolveStorePrice';
+import { IconClose, IconMenu, IconSearch } from '../icons';
 
 interface LandingCategory {
   id: string;
@@ -80,36 +81,6 @@ function NavLink({ href, label, isActive }: { href: string; label: string; isAct
     >
       {label}
     </a>
-  );
-}
-
-/** Inline SVGs for chrome icons — no Material Symbols font flash on first paint. */
-function IconMenu({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  );
-}
-
-function IconClose({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
-
-function IconSearch({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-      />
-    </svg>
   );
 }
 

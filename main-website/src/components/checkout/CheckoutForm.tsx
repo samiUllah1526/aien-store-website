@@ -10,7 +10,7 @@
  * Form validation and submit logic are unchanged — visual redesign only.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { randomUUID } from '../../lib/idempotency';
 import { useForm } from 'react-hook-form';
 import type { Resolver, SubmitHandler } from 'react-hook-form';
@@ -24,6 +24,16 @@ import { cartItemsToPixelFields, centsToValue, trackPixel } from '../../lib/pixe
 import ColorSwatch from '../product/ColorSwatch';
 import { colorAriaLabel } from '../../lib/colorDisplay';
 import { checkoutSchema, checkoutDefaultValues, type CheckoutFormData } from './checkoutSchema';
+import {
+  IconArrowForward,
+  IconBank,
+  IconCheckCircle,
+  IconError,
+  IconLock,
+  IconPayments,
+  IconTag,
+  IconTruck,
+} from '../icons';
 
 export interface QuoteLineItem {
   productId: string;
@@ -362,13 +372,7 @@ export default function CheckoutForm() {
   if (submitted) {
     return (
       <div className="max-w-xl mx-auto py-24 text-center">
-        <span
-          className="material-symbols-outlined text-secondary mb-6"
-          style={{ fontSize: '48px' }}
-          aria-hidden
-        >
-          check_circle
-        </span>
+        <IconCheckCircle className="w-12 h-12 text-secondary mb-6 mx-auto" />
         <p className="font-sans text-label-caps text-on-surface-variant mb-4">
           ORDER CONFIRMED
         </p>
@@ -421,12 +425,7 @@ export default function CheckoutForm() {
           className="mb-12 border-l-2 border-error bg-error-container/40 px-6 py-5 scroll-mt-24"
         >
           <div className="flex gap-4">
-            <span
-              className="material-symbols-outlined text-error shrink-0"
-              aria-hidden
-            >
-              error
-            </span>
+            <IconError className="w-6 h-6 text-error shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-sans text-body-md text-on-error-container">
                 {errors.root.message}
@@ -437,9 +436,7 @@ export default function CheckoutForm() {
                   className="mt-3 inline-flex items-center gap-2 font-sans text-label-caps text-on-error-container border-b border-on-error-container pb-1 hover:opacity-70 transition-opacity"
                 >
                   UPDATE YOUR CART
-                  <span className="material-symbols-outlined text-base" aria-hidden>
-                    arrow_forward
-                  </span>
+                  <IconArrowForward className="w-4 h-4" />
                 </a>
               )}
             </div>
@@ -650,12 +647,7 @@ export default function CheckoutForm() {
             {shippingCents === 0 ? (
               <div className="flex items-center justify-between gap-4 border border-outline-variant px-6 py-5">
                 <div className="flex items-center gap-5 min-w-0">
-                  <span
-                    className="material-symbols-outlined text-secondary shrink-0"
-                    aria-hidden
-                  >
-                    local_shipping
-                  </span>
+                  <IconTruck className="w-6 h-6 text-secondary shrink-0" />
                   <div className="min-w-0">
                     <p className="font-serif text-body-lg text-on-background">
                       Standard Delivery
@@ -672,12 +664,7 @@ export default function CheckoutForm() {
             ) : (
               <div className="flex items-center justify-between gap-4 border border-outline-variant px-6 py-5">
                 <div className="flex items-center gap-5 min-w-0">
-                  <span
-                    className="material-symbols-outlined text-on-surface-variant shrink-0"
-                    aria-hidden
-                  >
-                    local_shipping
-                  </span>
+                  <IconTruck className="w-6 h-6 text-on-surface-variant shrink-0" />
                   <p className="font-serif text-body-lg text-on-background">
                     Standard Delivery
                   </p>
@@ -699,9 +686,7 @@ export default function CheckoutForm() {
                 How you&apos;ll pay
               </h2>
               <p className="font-sans text-label-caps text-on-surface-variant mt-3 inline-flex items-center gap-2">
-                <span className="material-symbols-outlined text-base" aria-hidden>
-                  lock
-                </span>
+                <IconLock className="w-4 h-4" />
                 ALL TRANSACTIONS ARE SECURE AND ENCRYPTED
               </p>
             </div>
@@ -713,7 +698,7 @@ export default function CheckoutForm() {
                 register={register}
                 title="Cash on Delivery"
                 description="Pay in cash when your order arrives at your door."
-                icon="payments"
+                icon={<IconPayments className="w-6 h-6" />}
               />
               <PaymentOption
                 value="bank"
@@ -721,7 +706,7 @@ export default function CheckoutForm() {
                 register={register}
                 title="Bank Deposit"
                 description="Transfer to our account and upload a screenshot of the receipt."
-                icon="account_balance"
+                icon={<IconBank className="w-6 h-6" />}
               />
 
               {paymentMethod === 'bank' && (
@@ -903,12 +888,7 @@ export default function CheckoutForm() {
                 {appliedVoucherCode ? (
                   <div className="flex items-center justify-between gap-3 border border-secondary/40 bg-secondary-container/40 px-4 py-3">
                     <span className="inline-flex items-center gap-2 font-sans text-label-caps text-on-secondary-container uppercase">
-                      <span
-                        className="material-symbols-outlined text-base"
-                        aria-hidden
-                      >
-                        local_offer
-                      </span>
+                      <IconTag className="w-4 h-4" />
                       {appliedVoucherCode}
                     </span>
                     <button
@@ -1034,9 +1014,7 @@ export default function CheckoutForm() {
 
           <div className="space-y-4">
             <div className="flex gap-4 items-start text-on-surface-variant">
-              <span className="material-symbols-outlined text-lg" aria-hidden>
-                lock
-              </span>
+              <IconLock className="w-5 h-5" />
               <p className="font-sans text-label-caps leading-relaxed">
                 Secure checkout · Your details stay protected.
               </p>
@@ -1058,7 +1036,7 @@ interface PaymentOptionProps {
   register: ReturnType<typeof useForm<CheckoutFormData>>['register'];
   title: string;
   description: string;
-  icon: string;
+  icon: ReactNode;
 }
 
 /** Editorial radio card. Highlighted with a darker border when selected. */
@@ -1085,10 +1063,9 @@ function PaymentOption({
         className="mt-1.5 h-4 w-4 border-outline text-primary focus:ring-secondary/40 cursor-pointer"
       />
       <span
-        className={`material-symbols-outlined shrink-0 mt-0.5 ${
+        className={`shrink-0 mt-0.5 ${
           checked ? 'text-primary' : 'text-on-surface-variant'
         }`}
-        aria-hidden
       >
         {icon}
       </span>
