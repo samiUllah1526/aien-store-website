@@ -16,6 +16,7 @@ import ProductPrice from '../ProductPrice';
 import ColorSwatch from '../product/ColorSwatch';
 import { buildImageUrl, IMAGE_PRESETS } from '../../lib/buildImageUrl';
 import { colorAriaLabel, colorUiLabel } from '../../lib/colorDisplay';
+import { IconAdd, IconImage, IconRemove, IconTruck } from '../icons';
 
 const ESTIMATED_TAX_RATE = 0.08;
 
@@ -89,7 +90,7 @@ export default function CartPage() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                    <span className="material-symbols-outlined" aria-hidden>image</span>
+                    <IconImage className="w-8 h-8" />
                   </div>
                 )}
               </a>
@@ -129,7 +130,7 @@ export default function CartPage() {
                       className="touch-target hover:text-secondary transition-colors disabled:opacity-40"
                       aria-label="Decrease quantity"
                     >
-                      <span className="material-symbols-outlined text-base" aria-hidden>remove</span>
+                      <IconRemove className="w-5 h-5" />
                     </button>
                     <span className="font-sans text-label-caps min-w-[1.5rem] text-center">
                       {String(item.quantity).padStart(2, '0')}
@@ -143,7 +144,7 @@ export default function CartPage() {
                       className="touch-target hover:text-secondary transition-colors disabled:opacity-40"
                       aria-label="Increase quantity"
                     >
-                      <span className="material-symbols-outlined text-base" aria-hidden>add</span>
+                      <IconAdd className="w-5 h-5" />
                     </button>
                   </div>
                   <button
@@ -219,9 +220,7 @@ export default function CartPage() {
 
           <div className="space-y-4">
             <div className="flex gap-4 items-start text-on-surface-variant">
-              <span className="material-symbols-outlined text-lg" aria-hidden>
-                local_shipping
-              </span>
+              <IconTruck className="w-5 h-5" />
               <p className="font-sans text-label-caps leading-relaxed">
                 Complimentary climate-neutral delivery on qualifying orders.
               </p>

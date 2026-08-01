@@ -20,6 +20,7 @@ import { formatColorLabel, isHexColorString } from '../lib/colorDisplay';
 import { ONE_SIZE_LABEL } from './product/constants';
 import ProductPrice from './ProductPrice';
 import { resolveUnitSaleDisplay } from '../lib/computeStoreSalePrice';
+import { IconImage } from './icons';
 
 export interface ProductCardVariant {
   id: string;
@@ -195,7 +196,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                <span className="material-symbols-outlined" aria-hidden>image</span>
+                <IconImage className="w-8 h-8" />
               </div>
             )}
 

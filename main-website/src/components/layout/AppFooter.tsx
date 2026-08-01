@@ -7,6 +7,7 @@
 
 import { brandName } from '../../config';
 import { SITE_CONTAINER_CLASS } from './SiteContainer';
+import { IconArrowForward } from '../icons';
 
 export interface AppFooterSocial {
   facebook?: string;
@@ -181,7 +182,7 @@ export default function AppFooter({
                 className="absolute right-0 top-1/2 -translate-y-1/2 touch-target text-on-surface-variant hover:text-on-background transition-colors"
                 aria-label="Subscribe"
               >
-                <span className="material-symbols-outlined" aria-hidden>arrow_forward</span>
+                <IconArrowForward className="w-5 h-5" />
               </button>
             </form>
 
