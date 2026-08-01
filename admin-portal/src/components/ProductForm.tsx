@@ -17,6 +17,17 @@ import {
 import { ImageCropModal, ASPECT_PRODUCT } from './ImageCropModal';
 import type { UseFormReturn } from 'react-hook-form';
 import { majorToMinorUnits, minorUnitsToMajorString } from '../lib/money';
+import { RichTextEditor } from './RichTextEditor';
+
+/** TipTap empty doc is often `<p></p>`; treat as no description. */
+function normalizeRichText(html: string | undefined): string | undefined {
+  if (!html?.trim()) return undefined;
+  const text = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+  return text ? html : undefined;
+}
 
 interface ProductFormProps {
   product?: Product | null;
@@ -65,7 +76,7 @@ function mapFormValuesToSubmit(values: ProductFormValues, mediaIds: string[]): P
   return {
     name: values.name,
     slug: values.slug || slugFromName(values.name),
-    description: values.description || undefined,
+    description: normalizeRichText(values.description),
     categoryIds: values.categoryIds?.length ? values.categoryIds : undefined,
     primaryCategoryId: values.categoryIds?.length
       ? values.primaryCategoryId && values.categoryIds.includes(values.primaryCategoryId)
@@ -388,15 +399,25 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       </div>
 
       <div>
-        <label htmlFor="description" className={labelBase}>
-          Description
-        </label>
-        <textarea
-          id="description"
-          rows={3}
-          {...form.register('description')}
-          className={inputBase}
+        <span className={labelBase}>Description</span>
+        <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+          Shown in the Description accordion on the product page. Use bold, links, and lists
+          sparingly.
+        </p>
+        <Controller
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <RichTextEditor
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              placeholder="Describe the piece…"
+            />
+          )}
         />
+        {form.formState.errors.description && (
+          <p className="mt-1 text-xs text-red-600">{form.formState.errors.description.message}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

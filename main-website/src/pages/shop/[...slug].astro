@@ -232,10 +232,8 @@ const ogImageAbs = rawOgImage
 const productImages = (displayImages ?? (product.image ? [product.image] : [])).map((img: string) =>
   toAbsoluteUrl(img, siteUrl || storeApiBaseUrl),
 );
-// Meta description and JSON-LD must always be plain text. If/when product
-// descriptions move to TipTap rich-text, stripping here keeps these channels
-// safe; the on-page body below is the only place that will need to switch to
-// rich rendering at that point.
+// Meta description and JSON-LD must always be plain text; on-page body renders
+// TipTap HTML via AddToCart.
 const productDescriptionPlain = stripHtml(product.description) || undefined;
 const productJsonLd = {
   '@context': 'https://schema.org',

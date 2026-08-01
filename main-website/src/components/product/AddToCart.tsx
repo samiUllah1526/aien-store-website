@@ -24,6 +24,7 @@ import {
   resolveUnitSaleDisplay,
   type StoreSaleType,
 } from '../../lib/computeStoreSalePrice';
+import { stripHtml } from '../../lib/stripHtml';
 
 export type ProductVariant = {
   id: string;
@@ -310,7 +311,7 @@ export default function AddToCart({
       </div>
 
       <div className="border-t border-outline-variant pt-6 space-y-2">
-        {description ? (
+        {description && stripHtml(description) ? (
           <details className="group">
             <summary className="flex justify-between items-center cursor-pointer list-none py-2">
               <span className="font-sans text-label-caps uppercase">Description</span>
@@ -321,9 +322,10 @@ export default function AddToCart({
                 expand_more
               </span>
             </summary>
-            <div className="pt-4 text-sm text-on-surface-variant leading-relaxed">
-              <p>{description}</p>
-            </div>
+            <div
+              className="aien-rich-text pt-4 text-sm text-on-surface-variant leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: description }}
+            />
           </details>
         ) : null}
         <details className="group">
