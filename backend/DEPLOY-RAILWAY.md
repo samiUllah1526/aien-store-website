@@ -42,6 +42,14 @@ In the backend service → **Variables**, set at least:
 
 Add any other env vars your app needs (e.g. mail, storage, `HEALTH_HEAP_LIMIT_MB`).
 
+**Admin “Rebuild website”** (GitHub Actions `workflow_dispatch`) needs these on the **backend service**, not on Cloudflare Pages:
+
+- **GITHUB_DEPLOY_TOKEN** – Fine-grained PAT: this repo only; **Actions: Read and write**; **Contents: Read**.
+- **GITHUB_REPO** – `owner/repo` (the repo that contains `.github/workflows/`).
+- **GITHUB_MAIN_WEBSITE_WORKFLOW** – optional; default `deploy-main-website-cloudflare.yml`.
+
+If admin shows `Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)`, GitHub rejected the token (`401`/`403`). Recreate the PAT with those permissions, update the Railway variable, and redeploy/restart the backend. Full steps: admin portal **Documentation → Deployment**.
+
 ## 5. Deploy
 
 - Push to the connected branch; Railway will build and deploy from `backend/` using `railway.toml`.

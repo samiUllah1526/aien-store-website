@@ -148,6 +148,22 @@ PORT=3000
 DATABASE_URL=postgresql://aien_user:StrongPasswordHere123!@127.0.0.1:5432/aien_store
 JWT_SECRET=your_long_random_secret
 
+Admin "Rebuild website" (required on this API .env, then pm2 restart):
+GITHUB_DEPLOY_TOKEN=github_pat_...
+GITHUB_REPO=YOUR_GITHUB_USERNAME/YOUR_REPO
+GITHUB_MAIN_WEBSITE_WORKFLOW=deploy-main-website-cloudflare.yml
+
+Create the token: GitHub → Settings → Developer settings → Fine-grained tokens.
+Resource owner = repo owner. Only this repo.
+Permissions: Actions = Read and write, Contents = Read.
+If org uses SSO, Authorize the token. Then: pm2 restart aien-backend
+
+Error "Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)":
+GitHub returned 401/403. Token is missing, expired, or lacks Actions write on this repo.
+This is NOT the workflow YAML permissions block.
+Fix: new PAT with the permissions above, update backend/.env, restart PM2.
+Do not put GITHUB_DEPLOY_TOKEN in main-website/.env.
+
 Install and run:
 npm ci
 npm run build
@@ -439,7 +455,10 @@ Keep one working SSH session open while testing a new SSH session.
 [ ] 5. Backend env configured
     cd ~/aien-store-website/backend
     nano .env
-    # Must include DATABASE_URL and production secrets
+    # Must include DATABASE_URL, JWT_SECRET, and for admin rebuild:
+    # GITHUB_DEPLOY_TOKEN, GITHUB_REPO=owner/repo
+    # Token: fine-grained PAT, Actions Read and write, Contents Read
+    # Then: pm2 restart aien-backend
 
 [ ] 6. Backend running under PM2
     cd ~/aien-store-website/backend
