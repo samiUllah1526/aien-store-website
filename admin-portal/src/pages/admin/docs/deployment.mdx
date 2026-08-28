@@ -9,31 +9,108 @@ title: Deployment
 
 # Deployment
 
-Both the **main website** and **admin portal** deploy separately to Cloudflare Pages via GitHub Actions. Deploys run automatically when you push changes to `main`—and only when the relevant project files change (path-based triggers).
+**Canonical VPS playbook (from scratch on any server):** repo file `backend-vps-deployment-guide.txt`.
 
-The **backend** deploys separately (e.g. Railway, Render, or your own server). See the repository’s `backend/DEPLOY-RAILWAY.md` and `backend/README.md` for backend-specific steps.
+This page is the operational map: what deploys where, which keys do what, and how to fix the errors we actually hit.
 
-One-click **Rebuild website** on [Site deployment](/admin/site-deployment) is triggered by the **API server**, not by Cloudflare and not by `main-website/.env`. The API calls GitHub with `GITHUB_DEPLOY_TOKEN`.
+---
+
+## Architecture
+
+| Hostname | Where it runs | How it deploys |
+|----------|---------------|----------------|
+| `api.<domain>` | VPS (Nginx → Node on `127.0.0.1:3000`, PM2) | Merge to `main` touching `backend/**` → **Deploy Orchestrator** → **Deploy Backend VPS** (SSH + `git fetch`) |
+| `www.<domain>` | Cloudflare Pages project `aien-store` | Merge touching `main-website/**`, nightly cron, or admin **Rebuild website** |
+| `admin.<domain>` | Cloudflare Pages project `admin-portal` | Merge touching `admin-portal/**` |
+| apex `<domain>` | DNS redirect | 301 to `https://www.<domain>` |
+
+**Rebuild website** in admin only dispatches `deploy-main-website-cloudflare.yml`. It never SSHs to the VPS. That is why a rebuild can succeed while a merge-to-`main` backend job fails.
+
+Ignore `.github/workflows/deploy.yml` for this stack (old Docker path). Use:
+
+- `.github/workflows/deploy-orchestrator.yml`
+- `.github/workflows/deploy-backend-vps.yml`
+- `.github/workflows/deploy-main-website-cloudflare.yml`
+- `.github/workflows/deploy-admin-portal-cloudflare.yml`
+
+Railway alternative for API only: `backend/DEPLOY-RAILWAY.md`.
+
+---
+
+## Three keys (do not mix)
+
+| Name | Direction | Lives where | Purpose |
+|------|-----------|-------------|---------|
+| **VPS login key** (`VPS_SSH_KEY`) | GitHub Actions → VPS | GitHub repo **Actions secrets** (private key). Public half in VPS `~/.ssh/authorized_keys` for `VPS_USER` | Lets the workflow SSH in and run deploy commands |
+| **GitHub deploy key** | VPS → GitHub | VPS `~/.ssh/id_ed25519`. Public half in GitHub **Repo → Settings → Deploy keys** | Lets `git fetch` / `git clone` over `git@github.com` |
+| **GITHUB_DEPLOY_TOKEN** | API server → GitHub API | VPS `backend/.env` (or Railway vars) | Admin **Rebuild website** + deploy status. Fine-grained PAT: Actions **Read and write**, Contents **Read** |
+
+Deleting a **deploy key** on GitHub does **not** delete `GITHUB_DEPLOY_TOKEN` or `VPS_SSH_KEY`. Recreate the deploy key (below). Do not rotate the other two unless they were also deleted.
+
+---
+
+## Error: `git@github.com: Permission denied (publickey)`
+
+**When:** Merge to `main` (or **Deploy Backend VPS**). Log shows `appleboy/ssh-action` then `git fetch` / `fatal: Could not read from remote repository`.
+
+**What it means:** GitHub Actions **did** SSH into the VPS (`VPS_SSH_KEY` is fine). On the VPS, Git cannot read the repo. Usual cause: deploy key removed on GitHub, never added, or added for the wrong Linux user.
+
+**Fix if you deleted the deploy key** (private key often still on the VPS):
+
+1. SSH as **`VPS_USER`** (same as GitHub secret, often `deploy-user`):
+
+```bash
+ssh deploy-user@YOUR_VPS_IP
+whoami
+cd ~/aien-store-website   # or whatever VPS_APP_DIR is
+git remote -v             # must be git@github.com:OWNER/REPO.git
+ls -la ~/.ssh
+cat ~/.ssh/id_ed25519.pub
+```
+
+2. If `.pub` exists: GitHub → this repo → **Settings** → **Deploy keys** → **Add deploy key**  
+   - Title: `vps-backend-deploy`  
+   - Key: the full `.pub` line  
+   - Do **not** enable write access  
+
+3. If there is no key, create one, then add the new `.pub` the same way:
+
+```bash
+ssh-keygen -t ed25519 -C "vps-deploy-readonly" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+```
+
+4. Test, then re-run the failed Action:
+
+```bash
+ssh -T git@github.com
+# expect: Hi OWNER/REPO! You've successfully authenticated...
+git fetch origin
+```
+
+**If `ssh -T` works but `git fetch` fails:** `git remote -v` is HTTPS or a different repo. Set:
+
+```bash
+git remote set-url origin git@github.com:OWNER/REPO.git
+```
+
+**If you added the key as `root` but `VPS_USER` is `deploy-user`:** GitHub Actions runs as `deploy-user`. Add the key under **that** user’s `~/.ssh`.
 
 ---
 
 ## Error: Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)
 
-**What it means:** GitHub returned `401` or `403`. The token on the **API server** is missing, expired, or does not have permission to read/dispatch Actions on this repo.
+**What it means:** GitHub returned `401` or `403` to the **API server**. Token missing, expired, or cannot dispatch/list Actions.
 
-This is **not** the workflow `permissions:` block in YAML. That only applies to `GITHUB_TOKEN` inside the job.
+This is **not** the workflow YAML `permissions:` block (that is `GITHUB_TOKEN` inside the job).
 
-**Fix (exact steps):**
+**Fix:**
 
-1. GitHub → **Settings** (your account, or the org that owns the repo) → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. **Resource owner:** the user or org that owns this repository.
-3. **Repository access:** **Only select repositories** → select this repo only.
-4. **Repository permissions:**
-   - **Actions:** **Read and write**
-   - **Contents:** **Read**
-5. Generate and copy the token (`github_pat_...`).
-6. If the org requires it: wait until the token is **Approved**, then **Authorize** SSO for that org.
-7. On the **API host** (VPS `backend/.env`, Railway Variables, etc.) set:
+1. GitHub → **Settings** → **Developer settings** → **Fine-grained tokens** → **Generate new token**.
+2. Resource owner = repo owner. Access = **this repo only**.
+3. Permissions: **Actions: Read and write**, **Contents: Read**.
+4. Org approval + SSO authorize if required.
+5. On the **API host** only:
 
 ```
 GITHUB_DEPLOY_TOKEN=github_pat_...
@@ -41,120 +118,129 @@ GITHUB_REPO=owner/repo
 GITHUB_MAIN_WEBSITE_WORKFLOW=deploy-main-website-cloudflare.yml
 ```
 
-`GITHUB_REPO` must be exactly `owner/repo` for the repo that contains `.github/workflows/deploy-main-website-cloudflare.yml`.
+6. Restart API (`pm2 restart aien-backend --update-env`). Never put this token in `main-website/.env`.
 
-8. Restart the API so it picks up the new env (e.g. `pm2 restart aien-backend`). Do not put this token in `main-website/.env` or the admin portal.
+Read-only Actions is not enough (dispatch needs write). GitHub has no “dispatch only” scope.
 
-**Confirm the token works** (replace `OWNER/REPO`; expect HTTP `200`):
+---
+
+## GitHub Actions secrets and variables
+
+### Repo secrets (backend VPS job)
+
+| Secret | Value |
+|--------|--------|
+| `VPS_HOST` | Server IPv4 |
+| `VPS_PORT` | `22` unless you changed SSH |
+| `VPS_USER` | Linux user that owns the clone (e.g. `deploy-user`) |
+| `VPS_SSH_KEY` | **Private** key for that user (full `-----BEGIN ... PRIVATE KEY-----` block) |
+| `VPS_APP_DIR` | Absolute path to the git clone, e.g. `/home/deploy-user/aien-store-website` |
+| `DEPLOY_BRANCH` | `main` (fallback if the workflow input is empty) |
+
+Create the Actions→VPS key **on your laptop** (separate from the GitHub deploy key):
 
 ```bash
-curl -sS -o /tmp/gh-runs.json -w "%{http_code}\n" \
-  -H "Authorization: Bearer $GITHUB_DEPLOY_TOKEN" \
-  -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  "https://api.github.com/repos/OWNER/REPO/actions/workflows/deploy-main-website-cloudflare.yml/runs?per_page=1&branch=main"
+ssh-keygen -t ed25519 -C "github-actions-vps" -f ./gha_vps -N ""
+# Public: add ./gha_vps.pub to VPS ~/.ssh/authorized_keys for VPS_USER
+# Private: paste ./gha_vps into GitHub secret VPS_SSH_KEY
 ```
 
-- `401` — wrong or expired token.
-- `403` — token cannot access this repo, Actions is not **Read and write**, org approval pending, or SSO not authorized.
-- `404` — wrong `GITHUB_REPO` or workflow filename (that is a different admin error).
+Test: `ssh -i ./gha_vps deploy-user@VPS_HOST`. Then delete the local private file if you stored it only in GitHub.
 
-Classic PATs need scopes `repo` and `workflow`. Fine-grained is the intended setup.
+### Environment `CLOUDFLARE` (Pages jobs)
 
----
+**Secrets:** `CLOUDFLARE_API_TOKEN` (Account → Cloudflare Pages → Edit), `CLOUDFLARE_ACCOUNT_ID`.
 
-## Backend deployment (Railway or other)
-
-When deploying the NestJS backend:
-
-1. **Migrations:** Run `npm run db:migrate:deploy` (or use Railway’s pre-deploy: `npx prisma migrate deploy`) so the `public` schema and app tables are up to date.
-2. **pg-boss (background jobs):** No extra step. The app creates the `pgboss` schema and job tables automatically on first start. You do **not** need to run `pg-boss create` or any script on each deploy. If you have an existing DB where `pgboss` was never created, see [Background jobs setup](/admin/docs/jobs-setup) for a one-time CLI command.
+**Variables (or secrets):** `PUBLIC_API_URL` (e.g. `https://api.aien.store`) — baked into the frontend at **build** time. `CLOUDFLARE_ZONE_ID` — only needed to purge cache.
 
 ---
 
-## Overview
+## Cloudflare Pages
 
-| Project        | Cloudflare Pages project | Deploys when these paths change          |
-|----------------|--------------------------|------------------------------------------|
-| Main website   | `aien-store`             | `main-website/**` or its workflow file   |
-| Admin portal   | `admin-portal`           | `admin-portal/**` or its workflow file   |
+Create empty **Direct Upload** projects before the first workflow run:
 
-Push to `main`, and only the projects you changed will be built and deployed.
+1. `aien-store` — main website  
+2. `admin-portal` — admin  
 
----
-
-## GitHub Secrets
-
-The workflows use a GitHub **environment** called `CLOUDFLARE` with these secrets:
-
-| Secret                  | Purpose                                                       |
-|-------------------------|---------------------------------------------------------------|
-| `CLOUDFLARE_API_TOKEN`  | API token with Cloudflare Pages edit permission               |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (32-character hex, e.g. from the dashboard URL) |
-
-To create an API token:
-
-1. Cloudflare dashboard → **My Profile** → **API Tokens**
-2. **Create Token** → use the “Edit Cloudflare Workers” template or create a custom token
-3. Ensure **Account → Cloudflare Pages → Edit** permission is enabled
-
-Account ID: In the dashboard URL (`https://dash.cloudflare.com/<ACCOUNT_ID>/...`) or under **Workers & Pages** → **Account details**.
+Custom domains: `www.<domain>` on `aien-store`, `admin.<domain>` on `admin-portal`. DNS CNAMEs point at the `*.pages.dev` hostnames Cloudflare shows (they are unique per account; do not copy an old project’s hostname blindly).
 
 ---
 
-## Cloudflare Pages Projects
+## Backend on a VPS (required steps, in order)
 
-Both projects must exist in Cloudflare before the first deploy:
+Do **not** harden SSH (disable password/root) until key login and Actions SSH both work.
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages**
-2. Choose **Upload your static files**
-3. Create project `aien-store` for the main website
-4. Create project `admin-portal` for the admin portal
+1. Ubuntu: `git`, `curl`, `ufw`, Postgres, Node 20, `pm2`, later `nginx` + `certbot`.
+2. Create `deploy-user`, copy your laptop pubkey into that user’s `authorized_keys`, log in as that user.
+3. UFW: OpenSSH, 80, 443.
+4. **Create the GitHub deploy key** (section above) **before** `git clone git@github.com:...`.
+5. Clone into `$HOME/aien-store-website` (this path becomes `VPS_APP_DIR`).
+6. Postgres: database + user; grant `USAGE, CREATE` on `public` and ownership (Prisma needs this).
+7. `backend/.env` — see `backend/.env.example`. Production minimum:
 
-You can upload a dummy file or leave them empty; GitHub Actions will upload the built `dist` folder on each deploy.
+```
+NODE_ENV=production
+PORT=3000
+DATABASE_URL=postgresql://USER:PASS@127.0.0.1:5432/DB?schema=public&options=-c%20TimeZone%3DUTC
+JWT_SECRET=<long random, not change-me-in-production>
+CORS_ORIGIN=https://www.YOUR_DOMAIN,https://YOUR_DOMAIN,https://admin.YOUR_DOMAIN
+APP_URL=https://www.YOUR_DOMAIN
+ADMIN_URL=https://admin.YOUR_DOMAIN
+API_URL=https://api.YOUR_DOMAIN
+GITHUB_DEPLOY_TOKEN=
+GITHUB_REPO=owner/repo
+GITHUB_MAIN_WEBSITE_WORKFLOW=deploy-main-website-cloudflare.yml
+```
+
+Also set mail + Cloudinary (or other storage) if you use them.
+
+8. `cd backend && npm ci && npm run build && npx prisma migrate deploy && npm run db:seed` (seed once).  
+   `pm2 start npm --name aien-backend -- run start:prod && pm2 save && pm2 startup`.
+9. Nginx: proxy `api.YOUR_DOMAIN` → `127.0.0.1:3000`. Certbot for that hostname. Point DNS `api` A record at the VPS **before** certbot.
+10. Add GitHub secrets (table above). Run **Deploy Backend VPS** once by hand.
+
+pg-boss tables are created on first API start. Details: [Background jobs](/admin/docs/jobs-setup).
 
 ---
 
-## Deployment Flow
+## Frontends (env at build time)
 
-1. Push changes to `main`
-2. GitHub Actions runs only if the relevant paths changed (see table above)
-3. Job installs dependencies (`npm ci`), builds (`npm run build`), then runs `wrangler pages deploy dist`
-4. Cloudflare Pages serves the new build
+`PUBLIC_API_URL` must be the public API. Set it as a **CLOUDFLARE** environment variable (not only a local `.env`). A Pages build with localhost will produce a broken production site.
 
-View runs and logs under the repository **Actions** tab.
+Optional: `PUBLIC_SITE_URL` on the main website for SEO.
 
----
-
-## Manual Deployment (Optional)
-
-If you need to deploy from your machine:
-
-**Main website:**
+Manual deploy from a laptop:
 
 ```bash
-cd main-website
-npm run build
+cd main-website && npm run build
 npx wrangler@3 pages deploy dist --project-name=aien-store
-```
 
-**Admin portal:**
-
-```bash
-cd admin-portal
-npm run build
+cd ../admin-portal && npm run build
 npx wrangler@3 pages deploy dist --project-name=admin-portal
 ```
 
-Log in first: `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in your environment.
+---
 
-> **Note:** Use `wrangler@3` locally if you see `@cloudflare/workerd-darwin-arm64` errors with newer Wrangler versions on Apple Silicon.
+## Quick verify
+
+```bash
+curl -I https://api.YOUR_DOMAIN/health
+curl -I https://www.YOUR_DOMAIN
+curl -I https://admin.YOUR_DOMAIN
+```
+
+Actions: orchestrator green after a merge that touches each area. Admin → Site deployment shows the latest main-website run.
 
 ---
 
-## Summary
+## Other failures (short)
 
-- Path-based deploys: only changed projects run
-- Uses GitHub environment `CLOUDFLARE` and its secrets
-- Cloudflare Pages projects: `aien-store`, `admin-portal`
-- Deploys run on push to `main` automatically
+| Symptom | Cause | Do this |
+|---------|--------|---------|
+| Actions fail before `git fetch` (SSH timeout / auth) | `VPS_SSH_KEY` / user / host / port | Fix repo secrets; pubkey on **that** user |
+| `Host key verification failed` | First SSH from Actions | Add host key / fingerprint per `appleboy/ssh-action` docs |
+| Admin rebuild 404 from GitHub | Wrong `GITHUB_REPO` or workflow filename | Match `owner/repo` and `deploy-main-website-cloudflare.yml` |
+| Site talks to localhost | `PUBLIC_API_URL` missing on CLOUDFLARE env | Set var, rebuild Pages |
+| Browser CORS errors | `CORS_ORIGIN` missing a frontend origin | Update `backend/.env`, `pm2 restart aien-backend --update-env` |
+| Prisma `permission denied for schema public` | DB user lacks rights | Grant + ownership as in the VPS guide |
+| Certbot fails | `api` DNS not pointing at this VPS yet | Fix A record, wait, retry |

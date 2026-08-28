@@ -26,6 +26,7 @@ Values are loaded from `.env` files (e.g. `.env.local`, `.env`) or from the proc
 | Mail      | `MAIL_PROVIDER`, `BREVO_API_KEY`, `SENDGRID_API_KEY`     | Email sending                       |
 | Storage   | `STORAGE_PROVIDER`, `CLOUDINARY_CLOUD_NAME`, etc.        | File uploads (Cloudinary, etc.)     |
 | Seed      | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | First admin user and site defaults; see [Database migrations](/admin/docs/database-migrations#database-seeder) |
+| GitHub    | `GITHUB_DEPLOY_TOKEN`, `GITHUB_REPO`, `GITHUB_MAIN_WEBSITE_WORKFLOW` | Admin rebuild / deploy status (API server only). Not a repo deploy key. See [Deployment](/admin/docs/deployment). |
 
 The backend validates on startup: `DATABASE_URL` is required, and `JWT_SECRET` must be changed in production (default `change-me-in-production` is rejected).
 

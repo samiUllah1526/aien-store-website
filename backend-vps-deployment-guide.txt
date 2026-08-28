@@ -1,217 +1,269 @@
-AIEN Deployment Guide (Beginner Edition)
-Date: 2026-03-29
+AIEN Deployment Guide — VPS + Cloudflare Pages
+Updated: 2026-08-29
 
-This is an end-to-end guide for your real setup:
-- Backend on VPS with Nginx + SSL + Postgres + PM2
-- Main website on Cloudflare Pages
-- Admin portal on Cloudflare Pages
-- DNS on Namecheap
-- GitHub Actions deployment
+Use this file to stand up the stack on ANY Ubuntu VPS. Replace placeholders.
+Do not skip the deploy-key step. Do not mix the three keys (section 0b).
 
-This document also includes mistakes we hit and how to fix them.
+Placeholders:
+  VPS_IP          e.g. 163.245.208.214
+  DOMAIN          e.g. aien.store
+  OWNER/REPO      e.g. your-user/aien-store-feb-14-26
+  DEPLOY_USER     e.g. deploy-user
+  APP_DIR         e.g. /home/deploy-user/aien-store-website
+  DB_NAME         e.g. aien_store
+  DB_USER         e.g. aien_user
+  DB_PASS         strong password (quote it if it contains !)
 
-============================================================
-0) Final Architecture (what you built)
-============================================================
-- api.aien.store -> VPS (Nginx -> Node backend on 127.0.0.1:3000)
-- www.aien.store -> Cloudflare Pages (main website)
-- admin.aien.store -> Cloudflare Pages (admin portal)
-- aien.store -> redirect to https://www.aien.store
-
-Think of it like this:
-- DNS = address book
-- Firewall = security gate
-- Nginx = front desk/reverse proxy
-- PM2 = process manager (keeps backend alive)
-- Certbot = SSL manager
+Current production example (aien.store):
+  api.aien.store     A -> 163.245.208.214
+  www.aien.store     CNAME -> aien-store.pages.dev
+  admin.aien.store   CNAME -> admin-portal-9td.pages.dev  (use YOUR Pages hostname)
+  aien.store         URL Redirect 301 -> https://www.aien.store
 
 ============================================================
-1) Vocabulary (quick)
+0) Architecture
 ============================================================
-- @ in DNS = root domain (aien.store)
-- A record = hostname -> IPv4
-- CNAME = hostname -> another hostname
-- TTL = DNS cache lifetime (Automatic is fine)
-- Authoritative nameserver = true source of your DNS records
+- api.DOMAIN     -> VPS: Nginx -> Node (127.0.0.1:3000) managed by PM2
+- www.DOMAIN     -> Cloudflare Pages project "aien-store"
+- admin.DOMAIN   -> Cloudflare Pages project "admin-portal"
+- DOMAIN         -> redirect to https://www.DOMAIN
+
+Workflows to use:
+  .github/workflows/deploy-orchestrator.yml
+  .github/workflows/deploy-backend-vps.yml
+  .github/workflows/deploy-main-website-cloudflare.yml
+  .github/workflows/deploy-admin-portal-cloudflare.yml
+
+Do NOT use .github/workflows/deploy.yml for this stack (old Docker path).
+
+Admin "Rebuild website" only runs the Cloudflare main-website workflow.
+Merge to main that touches backend/** runs Deploy Backend VPS (SSH + git fetch).
 
 ============================================================
-2) Safe order to avoid lockout
+0b) Three keys — do not mix
 ============================================================
-Always follow this order:
-1. Get SSH login working
-2. Create deploy user + test key login
-3. Configure firewall
-4. Setup backend + database
-5. Setup Nginx + SSL
-6. Setup DNS and verify
-7. Setup GitHub Actions
-8. Harden SSH (disable password/root) only at the end
+1) VPS login key (GitHub Actions -> VPS)
+   - Private: GitHub secret VPS_SSH_KEY
+   - Public:  DEPLOY_USER ~/.ssh/authorized_keys
+   - Purpose: Actions can SSH in and run the deploy script
+
+2) GitHub deploy key (VPS -> GitHub)
+   - Private: DEPLOY_USER ~/.ssh/id_ed25519 on the VPS
+   - Public:  GitHub repo -> Settings -> Deploy keys (read-only)
+   - Purpose: git clone / git fetch origin
+   - If you DELETE this on GitHub, git fetch fails with:
+     git@github.com: Permission denied (publickey)
+   - Fix: re-add the SAME ~/.ssh/id_ed25519.pub, or generate a new pair
+
+3) GITHUB_DEPLOY_TOKEN (API -> GitHub API)
+   - Lives in backend/.env on the VPS
+   - Fine-grained PAT: this repo only; Actions Read and write; Contents Read
+   - Purpose: admin Rebuild website + deploy status
+   - NOT a deploy key. Recreating a deploy key does not fix token errors.
 
 ============================================================
-3) VPS base setup
+0c) Safe order (avoid lockout)
 ============================================================
-SSH from Mac:
-ssh root@163.245.208.214
+1. SSH as root works
+2. Create DEPLOY_USER + test key login from your laptop
+3. Firewall
+4. Deploy key on GitHub, then clone
+5. Postgres + backend .env + PM2
+6. DNS A record for api, then Nginx + SSL
+7. GitHub Actions secrets + test backend workflow
+8. Cloudflare Pages + frontend custom domains
+9. Harden SSH (disable password/root) LAST
 
-Install packages:
+============================================================
+1) VPS base packages (Ubuntu)
+============================================================
+ssh root@VPS_IP
+
 apt update && apt upgrade -y
 apt install -y git curl ufw postgresql postgresql-contrib postgresql-client
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt install -y nodejs
 npm i -g pm2
 
-Check:
-node -v
+node -v    # v20.x
 npm -v
 psql --version
 pm2 -v
 
-If psql missing:
-apt install -y postgresql postgresql-contrib postgresql-client
+============================================================
+2) Deploy user
+============================================================
+adduser DEPLOY_USER
+usermod -aG sudo DEPLOY_USER
+
+mkdir -p /home/DEPLOY_USER/.ssh
+# Copy YOUR laptop pubkey (the one you use to SSH), not the GitHub deploy key:
+cp /root/.ssh/authorized_keys /home/DEPLOY_USER/.ssh/authorized_keys
+chown -R DEPLOY_USER:DEPLOY_USER /home/DEPLOY_USER/.ssh
+chmod 700 /home/DEPLOY_USER/.ssh
+chmod 600 /home/DEPLOY_USER/.ssh/authorized_keys
+
+Test from laptop (keep this working before later hardening):
+ssh DEPLOY_USER@VPS_IP
 
 ============================================================
-4) Create deploy user (recommended)
+3) Firewall
 ============================================================
-adduser deploy-user
-usermod -aG sudo deploy-user
-
-Copy SSH key access from root:
-mkdir -p /home/deploy-user/.ssh
-cp /root/.ssh/authorized_keys /home/deploy-user/.ssh/authorized_keys
-chown -R deploy-user:deploy-user /home/deploy-user/.ssh
-chmod 700 /home/deploy-user/.ssh
-chmod 600 /home/deploy-user/.ssh/authorized_keys
-
-Test from local:
-ssh deploy-user@163.245.208.214
-
-Note:
-su - deploy-user = switch shell fully to deploy-user
-sudo -u postgres psql = run only psql as postgres user
-
-============================================================
-5) Firewall setup
-============================================================
-Allow only what you need:
 sudo ufw allow OpenSSH
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw enable
 sudo ufw status verbose
-
-Expected:
-- Status: active
-- 22, 80, 443 allowed
-- Default incoming deny
+# Expect: 22, 80, 443 allow; incoming default deny
 
 ============================================================
-6) Postgres setup
+4) GitHub deploy key (REQUIRED before clone and before Actions git fetch)
 ============================================================
-Create DB + user:
+As DEPLOY_USER:
+
+ssh-keygen -t ed25519 -C "vps-deploy-readonly" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+
+GitHub -> this repository -> Settings -> Deploy keys -> Add deploy key
+  Title: vps-backend-deploy
+  Key: paste the .pub line
+  Allow write access: OFF
+
+Test:
+ssh -T git@github.com
+# Success looks like: Hi OWNER/REPO! You've successfully authenticated...
+
+--- Recreate after you deleted the deploy key on GitHub ---
+The private key is usually still on the VPS.
+
+ssh DEPLOY_USER@VPS_IP
+cat ~/.ssh/id_ed25519.pub
+# Add that exact line back as a new deploy key (read-only).
+
+If the key files are gone:
+ssh-keygen -t ed25519 -C "vps-deploy-readonly" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+# Add new .pub on GitHub. Then:
+cd APP_DIR
+git remote set-url origin git@github.com:OWNER/REPO.git
+ssh -T git@github.com
+git fetch origin
+
+Wrong user: the key must belong to VPS_USER (DEPLOY_USER).
+A key under /root/.ssh is ignored when Actions SSH as deploy-user.
+
+============================================================
+5) Clone the repo
+============================================================
+As DEPLOY_USER:
+cd ~
+git clone git@github.com:OWNER/REPO.git aien-store-website
+# APP_DIR is now /home/DEPLOY_USER/aien-store-website
+git -C ~/aien-store-website remote -v
+# Must show git@github.com:OWNER/REPO.git (SSH, not https)
+
+============================================================
+6) Postgres
+============================================================
 sudo -u postgres psql
 
-Inside psql:
-CREATE DATABASE aien_store;
-CREATE USER aien_user WITH ENCRYPTED PASSWORD 'StrongPasswordHere123!';
-GRANT ALL PRIVILEGES ON DATABASE aien_store TO aien_user;
+CREATE DATABASE DB_NAME;
+CREATE USER DB_USER WITH ENCRYPTED PASSWORD 'DB_PASS';
+GRANT ALL PRIVILEGES ON DATABASE DB_NAME TO DB_USER;
 \q
 
-If service inactive:
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-sudo systemctl status postgresql --no-pager
-
-Connection test (quote properly because password has !):
-psql 'postgresql://aien_user:StrongPasswordHere123!@127.0.0.1:5432/aien_store'
-
-If Prisma migrate fails with "permission denied for schema public":
-sudo -u postgres psql -d aien_store
-GRANT USAGE, CREATE ON SCHEMA public TO aien_user;
-ALTER SCHEMA public OWNER TO aien_user;
-ALTER DATABASE aien_store OWNER TO aien_user;
+sudo -u postgres psql -d DB_NAME
+GRANT USAGE, CREATE ON SCHEMA public TO DB_USER;
+ALTER SCHEMA public OWNER TO DB_USER;
+ALTER DATABASE DB_NAME OWNER TO DB_USER;
 \q
 
-============================================================
-7) Backend app setup on VPS
-============================================================
-As deploy user:
-cd ~
-git clone git@github.com:YOUR_GITHUB_USERNAME/YOUR_REPO.git aien-store-website
-cd aien-store-website/backend
+sudo systemctl enable --now postgresql
 
-Create production env:
+# Quote the URL if password contains !
+psql 'postgresql://DB_USER:DB_PASS@127.0.0.1:5432/DB_NAME'
+
+============================================================
+7) backend/.env (API server only)
+============================================================
+cd ~/aien-store-website/backend
+cp .env.example .env
 nano .env
 
-Minimum:
+Required in production:
+
 NODE_ENV=production
 PORT=3000
-DATABASE_URL=postgresql://aien_user:StrongPasswordHere123!@127.0.0.1:5432/aien_store
-JWT_SECRET=your_long_random_secret
+DATABASE_URL=postgresql://DB_USER:DB_PASS@127.0.0.1:5432/DB_NAME?schema=public&options=-c%20TimeZone%3DUTC
+JWT_SECRET=<long random string — not change-me-in-production>
 
-Admin "Rebuild website" (required on this API .env, then pm2 restart):
+CORS_ORIGIN=https://www.DOMAIN,https://DOMAIN,https://admin.DOMAIN
+APP_URL=https://www.DOMAIN
+ADMIN_URL=https://admin.DOMAIN
+API_URL=https://api.DOMAIN
+
 GITHUB_DEPLOY_TOKEN=github_pat_...
-GITHUB_REPO=YOUR_GITHUB_USERNAME/YOUR_REPO
+GITHUB_REPO=OWNER/REPO
 GITHUB_MAIN_WEBSITE_WORKFLOW=deploy-main-website-cloudflare.yml
 
-Create the token: GitHub → Settings → Developer settings → Fine-grained tokens.
-Resource owner = repo owner. Only this repo.
-Permissions: Actions = Read and write, Contents = Read.
-If org uses SSO, Authorize the token. Then: pm2 restart aien-backend
+Also set if you use them (see backend/.env.example):
+  Cloudinary or other storage
+  MAIL_PROVIDER + API key
+  GOOGLE_CLIENT_ID / SECRET
+  SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD / SEED_ADMIN_NAME (before first seed)
 
-Error "Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)":
-GitHub returned 401/403. Token is missing, expired, or lacks Actions write on this repo.
-This is NOT the workflow YAML permissions block.
-Fix: new PAT with the permissions above, update backend/.env, restart PM2.
-Do not put GITHUB_DEPLOY_TOKEN in main-website/.env.
+Create GITHUB_DEPLOY_TOKEN:
+  GitHub -> Settings -> Developer settings -> Fine-grained tokens
+  Resource owner = repo owner
+  Only this repo
+  Actions: Read and write
+  Contents: Read
+  Approve + SSO authorize if the org requires it
+  Restart after changing: pm2 restart aien-backend --update-env
 
-Install and run:
+Do not put GITHUB_DEPLOY_TOKEN in main-website/.env or admin-portal/.env.
+
+============================================================
+8) First backend start
+============================================================
+cd ~/aien-store-website/backend
 npm ci
 npm run build
 npx prisma migrate deploy
+npm run db:seed
+# seed once. Creates first admin from SEED_ADMIN_* 
+
 pm2 start npm --name aien-backend -- run start:prod
 pm2 save
 pm2 startup
+# run the command pm2 startup prints (uses sudo)
 
-Health checks:
 pm2 status
-pm2 logs aien-backend --lines 100
 curl -I http://127.0.0.1:3000/health
+# Expect 200
 
-Note:
-Do not run npm scripts from repo root if script exists only in backend package.
-Correct:
-cd ~/aien-store-website/backend && npm run db:seed
+pg-boss schema is created automatically on first start.
 
-Prisma Studio (secure access from your laptop):
-1) On VPS (keep this terminal open):
-   cd ~/aien-store-website/backend
-   npx prisma studio --browser none --port 5555
-2) On your local machine (new terminal):
-   ssh -L 5555:127.0.0.1:5555 deploy-user@163.245.208.214
-3) Open in your local browser:
-   http://localhost:5555
-
-Why this is safe:
-- Port 5555 does not need to be opened in UFW.
-- Traffic is tunneled inside SSH (port 22).
-- Prisma Studio is not publicly exposed.
-
-If Prisma says "unknown or unexpected option: --hostname":
-- Your Prisma version does not support --hostname; remove it.
+Always run npm scripts from backend/, not repo root.
 
 ============================================================
-8) Nginx reverse proxy + HTTPS
+9) DNS for API, then Nginx + TLS
 ============================================================
-Install:
+At the registrar (e.g. Namecheap), set:
+  api   A     VPS_IP
+
+Wait until:
+  dig +short api.DOMAIN
+shows VPS_IP.
+
 sudo apt install -y nginx certbot python3-certbot-nginx
+sudo nano /etc/nginx/sites-available/api.DOMAIN
 
-Create Nginx site:
-sudo nano /etc/nginx/sites-available/api.aien.store
-
-Content:
 server {
     listen 80;
-    server_name api.aien.store;
+    server_name api.DOMAIN;
+
+    client_max_body_size 20m;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -223,309 +275,210 @@ server {
     }
 }
 
-Enable + reload:
-sudo ln -s /etc/nginx/sites-available/api.aien.store /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/api.DOMAIN /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 
-Issue SSL:
-sudo certbot --nginx -d api.aien.store
+sudo certbot --nginx -d api.DOMAIN
+curl -I https://api.DOMAIN/health
+# GET / may be 404; /health must be 200
 
-Verify:
-curl -I https://api.aien.store/health
-
-Important:
-curl -I https://api.aien.store may return 404 on "/" and still be fine.
-404 here means app route not found, not infra failure.
-
-============================================================
-9) SSL renewal (what happens later)
-============================================================
-Check timer:
 sudo systemctl status certbot.timer --no-pager
-
-Expected:
-- loaded + enabled
-- active (waiting)
-- next trigger time shown
-
-Dry run:
 sudo certbot renew --dry-run
 
-See certificate details:
-sudo certbot certificates
+============================================================
+10) Remaining DNS (frontends)
+============================================================
+After Cloudflare Pages custom domains exist (section 12), set:
+
+  @       URL Redirect (301)  https://www.DOMAIN
+  www     CNAME               <aien-store Pages hostname, e.g. aien-store.pages.dev>
+  admin   CNAME               <admin-portal Pages hostname — unique per account>
+  api     A                   VPS_IP
+  Keep existing TXT (Google site verification) if any
+
+Never put both A and CNAME on the same host.
+
+dig NS DOMAIN +short
+dig +short www.DOMAIN
+dig +short admin.DOMAIN
+dig +short api.DOMAIN
+dig @1.1.1.1 admin.DOMAIN +short
 
 ============================================================
-10) DNS setup in Namecheap (final target state)
+11) GitHub Actions: VPS login key + secrets
 ============================================================
-Use these records:
-1) URL Redirect Record
-   Host: @
-   Value: https://www.aien.store
-   Type: Permanent (301)
+On your LAPTOP (separate key from the GitHub deploy key):
 
-2) CNAME
-   Host: www
-   Value: aien-store.pages.dev
+ssh-keygen -t ed25519 -C "github-actions-vps" -f ./gha_vps -N ""
 
-3) CNAME
-   Host: admin
-   Value: admin-portal-9td.pages.dev
+On VPS as DEPLOY_USER:
+  append gha_vps.pub to ~/.ssh/authorized_keys
+  chmod 600 ~/.ssh/authorized_keys
 
-4) A record
-   Host: api
-   Value: 163.245.208.214
+From laptop:
+  ssh -i ./gha_vps DEPLOY_USER@VPS_IP
+  # must work without a password
 
-5) Keep TXT @ google-site-verification (if used)
+GitHub repo -> Settings -> Secrets and variables -> Actions -> Secrets:
 
-Common DNS mistakes:
-- Having both A and CNAME for same host (invalid/conflicting)
-  Example: admin A + admin CNAME together -> bad
-- Leaving old parking records
-- Expecting instant propagation everywhere
+  VPS_HOST      VPS_IP
+  VPS_PORT      22
+  VPS_USER      DEPLOY_USER
+  VPS_SSH_KEY   entire private file gha_vps (BEGIN/END PRIVATE KEY)
+  VPS_APP_DIR   /home/DEPLOY_USER/aien-store-website
+  DEPLOY_BRANCH main
 
-============================================================
-11) DNS debugging guide (how to understand output)
-============================================================
-1) Who is authoritative?
-dig NS aien.store +short
+Delete ./gha_vps locally after it is stored in GitHub if you do not need a local copy.
 
-If output is:
-dns1.registrar-servers.com
-dns2.registrar-servers.com
--> Namecheap DNS is source of truth.
+Test: Actions -> Deploy Backend VPS -> Run workflow (branch main).
+Expect git fetch + npm ci + migrate + pm2 restart.
 
-2) What does my machine see?
-dig +short admin.aien.store
+If this job fails at git fetch with Permission denied (publickey):
+  that is the GitHub DEPLOY KEY (section 4), not VPS_SSH_KEY.
+  SSH into the box already succeeded.
 
-3) What does Cloudflare resolver see?
-dig @1.1.1.1 admin.aien.store +short
-
-4) What does Google resolver see?
-dig @8.8.8.8 admin.aien.store +short
-
-5) Query authoritative NS directly:
-dig @dns1.registrar-servers.com admin.aien.store +short
-
-How to read:
-- If authoritative is correct but local is old -> cache/propagation delay
-- If both public resolvers disagree temporarily -> normal during propagation
-- If authoritative is wrong -> fix DNS records first
-
-Mac cache flush:
-sudo dscacheutil -flushcache
-sudo killall -HUP mDNSResponder
+If it fails before git (timeout / Permission denied / Host key):
+  fix VPS_HOST / VPS_USER / VPS_SSH_KEY / authorized_keys / firewall.
 
 ============================================================
-12) GitHub Actions deployment setup
+12) Cloudflare Pages + GitHub environment CLOUDFLARE
 ============================================================
-Backend workflow exists:
-.github/workflows/deploy-backend-vps.yml
+Dashboard -> Workers & Pages -> Create -> Pages -> Upload assets
+  Project 1: aien-store
+  Project 2: admin-portal
 
-Frontend workflows:
-.github/workflows/deploy-main-website-cloudflare.yml
-.github/workflows/deploy-admin-portal-cloudflare.yml
+Each project -> Custom domains:
+  aien-store    -> www.DOMAIN
+  admin-portal  -> admin.DOMAIN
+Use the exact *.pages.dev hostname Cloudflare shows in DNS CNAMEs.
 
-Cloudflare workflows use GitHub environment:
-environment: CLOUDFLARE
+API token: My Profile -> API Tokens
+  Template "Edit Cloudflare Workers" or custom
+  Account -> Cloudflare Pages -> Edit
+Account ID: from dash.cloudflare.com/ACCOUNT_ID/...
 
-So in GitHub, ensure environment CLOUDFLARE has:
-- CLOUDFLARE_API_TOKEN
-- CLOUDFLARE_ACCOUNT_ID
+GitHub -> Settings -> Environments -> create "CLOUDFLARE"
 
-Backend secrets (repo or environment):
-- VPS_HOST
-- VPS_PORT
-- VPS_USER
-- VPS_SSH_KEY
-- VPS_APP_DIR
-- DEPLOY_BRANCH
+Environment secrets:
+  CLOUDFLARE_API_TOKEN
+  CLOUDFLARE_ACCOUNT_ID
 
-============================================================
-13) Frontend/backend connection checklist
-============================================================
-- Main website should call API at https://api.aien.store
-- Admin should call API at https://api.aien.store
-- Backend CORS allow:
-  https://www.aien.store
-  https://aien.store
-  https://admin.aien.store
+Environment variables (build-time; required):
+  PUBLIC_API_URL     https://api.DOMAIN
+Optional:
+  CLOUDFLARE_ZONE_ID   (cache purge after deploy)
+  PUBLIC_SITE_URL      https://www.DOMAIN   (if you add it to the workflow later)
+
+Without PUBLIC_API_URL on this environment, production JS may point at localhost.
 
 ============================================================
-14) Mistakes we hit and fixes
+13) Frontend / CORS check
 ============================================================
-1) Host key verification failed on first SSH
-   Fix: accept fingerprint (type yes) or clear known_hosts entry.
+Main website and admin must call https://api.DOMAIN
+Backend CORS_ORIGIN must include every browser origin you use
+  (www, apex, admin, and *.pages.dev if you open those URLs).
 
-2) Could not type in terminal after systemctl status
-   Cause: pager (less) opened.
-   Fix: press q, or use --no-pager.
-
-3) psql command not found
-   Fix: install postgresql/postgresql-client packages.
-
-4) Bash error "event not found" with DB URL
-   Cause: ! in password inside double quotes.
-   Fix: use single quotes around URL or escape !.
-
-5) Prisma migration permission denied on public schema
-   Fix: grant/create schema permissions and set owner.
-
-6) DNS conflict from duplicate records
-   Cause: same host had both A and CNAME.
-   Fix: keep only one valid record per host.
-
-7) Dig showed old IP after DNS update
-   Cause: resolver cache/propagation.
-   Fix: compare resolvers and wait.
+After .env change:
+  pm2 restart aien-backend --update-env
 
 ============================================================
-15) Final hardening (do this last)
+14) Go-live checks
 ============================================================
-After confirming deploy-user key login works:
+curl -I https://api.DOMAIN/health
+curl -I https://www.DOMAIN
+curl -I https://admin.DOMAIN
+pm2 status
+pm2 logs aien-backend --lines 50
+
+Merge a small backend change to main -> Deploy Orchestrator -> Deploy Backend succeeds.
+Merge a main-website change, or click Rebuild website -> Cloudflare workflow succeeds.
+
+============================================================
+15) Harden SSH (last)
+============================================================
+Keep one working SSH session open.
+
 sudo nano /etc/ssh/sshd_config
+  PasswordAuthentication no
+  PermitRootLogin no
+  PubkeyAuthentication yes
 
-Set:
-PasswordAuthentication no
-PermitRootLogin no
-PubkeyAuthentication yes
-
-Restart SSH:
 sudo systemctl restart ssh
-
-Safety rule:
-Keep one working SSH session open while testing a new SSH session.
+# New terminal: ssh DEPLOY_USER@VPS_IP must still work
 
 ============================================================
-16) Go-live verification checklist
+16) Prisma Studio (optional, not public)
 ============================================================
-- DNS:
-  dig +short www.aien.store
-  dig +short admin.aien.store
-  dig +short api.aien.store
-
-- Backend:
-  curl -I https://api.aien.store/health
-  pm2 status
-
-- SSL:
-  sudo systemctl status certbot.timer --no-pager
-
-- Frontends:
-  https://www.aien.store
-  https://admin.aien.store
-
-- GitHub Actions:
-  backend workflow succeeds
-  main website workflow succeeds
-  admin workflow succeeds
+VPS:
+  cd APP_DIR/backend
+  npx prisma studio --browser none --port 5555
+Laptop:
+  ssh -L 5555:127.0.0.1:5555 DEPLOY_USER@VPS_IP
+Browser:
+  http://localhost:5555
+Do not open 5555 in UFW.
 
 ============================================================
-17) Condensed deployment checklist (no explanations)
+17) Troubleshooting
 ============================================================
-[ ] 1. SSH access works
-    ssh root@163.245.208.214
-    ssh deploy-user@163.245.208.214
+A) Merge to main / Deploy Backend VPS:
+   git@github.com: Permission denied (publickey)
+   Meaning: on the VPS, GitHub rejected the SSH key.
+   Fix: section 4 (re-add or recreate deploy key). Confirm:
+     whoami == VPS_USER
+     git remote is SSH for OWNER/REPO
+     ssh -T git@github.com works
+     git fetch origin works
 
-[ ] 2. Base packages installed
-    apt update && apt upgrade -y
-    apt install -y git curl ufw postgresql postgresql-contrib postgresql-client nginx certbot python3-certbot-nginx
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt install -y nodejs
-    npm i -g pm2
+B) Admin: Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)
+   Meaning: API got 401/403 from GitHub API.
+   Fix: new fine-grained PAT (Actions write + Contents read), backend/.env, pm2 restart.
+   Not the workflow YAML permissions block.
 
-[ ] 3. Firewall active with required ports
-    sudo ufw allow OpenSSH
-    sudo ufw allow 80/tcp
-    sudo ufw allow 443/tcp
-    sudo ufw enable
-    sudo ufw status verbose
+C) Admin rebuild works, merge backend job fails
+   Expected if only the deploy key is broken. They are different keys.
 
-[ ] 4. Postgres DB/user exists
-    sudo -u postgres psql
-    CREATE DATABASE aien_store;
-    CREATE USER aien_user WITH ENCRYPTED PASSWORD 'StrongPasswordHere123!';
-    GRANT ALL PRIVILEGES ON DATABASE aien_store TO aien_user;
-    GRANT USAGE, CREATE ON SCHEMA public TO aien_user;
-    ALTER SCHEMA public OWNER TO aien_user;
-    ALTER DATABASE aien_store OWNER TO aien_user;
-    \q
+D) Host key verification failed (Actions SSH)
+   First connection from the runner. Add host key / fingerprint for
+   appleboy/ssh-action, or ssh-keyscan from a trusted machine.
 
-[ ] 5. Backend env configured
-    cd ~/aien-store-website/backend
-    nano .env
-    # Must include DATABASE_URL, JWT_SECRET, and for admin rebuild:
-    # GITHUB_DEPLOY_TOKEN, GITHUB_REPO=owner/repo
-    # Token: fine-grained PAT, Actions Read and write, Contents Read
-    # Then: pm2 restart aien-backend
+E) Prisma permission denied for schema public
+   Re-run grants in section 6.
 
-[ ] 6. Backend running under PM2
-    cd ~/aien-store-website/backend
-    npm ci
-    npm run build
-    npx prisma migrate deploy
-    pm2 start npm --name aien-backend -- run start:prod
-    pm2 save
-    pm2 startup
-    pm2 status
+F) bash: event not found (password with !)
+   Use single quotes around DATABASE_URL.
 
-[ ] 7. Nginx proxy configured for API
-    sudo nano /etc/nginx/sites-available/api.aien.store
-    sudo ln -s /etc/nginx/sites-available/api.aien.store /etc/nginx/sites-enabled/
-    sudo rm -f /etc/nginx/sites-enabled/default
-    sudo nginx -t
-    sudo systemctl reload nginx
+G) curl https://api.DOMAIN/ is 404
+   Fine. Check /health.
 
-[ ] 8. SSL certificate issued and renewal healthy
-    sudo certbot --nginx -d api.aien.store
-    sudo systemctl status certbot.timer --no-pager
-    sudo certbot renew --dry-run
+H) Certbot failed
+   api.DOMAIN A record must already point at this VPS.
 
-[ ] 9. DNS final records in Namecheap
-    @      -> URL Redirect (301) to https://www.aien.store
-    www    -> CNAME aien-store.pages.dev
-    admin  -> CNAME admin-portal-9td.pages.dev
-    api    -> A 163.245.208.214
-    keep TXT google-site-verification
+I) Site cannot reach API / CORS
+   PUBLIC_API_URL on CLOUDFLARE env + CORS_ORIGIN on backend + rebuild/restart.
 
-[ ] 10. DNS verification commands
-    dig NS aien.store +short
-    dig +short www.aien.store
-    dig +short admin.aien.store
-    dig +short api.aien.store
-    dig @1.1.1.1 admin.aien.store +short
-    dig @dns1.registrar-servers.com admin.aien.store +short
-
-[ ] 11. Runtime verification
-    curl -I https://api.aien.store/health
-    curl -I https://www.aien.store
-    curl -I https://admin.aien.store
-    pm2 logs aien-backend --lines 100
-
-[ ] 11b. Prisma Studio (optional, secure tunnel)
-    # VPS terminal:
-    cd ~/aien-store-website/backend
-    npx prisma studio --browser none --port 5555
-    # Local terminal:
-    ssh -L 5555:127.0.0.1:5555 deploy-user@163.245.208.214
-    # Local browser:
-    http://localhost:5555
-
-[ ] 12. GitHub Actions secrets/workflows ready
-    - Backend: VPS_HOST, VPS_PORT, VPS_USER, VPS_SSH_KEY, VPS_APP_DIR, DEPLOY_BRANCH
-    - Cloudflare environment "CLOUDFLARE": CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-    - Workflows:
-      .github/workflows/deploy-backend-vps.yml
-      .github/workflows/deploy-main-website-cloudflare.yml
-      .github/workflows/deploy-admin-portal-cloudflare.yml
-
-[ ] 13. Final SSH hardening (only after key login verified)
-    sudo nano /etc/ssh/sshd_config
-    PasswordAuthentication no
-    PermitRootLogin no
-    PubkeyAuthentication yes
-    sudo systemctl restart ssh
-
-Done. You now have both a learning guide and a fast execution checklist.
-
+============================================================
+18) Condensed checklist
+============================================================
+[ ] SSH root and DEPLOY_USER from laptop
+[ ] Packages: git curl ufw postgres node20 pm2 nginx certbot
+[ ] UFW: 22, 80, 443
+[ ] Deploy key: ~/.ssh/id_ed25519.pub on GitHub Deploy keys (read-only)
+[ ] ssh -T git@github.com works as DEPLOY_USER
+[ ] git clone git@github.com:OWNER/REPO.git
+[ ] Postgres DB + grants + ownership
+[ ] backend/.env complete (JWT, CORS, URLs, GITHUB_*)
+[ ] npm ci, build, migrate, seed once, pm2 start + save + startup
+[ ] curl 127.0.0.1:3000/health
+[ ] DNS api A -> VPS_IP, then Nginx + certbot
+[ ] curl https://api.DOMAIN/health
+[ ] Laptop key gha_vps in authorized_keys; secret VPS_SSH_KEY set
+[ ] Secrets: VPS_HOST PORT USER SSH_KEY APP_DIR DEPLOY_BRANCH
+[ ] Environment CLOUDFLARE: token, account id, PUBLIC_API_URL
+[ ] Pages projects aien-store + admin-portal + custom domains
+[ ] DNS www/admin CNAME + apex redirect
+[ ] Manual Deploy Backend VPS is green
+[ ] Manual main-website + admin Cloudflare workflows green
+[ ] SSH hardening last

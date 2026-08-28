@@ -48,7 +48,9 @@ Add any other env vars your app needs (e.g. mail, storage, `HEALTH_HEAP_LIMIT_MB
 - **GITHUB_REPO** – `owner/repo` (the repo that contains `.github/workflows/`).
 - **GITHUB_MAIN_WEBSITE_WORKFLOW** – optional; default `deploy-main-website-cloudflare.yml`.
 
-If admin shows `Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)`, GitHub rejected the token (`401`/`403`). Recreate the PAT with those permissions, update the Railway variable, and redeploy/restart the backend. Full steps: admin portal **Documentation → Deployment**.
+If admin shows `Check GITHUB_DEPLOY_TOKEN permissions (Actions: Read and write)`, GitHub rejected the token (`401`/`403`). Recreate the PAT with those permissions, update the Railway variable, and redeploy/restart the backend.
+
+For the production VPS + Cloudflare stack (deploy keys, Actions SSH, Pages), use `backend-vps-deployment-guide.txt` and admin **Documentation → Deployment**. This Railway file is API-only hosting.
 
 ## 5. Deploy
 
